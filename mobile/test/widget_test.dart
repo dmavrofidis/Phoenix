@@ -85,6 +85,8 @@ import 'package:phoenix/src/release_audit_engine.dart';
 import 'package:phoenix/src/reliability_center_page.dart';
 import 'package:phoenix/src/running_engine.dart';
 import 'package:phoenix/src/running_lab_page.dart';
+import 'package:phoenix/src/safety_adaptation_engine.dart';
+import 'package:phoenix/src/safety_adaptation_page.dart';
 import 'package:phoenix/src/secure_backup_engine.dart';
 import 'package:phoenix/src/sleep_stress_engine.dart';
 import 'package:phoenix/src/sleep_stress_page.dart';
@@ -8686,5 +8688,168 @@ void main() {
     await tester.pump();
     expect(find.text('TABATA 8'), findsNWidgets(2));
     expect(find.text('GET READY'), findsOneWidget);
+  });
+
+  test('symptom assessment stops red flags and bounds modifications', () {
+    final redFlag = SafetyAdaptationEngine.assessSymptom(
+      area: 'knee',
+      severity: 8,
+      sudden: true,
+      swelling: true,
+      numbness: false,
+      worsening: true,
+      toleratesIsometric: false,
+      painFreeDays: 0,
+    );
+    final moderate = SafetyAdaptationEngine.assessSymptom(
+      area: 'shoulder',
+      severity: 4,
+      sudden: false,
+      swelling: false,
+      numbness: false,
+      worsening: false,
+      toleratesIsometric: true,
+      painFreeDays: 3,
+    );
+
+    expect(redFlag.decision, TrainingDecision.stopAndSeekCare);
+    expect(redFlag.loadMultiplier, 0);
+    expect(redFlag.careReminder, contains('qualified medical care'));
+    expect(moderate.decision, TrainingDecision.modify);
+    expect(moderate.loadMultiplier, inInclusiveRange(.5, .7));
+    expect(
+      moderate.fallbacks,
+      contains('short pain-free isometric at low effort'),
+    );
+    expect(
+      moderate.exportNote(area: 'shoulder', severity: 4),
+      contains('not a diagnosis'),
+    );
+  });
+
+  test('pain timeline detects worsening recurrence risk from session logs', () {
+    final data = FitnessData.initial().copyWith(
+      logs: [
+        for (var index = 0; index < 4; index++)
+          WorkoutLog(
+            templateName: 'Return',
+            completedAt: DateTime(2026, 8, 1 + index),
+            minutes: 20,
+            painArea: 'knee',
+            painSeverity: 2 + index,
+          ),
+      ],
+    );
+
+    final trend = SafetyAdaptationEngine.painTrend(data, area: 'knee');
+
+    expect(trend.values, [2, 3, 4, 5]);
+    expect(trend.direction, 'worsening');
+    expect(trend.recurrenceRisk, isTrue);
+  });
+
+  test('periodization plans contain bounded ramps deloads and taper', () {
+    final linear = SafetyAdaptationEngine.periodization(
+      style: 'linear',
+      weeks: 8,
+    );
+    final block = SafetyAdaptationEngine.periodization(
+      style: 'block',
+      weeks: 12,
+    );
+
+    expect(linear.phases.last.name, 'Deload');
+    expect(linear.phases.last.volumeMultiplier, lessThan(.7));
+    expect(block.phases.map((item) => item.name), [
+      'Accumulation',
+      'Intensification',
+      'Realization / taper',
+    ]);
+    expect(block.deloadCriteria, hasLength(4));
+    expect(
+      () => SafetyAdaptationEngine.periodization(
+        style: 'linear',
+        weeks: 8,
+        volumeRamp: .3,
+      ),
+      throwsFormatException,
+    );
+  });
+
+  test('performance battery scores eight tests and schedules retest', () {
+    final testedAt = DateTime(2026, 8, 7);
+    final battery = SafetyAdaptationEngine.performanceBattery(
+      values: const {
+        'push-up': 40,
+        'pull-up': 6,
+        'squat': 60,
+        'plank': 180,
+        'broad-jump': 240,
+        'vertical-jump': 60,
+        'cooper': 2800,
+        'step-recovery': 45,
+      },
+      testedAt: testedAt,
+    );
+
+    expect(battery.results, hasLength(8));
+    expect(battery.radar['strength'], 50);
+    expect(battery.lowestCategory, 'strength');
+    expect(battery.nextTestDate, testedAt.add(const Duration(days: 42)));
+    expect(battery.results.every((item) => item.stopRule.isNotEmpty), isTrue);
+  });
+
+  test('sport and adaptive plans respect season travel and life stage', () {
+    final sport = SafetyAdaptationEngine.sportProfile(
+      'football',
+      inSeason: true,
+      daysToCompetition: 5,
+    );
+    final travel = SafetyAdaptationEngine.adaptivePlan(
+      context: 'hotel',
+      availableMinutes: 15,
+      lowImpact: true,
+      balanceSupport: true,
+      fatigueLimited: true,
+      lifeStage: 'older-adult',
+    );
+    final pregnancy = SafetyAdaptationEngine.adaptivePlan(
+      context: 'home',
+      lifeStage: 'pregnancy',
+    );
+
+    expect(sport.inSeasonVolumeMultiplier, .65);
+    expect(
+      sport.competitionWeek,
+      contains('No novel drills or exhaustive conditioning.'),
+    );
+    expect(travel.minutes, 15);
+    expect(travel.streakProtected, isTrue);
+    expect(travel.exercises, contains('Supported hip hinge'));
+    expect(
+      pregnancy.safetyChecklist.join(' '),
+      contains('qualified healthcare professional'),
+    );
+  });
+
+  testWidgets('Safety and Adaptation exposes five guarded planning views', (
+    tester,
+  ) async {
+    final store = FitnessStore(MemoryRepository());
+    await store.load();
+    await tester.pumpWidget(
+      MaterialApp(home: SafetyAdaptationPage(store: store)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('SAFETY & ADAPTATION'), findsOneWidget);
+    expect(find.text('SYMPTOM-AWARE TRAINING BOUNDARY'), findsOneWidget);
+    expect(find.text('PROCEED'), findsOneWidget);
+    await tester.tap(find.text('PHASES'));
+    await tester.pumpAndSettle();
+    expect(find.text('PERIODIZATION & TAPER'), findsOneWidget);
+    await tester.tap(find.text('ADAPTIVE'));
+    await tester.pumpAndSettle();
+    expect(find.text('TRAVEL, ADAPTIVE & LIFE-STAGE PLAN'), findsOneWidget);
   });
 }

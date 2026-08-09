@@ -35,6 +35,7 @@ import 'recovery_lab_page.dart';
 import 'reliability_center_page.dart';
 import 'reports_studio_page.dart';
 import 'running_lab_page.dart';
+import 'safety_adaptation_page.dart';
 import 'sleep_stress_page.dart';
 import 'state/fitness_store.dart';
 import 'strength_lab_page.dart';
@@ -92,6 +93,7 @@ class _PhoenixToolboxPageState extends State<PhoenixToolboxPage> {
     'analytics-studio' => AnalyticsStudioPage(store: widget.store),
     'athlete-intelligence' => AdvancedFeaturePackPage(store: widget.store),
     'interval-timers' => IntervalTimerPage(store: widget.store),
+    'safety-adaptation' => SafetyAdaptationPage(store: widget.store),
     'reports' => ReportsStudioPage(store: widget.store),
     'capability-studio' => CapabilityStudioPage(store: widget.store),
     'control' => ControlCenterPage(store: widget.store),
@@ -565,6 +567,18 @@ const _tools = <_ToolEntry>[
     greekDescription: 'Trends, sleep debt, RHR alerts και interventions.',
     englishDescription: 'Trends, sleep debt, RHR alerts and interventions.',
     keywords: 'stress resting heart rate baseline forecast',
+  ),
+  _ToolEntry(
+    route: 'safety-adaptation',
+    category: _ToolCategory.health,
+    icon: Icons.health_and_safety_outlined,
+    greekTitle: 'Safety & Adaptation',
+    englishTitle: 'Safety & Adaptation',
+    greekDescription:
+        'Συμπτώματα, return stages, performance tests και adaptive plans.',
+    englishDescription:
+        'Symptoms, return stages, performance tests and adaptive plans.',
+    keywords: 'injury pain return taper sport travel adaptive life stage',
   ),
   _ToolEntry(
     route: 'habit-builder',
