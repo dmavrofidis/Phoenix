@@ -64,6 +64,7 @@ class PhoenixApp extends StatefulWidget {
 
 class _PhoenixAppState extends State<PhoenixApp> with WidgetsBindingObserver {
   DateTime? _backgroundedAt;
+  bool _privacyShielded = false;
 
   FitnessStore get store => widget.store;
 
@@ -84,6 +85,9 @@ class _PhoenixAppState extends State<PhoenixApp> with WidgetsBindingObserver {
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.hidden) {
       _backgroundedAt ??= DateTime.now();
+      if (!_privacyShielded && mounted) {
+        setState(() => _privacyShielded = true);
+      }
       return;
     }
     if (state == AppLifecycleState.resumed && _backgroundedAt != null) {
@@ -94,6 +98,9 @@ class _PhoenixAppState extends State<PhoenixApp> with WidgetsBindingObserver {
         store.lockVault();
       }
       _backgroundedAt = null;
+      if (_privacyShielded && mounted) {
+        setState(() => _privacyShielded = false);
+      }
     }
   }
 
@@ -161,18 +168,54 @@ class _PhoenixAppState extends State<PhoenixApp> with WidgetsBindingObserver {
           ],
           themeMode: ThemeMode.dark,
           darkTheme: _phoenixTheme(store.preferences),
-          home: home,
+          builder: (context, child) {
+            final media = MediaQuery.of(context);
+            final systemScale = media.textScaler.scale(16) / 16;
+            final combinedScale = (systemScale * store.preferences.textScale)
+                .clamp(.8, 2.0);
+            return MediaQuery(
+              data: media.copyWith(
+                textScaler: TextScaler.linear(combinedScale),
+                disableAnimations:
+                    media.disableAnimations || store.preferences.reducedMotion,
+              ),
+              child: FocusTraversalGroup(
+                policy: ReadingOrderTraversalPolicy(),
+                child: child ?? const SizedBox.shrink(),
+              ),
+            );
+          },
+          home: _privacyShielded ? const _PrivacyShield() : home,
         );
       },
     );
   }
 }
 
+class _PrivacyShield extends StatelessWidget {
+  const _PrivacyShield();
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    body: Center(
+      child: Semantics(
+        label: 'Phoenix private screen hidden',
+        child: const Icon(Icons.shield_outlined, size: 72),
+      ),
+    ),
+  );
+}
+
 ThemeData _phoenixTheme(AppPreferences preferences) {
-  final seed = switch (preferences.themePreset) {
+  final themeSeed = switch (preferences.themePreset) {
     'ocean' => const Color(0xFF29B6F6),
     'forest' => const Color(0xFF66BB6A),
     _ => const Color(0xFFFF3D00),
+  };
+  final seed = switch (preferences.colorVisionMode) {
+    'deuteranopia' => const Color(0xFF4D9DE0),
+    'tritanopia' => const Color(0xFFE1559A),
+    _ => themeSeed,
   };
   final highContrast = preferences.highContrast;
   final scheme =
@@ -188,6 +231,25 @@ ThemeData _phoenixTheme(AppPreferences preferences) {
     useMaterial3: true,
     brightness: Brightness.dark,
     colorScheme: scheme,
+    fontFamilyFallback: preferences.readabilityFont
+        ? const ['Verdana', 'Arial', 'sans-serif']
+        : null,
+    materialTapTargetSize: MaterialTapTargetSize.padded,
+    visualDensity: VisualDensity(
+      horizontal: (preferences.touchTargetScale - 1) * 4,
+      vertical: (preferences.touchTargetScale - 1) * 4,
+    ),
+    pageTransitionsTheme: preferences.reducedMotion
+        ? const PageTransitionsTheme(
+            builders: {
+              TargetPlatform.android: _NoPageTransitionsBuilder(),
+              TargetPlatform.iOS: _NoPageTransitionsBuilder(),
+              TargetPlatform.macOS: _NoPageTransitionsBuilder(),
+              TargetPlatform.windows: _NoPageTransitionsBuilder(),
+              TargetPlatform.linux: _NoPageTransitionsBuilder(),
+            },
+          )
+        : const PageTransitionsTheme(),
     scaffoldBackgroundColor: highContrast
         ? Colors.black
         : const Color(0xFF080808),
@@ -230,6 +292,19 @@ ThemeData _phoenixTheme(AppPreferences preferences) {
       ),
     ),
   );
+}
+
+class _NoPageTransitionsBuilder extends PageTransitionsBuilder {
+  const _NoPageTransitionsBuilder();
+
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) => child;
 }
 
 class OnboardingGate extends StatelessWidget {

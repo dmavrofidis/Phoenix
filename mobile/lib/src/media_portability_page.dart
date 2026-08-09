@@ -10,6 +10,7 @@ import 'coaching_report_engine.dart';
 import 'local_file_bridge.dart';
 import 'media_portability_engine.dart';
 import 'models/fitness_models.dart';
+import 'secure_backup_engine.dart';
 import 'state/fitness_store.dart';
 import 'workout_notification_sync.dart';
 
@@ -900,6 +901,103 @@ class _TransferTabState extends State<_TransferTab> {
     }
   }
 
+  Future<String?> _requestExportPassword({required bool confirm}) async {
+    final password = TextEditingController();
+    final confirmation = TextEditingController();
+    try {
+      return await showDialog<String>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text(confirm ? 'ENCRYPT BACKUP' : 'DECRYPT BACKUP'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: password,
+                obscureText: true,
+                autofocus: true,
+                decoration: const InputDecoration(
+                  labelText: 'Password (10+ characters)',
+                ),
+              ),
+              if (confirm)
+                TextField(
+                  controller: confirmation,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Confirm password',
+                  ),
+                ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('CANCEL'),
+            ),
+            FilledButton(
+              onPressed: () {
+                if (password.text.length < 10 ||
+                    (confirm && password.text != confirmation.text)) {
+                  return;
+                }
+                Navigator.pop(context, password.text);
+              },
+              child: Text(confirm ? 'ENCRYPT' : 'DECRYPT'),
+            ),
+          ],
+        ),
+      );
+    } finally {
+      password.dispose();
+      confirmation.dispose();
+    }
+  }
+
+  Future<void> _exportEncryptedBackup() async {
+    final password = await _requestExportPassword(confirm: true);
+    if (password == null) return;
+    try {
+      final envelope = await SecureBackupEngine.encrypt(
+        clearText: widget.store.exportBackup(),
+        password: password,
+      );
+      final saved = await saveLocalBytes(
+        bytes: Uint8List.fromList(utf8.encode(envelope)),
+        filename: 'phoenix-encrypted-backup.phx',
+        mimeType: 'application/octet-stream',
+      );
+      if (mounted) {
+        _message(
+          saved
+              ? 'Το AES-256-GCM encrypted backup εξήχθη.'
+              : 'Η εξαγωγή ακυρώθηκε ή δεν υποστηρίζεται.',
+        );
+      }
+    } on FormatException catch (error) {
+      if (mounted) _message(error.message);
+    }
+  }
+
+  Future<void> _importEncryptedBackup() async {
+    final file = await pickLocalFile(
+      extensions: const <String>['phx'],
+      maxBytes: 20 * 1024 * 1024,
+    );
+    if (file == null || !mounted) return;
+    final password = await _requestExportPassword(confirm: false);
+    if (password == null) return;
+    try {
+      final backup = await SecureBackupEngine.decrypt(
+        envelope: utf8.decode(file.bytes, allowMalformed: false),
+        password: password,
+      );
+      await _confirmAndRestore(backup, source: 'Το encrypted backup');
+    } on FormatException catch (error) {
+      if (mounted) _message(error.message);
+    }
+  }
+
   Future<void> _confirmAndRestore(
     String backup, {
     required String source,
@@ -991,6 +1089,18 @@ class _TransferTabState extends State<_TransferTab> {
             onPressed: _importBackupFile,
             icon: const Icon(Icons.upload_file_outlined),
             label: const Text('IMPORT BACKUP FILE'),
+          ),
+          const SizedBox(height: 6),
+          OutlinedButton.icon(
+            onPressed: _exportEncryptedBackup,
+            icon: const Icon(Icons.enhanced_encryption_outlined),
+            label: const Text('EXPORT ENCRYPTED BACKUP'),
+          ),
+          const SizedBox(height: 6),
+          OutlinedButton.icon(
+            onPressed: _importEncryptedBackup,
+            icon: const Icon(Icons.lock_open_outlined),
+            label: const Text('IMPORT ENCRYPTED BACKUP'),
           ),
           const SizedBox(height: 24),
           Text(

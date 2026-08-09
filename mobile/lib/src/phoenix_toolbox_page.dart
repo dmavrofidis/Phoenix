@@ -5,16 +5,19 @@ import 'advanced_calisthenics_page.dart';
 import 'advanced_coach_page.dart';
 import 'analytics_studio_page.dart';
 import 'body_composition_page.dart';
+import 'capability_studio_page.dart';
 import 'calisthenics_lab_page.dart';
 import 'coach_hub_page.dart';
 import 'conditioning_lab_page.dart';
 import 'control_center_page.dart';
 import 'cycling_rowing_lab_page.dart';
 import 'data_validation_page.dart';
+import 'education_library.dart';
 import 'exercise_intelligence_page.dart';
 import 'experience_settings_page.dart';
 import 'habit_builder_page.dart';
 import 'hypertrophy_lab_page.dart';
+import 'local_collaboration_page.dart';
 import 'media_portability_page.dart';
 import 'meal_intelligence_page.dart';
 import 'mobility_intelligence_page.dart';
@@ -34,6 +37,7 @@ import 'sleep_stress_page.dart';
 import 'state/fitness_store.dart';
 import 'strength_lab_page.dart';
 import 'strength_test_page.dart';
+import 'structured_import_export_page.dart';
 import 'vault_security_page.dart';
 import 'weekly_planner_page.dart';
 
@@ -59,6 +63,8 @@ class _PhoenixToolboxPageState extends State<PhoenixToolboxPage> {
     'planner' => WeeklyPlannerPage(store: widget.store),
     'architecture' => ProgramArchitecturePage(store: widget.store),
     'exercise-lab' => ExerciseIntelligencePage(store: widget.store),
+    'education' => const EducationLibraryPage(),
+    'collaboration' => LocalCollaborationPage(store: widget.store),
     'test' => StrengthTestPage(store: widget.store),
     'strength-lab' => StrengthLabPage(store: widget.store),
     'hypertrophy' => HypertrophyLabPage(store: widget.store),
@@ -83,6 +89,7 @@ class _PhoenixToolboxPageState extends State<PhoenixToolboxPage> {
     'analytics' => AdvancedAnalyticsPage(store: widget.store),
     'analytics-studio' => AnalyticsStudioPage(store: widget.store),
     'reports' => ReportsStudioPage(store: widget.store),
+    'capability-studio' => CapabilityStudioPage(store: widget.store),
     'control' => ControlCenterPage(store: widget.store),
     'media' => MediaPortabilityPage(store: widget.store),
     'reliability' => ReliabilityCenterPage(store: widget.store),
@@ -90,6 +97,7 @@ class _PhoenixToolboxPageState extends State<PhoenixToolboxPage> {
     'vault' => VaultSecurityPage(store: widget.store),
     'profile' => ProfileEditorPage(store: widget.store),
     'settings' => ExperienceSettingsPage(store: widget.store),
+    'structured-transfer' => StructuredImportExportPage(store: widget.store),
     _ => ControlCenterPage(store: widget.store),
   };
 
@@ -308,6 +316,41 @@ class _ToolEntry {
 }
 
 const _tools = <_ToolEntry>[
+  _ToolEntry(
+    route: 'education',
+    category: _ToolCategory.insights,
+    icon: Icons.school_outlined,
+    greekTitle: 'Phoenix Education',
+    englishTitle: 'Phoenix Education',
+    greekDescription: 'Offline cues, λάθη, effort, nutrition και recovery.',
+    englishDescription:
+        'Offline cues, errors, effort, nutrition, and recovery.',
+    keywords:
+        'education cue tutorial error rpe rir pain warmup nutrition recovery',
+  ),
+  _ToolEntry(
+    route: 'collaboration',
+    category: _ToolCategory.data,
+    icon: Icons.group_work_outlined,
+    greekTitle: 'Local Collaboration',
+    englishTitle: 'Local Collaboration',
+    greekDescription:
+        'Expiring coach views, session codes και approval preview.',
+    englishDescription:
+        'Expiring coach views, session codes, and approval preview.',
+    keywords: 'coach export snapshot share code partner challenge redacted',
+  ),
+  _ToolEntry(
+    route: 'structured-transfer',
+    category: _ToolCategory.data,
+    icon: Icons.import_export_outlined,
+    greekTitle: 'Structured Import / Export',
+    englishTitle: 'Structured Import / Export',
+    greekDescription: 'Workout/nutrition CSV, GPX, ICS και selective restore.',
+    englishDescription:
+        'Workout/nutrition CSV, GPX, ICS, and selective restore.',
+    keywords: 'csv strong hevy gpx ics schema incremental selective restore',
+  ),
   _ToolEntry(
     route: 'planner',
     category: _ToolCategory.training,
@@ -577,6 +620,18 @@ const _tools = <_ToolEntry>[
     greekDescription: 'Τοπικά reports προόδου και coach handoff.',
     englishDescription: 'Local progress reports and coach handoff.',
     keywords: 'report weekly monthly print copy pdf αναφορά',
+  ),
+  _ToolEntry(
+    route: 'capability-studio',
+    category: _ToolCategory.insights,
+    icon: Icons.hub_outlined,
+    greekTitle: 'Capability Studio 289',
+    englishTitle: 'Capability Studio 289',
+    greekDescription:
+        '289 persisted local-first controls, audits και planners.',
+    englishDescription:
+        '289 persisted local-first controls, audits, and planners.',
+    keywords: '289 roadmap capability audit planner security accessibility',
   ),
   _ToolEntry(
     route: 'control',

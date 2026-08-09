@@ -21,6 +21,8 @@ import 'package:phoenix/src/control_center_page.dart';
 import 'package:phoenix/src/coach_hub_page.dart';
 import 'package:phoenix/src/calisthenics_engine.dart';
 import 'package:phoenix/src/calisthenics_lab_page.dart';
+import 'package:phoenix/src/capability_studio_engine.dart';
+import 'package:phoenix/src/capability_studio_page.dart';
 import 'package:phoenix/src/coaching_report_engine.dart';
 import 'package:phoenix/src/conditioning_engine.dart';
 import 'package:phoenix/src/conditioning_lab_page.dart';
@@ -33,6 +35,7 @@ import 'package:phoenix/src/data_validation_engine.dart';
 import 'package:phoenix/src/data_validation_page.dart';
 import 'package:phoenix/src/deterministic_coach_engine.dart';
 import 'package:phoenix/src/equipment_presets.dart';
+import 'package:phoenix/src/education_library.dart';
 import 'package:phoenix/src/exercise_guide.dart';
 import 'package:phoenix/src/exercise_intelligence_engine.dart';
 import 'package:phoenix/src/exercise_intelligence_page.dart';
@@ -45,6 +48,7 @@ import 'package:phoenix/src/habit_builder_page.dart';
 import 'package:phoenix/src/hypertrophy_engine.dart';
 import 'package:phoenix/src/hypertrophy_lab_page.dart';
 import 'package:phoenix/src/local_notification_schedule.dart';
+import 'package:phoenix/src/local_collaboration_engine.dart';
 import 'package:phoenix/src/media_portability_engine.dart';
 import 'package:phoenix/src/media_portability_page.dart';
 import 'package:phoenix/src/meal_intelligence_engine.dart';
@@ -77,6 +81,7 @@ import 'package:phoenix/src/release_audit_engine.dart';
 import 'package:phoenix/src/reliability_center_page.dart';
 import 'package:phoenix/src/running_engine.dart';
 import 'package:phoenix/src/running_lab_page.dart';
+import 'package:phoenix/src/secure_backup_engine.dart';
 import 'package:phoenix/src/sleep_stress_engine.dart';
 import 'package:phoenix/src/sleep_stress_page.dart';
 import 'package:phoenix/src/session_preparation_engine.dart';
@@ -85,6 +90,7 @@ import 'package:phoenix/src/strength_test_page.dart';
 import 'package:phoenix/src/strength_lab_engine.dart';
 import 'package:phoenix/src/strength_lab_page.dart';
 import 'package:phoenix/src/storage_migration_engine.dart';
+import 'package:phoenix/src/structured_import_export_engine.dart';
 import 'package:phoenix/src/training_analytics_engine.dart';
 import 'package:phoenix/src/training_schedule.dart';
 import 'package:phoenix/src/weekly_planner_page.dart';
@@ -2940,6 +2946,304 @@ void main() {
     expect(reminder.notificationId, stableWorkoutNotificationId('reminder-42'));
     expect(reminder.notificationId, inInclusiveRange(0, 0x7fffffff));
     expect(reminder.payload, 'phoenix-workout:reminder-42');
+  });
+
+  test('Capability Studio καλύπτει ακριβώς τις 289 αναβαθμίσεις', () {
+    final catalog = CapabilityStudioEngine.catalog;
+
+    expect(catalog, hasLength(289));
+    expect(catalog.first.id, 279);
+    expect(catalog.last.id, 567);
+    expect(catalog.map((item) => item.id).toSet(), hasLength(289));
+    expect(catalog.map((item) => item.title).toSet(), hasLength(289));
+    expect(catalog.map((item) => item.batch).toSet(), hasLength(30));
+    expect(
+      catalog.map((item) => item.kind).toSet(),
+      containsAll(CapabilityKind.values),
+    );
+  });
+
+  test(
+    'capability state αποθηκεύεται, εκτελείται και κάνει JSON round-trip',
+    () async {
+      final store = FitnessStore(MemoryRepository());
+      await store.load();
+      const configured = CapabilityState(
+        capabilityId: 314,
+        guardLevel: 85,
+        mode: 'conservative',
+        note: 'Keep recovery key offline.',
+      );
+
+      await store.saveCapabilityState(configured);
+      final spec = CapabilityStudioEngine.catalog.singleWhere(
+        (item) => item.id == 314,
+      );
+      final outcome = CapabilityStudioEngine.evaluate(
+        spec: spec,
+        data: store.data,
+        state: store.capabilityStateFor(314),
+      );
+      await store.recordCapabilityRun(
+        capabilityId: 314,
+        result: outcome.exportText,
+      );
+      final restored = FitnessData.fromJson(store.data.toJson());
+
+      expect(spec.title, 'Backup encryption');
+      expect(spec.kind, CapabilityKind.security);
+      expect(store.capabilityStateFor(314).runCount, 1);
+      expect(restored.capabilityStates.single.capabilityId, 314);
+      expect(
+        restored.capabilityStates.single.note,
+        'Keep recovery key offline.',
+      );
+    },
+  );
+
+  testWidgets('Capability Studio αναζητά και ανοίγει numbered control', (
+    tester,
+  ) async {
+    final store = FitnessStore(MemoryRepository());
+    await store.load();
+    await tester.pumpWidget(
+      MaterialApp(home: CapabilityStudioPage(store: store)),
+    );
+
+    expect(find.text('289 LOCAL-FIRST CONTROLS'), findsOneWidget);
+    expect(find.text('Print-friendly chart themes'), findsOneWidget);
+    await tester.enterText(find.byType(SearchBar), 'Backup encryption');
+    await tester.pump();
+    final result = find.descendant(
+      of: find.byType(ListTile),
+      matching: find.text('Backup encryption'),
+    );
+    expect(result, findsOneWidget);
+    await tester.tap(result);
+    await tester.pumpAndSettle();
+    expect(find.text('#314 • BATCH 32'), findsOneWidget);
+    expect(find.text('RUN LOCAL CHECK'), findsOneWidget);
+  });
+
+  test('education library καλύπτει εννέα θεματικές και contextual search', () {
+    expect(PhoenixEducationLibrary.lessons, hasLength(9));
+    expect(
+      PhoenixEducationLibrary.lessons.map((item) => item.topic).toSet(),
+      hasLength(9),
+    );
+    final pain = PhoenixEducationLibrary.search('sharp');
+    expect(pain.single.title, 'Pain versus effort education');
+    expect(pain.single.stopRule, contains('professional guidance'));
+  });
+
+  test('local collaboration codes είναι redacted, signed και expiring', () {
+    final now = DateTime(2026, 8, 7, 19);
+    final data = FitnessData.initial();
+    final package = LocalCollaborationEngine.coachView(
+      data: data,
+      now: now,
+      expiresInDays: 7,
+    );
+    final code = LocalCollaborationEngine.encode(package);
+    final decoded = LocalCollaborationEngine.decode(
+      code,
+      now: now.add(const Duration(days: 1)),
+    );
+
+    expect(code, startsWith('PHXC1:'));
+    expect(decoded.readOnly, isTrue);
+    expect(decoded.redacted, isTrue);
+    expect(decoded.payload, isNot(contains('nutrition')));
+    expect(decoded.payload, isNot(contains('progressPhotos')));
+    expect(
+      () => LocalCollaborationEngine.decode(
+        code,
+        now: now.add(const Duration(days: 8)),
+      ),
+      throwsA(isA<FormatException>()),
+    );
+  });
+
+  test('session-plan import εμφανίζει conflict πριν από approval', () {
+    final now = DateTime(2026, 8, 7, 19);
+    final data = FitnessData.initial();
+    final package = LocalCollaborationEngine.sessionPlan(
+      template: data.templates.first,
+      now: now,
+    );
+    final preview = LocalCollaborationEngine.previewImport(
+      code: LocalCollaborationEngine.encode(package),
+      current: data,
+      now: now,
+    );
+
+    expect(preview.safeToApprove, isFalse);
+    expect(preview.conflicts.single, contains(data.templates.first.id));
+  });
+
+  test(
+    'structured workout imports καλύπτουν generic Strong και Hevy mappings',
+    () {
+      final generic = StructuredImportExportEngine.parseWorkoutCsv(
+        'date,workout,exercise,reps,weight,rir\n'
+        '2026-08-07T18:00:00,Upper,Bench press,8,80,2',
+      );
+      final strong = StructuredImportExportEngine.parseWorkoutCsv(
+        'Date,Workout Name,Exercise Name,Reps,Weight (kg),RIR\n'
+        '2026-08-07T18:00:00,Upper,Bench press,8,80,2',
+        mapping: 'strong',
+      );
+      final hevy = StructuredImportExportEngine.parseWorkoutCsv(
+        'start_time,title,exercise_title,reps,weight_kg,rpe\n'
+        '2026-08-07T18:00:00,Upper,Bench press,8,80,8',
+        mapping: 'hevy',
+      );
+
+      expect(generic.single.sets.single.weightKilograms, 80);
+      expect(strong.single.templateName, 'Upper');
+      expect(hevy.single.sets.single.rir, 2);
+    },
+  );
+
+  test('nutrition CSV, GPX και ICS exports είναι bounded και πραγματικά', () {
+    final meals = StructuredImportExportEngine.parseNutritionCsv(
+      'date,name,calories,protein,carbs,fat\n'
+      '2026-08-07T12:00:00,Lunch,650,45,70,20',
+    );
+    final route = StructuredImportExportEngine.parseGpx(
+      '<gpx><trk><trkseg>'
+      '<trkpt lat="37.9800" lon="23.7200"><ele>10</ele></trkpt>'
+      '<trkpt lat="37.9810" lon="23.7220"><ele>18</ele></trkpt>'
+      '</trkseg></trk></gpx>',
+    );
+    const reminder = WorkoutReminder(
+      id: 'ics-one',
+      weekday: DateTime.friday,
+      minutesSinceMidnight: 18 * 60,
+    );
+    final ics = StructuredImportExportEngine.calendarIcs(
+      reminders: const [reminder],
+      from: DateTime(2026, 8, 7),
+    );
+
+    expect(meals.single.proteinGrams, 45);
+    expect(route.distanceKilometers, greaterThan(.1));
+    expect(route.elevationGainMeters, 8);
+    expect(ics, contains('BEGIN:VEVENT'));
+    expect(ics, contains('UID:phoenix-ics-one-0@local'));
+  });
+
+  test(
+    'incremental backup και selective restore δείχνουν ακριβείς αλλαγές',
+    () {
+      final baseline = FitnessData.initial();
+      final current = baseline.copyWith(
+        spotifyUrl: 'https://open.spotify.com/track/local',
+      );
+      final incremental = StructuredImportExportEngine.incremental(
+        baseline: baseline,
+        current: current,
+      );
+      final preview = StructuredImportExportEngine.previewSelectiveRestore(
+        backup: jsonEncode({'data': current.toJson()}),
+        current: baseline,
+      );
+
+      expect(incremental.changedKeys, ['spotifyUrl']);
+      expect(incremental.encode(), contains('PHX-INCREMENTAL'));
+      expect(preview.valid, isTrue);
+      expect(preview.availableSections, contains('templates'));
+      expect(preview.conflicts, isNotEmpty);
+    },
+  );
+
+  test(
+    'encrypted backup κάνει authenticated round-trip και απορρίπτει password',
+    () async {
+      const clear = '{"private":"phoenix"}';
+      final encrypted = await SecureBackupEngine.encrypt(
+        clearText: clear,
+        password: 'correct horse battery staple',
+      );
+      final restored = await SecureBackupEngine.decrypt(
+        envelope: encrypted,
+        password: 'correct horse battery staple',
+      );
+
+      expect(restored, clear);
+      expect(encrypted, isNot(contains('phoenix')));
+      expect(
+        () => SecureBackupEngine.decrypt(
+          envelope: encrypted,
+          password: 'wrong password value',
+        ),
+        throwsA(isA<FormatException>()),
+      );
+    },
+  );
+
+  test(
+    'accessibility preferences είναι bounded και backward compatible',
+    () async {
+      final store = FitnessStore(MemoryRepository());
+      await store.load();
+      await store.updatePreferences(
+        textScale: 4,
+        reducedMotion: true,
+        colorVisionMode: 'deuteranopia',
+        readabilityFont: true,
+        oneHandMode: true,
+        touchTargetScale: 3,
+      );
+      final restored = FitnessData.fromJson(store.data.toJson()).preferences;
+
+      expect(restored.textScale, 1.6);
+      expect(restored.touchTargetScale, 1.5);
+      expect(restored.reducedMotion, isTrue);
+      expect(restored.colorVisionMode, 'deuteranopia');
+      expect(restored.oneHandMode, isTrue);
+    },
+  );
+
+  test(
+    'vault εφαρμόζει cooldown μετά από επαναλαμβανόμενα λάθος PIN',
+    () async {
+      final store = FitnessStore(MemoryRepository());
+      await store.load();
+      await store.setVaultPin('2468');
+      store.lockVault();
+
+      for (var attempt = 0; attempt < 5; attempt++) {
+        expect(await store.unlockVault('1357'), isFalse);
+      }
+
+      expect(store.failedUnlockAttempts, 5);
+      expect(store.unlockCooldownRemaining, greaterThan(Duration.zero));
+      expect(await store.unlockVault('2468'), isFalse);
+      expect(store.vaultUnlocked, isFalse);
+    },
+  );
+
+  test('data retention αφαιρεί μόνο παλιά entries και διατηρεί Undo', () async {
+    final repository = MemoryRepository();
+    repository.value = repository.value.copyWith(
+      weights: [
+        WeightEntry(kilograms: 80, recordedAt: DateTime(2024, 1, 1)),
+        WeightEntry(kilograms: 78, recordedAt: DateTime.now()),
+      ],
+    );
+    final store = FitnessStore(repository);
+    await store.load();
+
+    final removed = await store.pruneHistoryBefore(
+      DateTime.now().subtract(const Duration(days: 365)),
+    );
+
+    expect(removed, 1);
+    expect(store.data.weights.single.kilograms, 78);
+    expect(store.canUndo, isTrue);
+    await store.undoLastMutation();
+    expect(store.data.weights, hasLength(2));
   });
 
   test('coaching report engine δημιουργεί πραγματικό PDF', () async {

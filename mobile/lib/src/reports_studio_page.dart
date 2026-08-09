@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import 'reports_studio_engine.dart';
+import 'secure_clipboard.dart';
 import 'state/fitness_store.dart';
 
 class ReportsStudioPage extends StatefulWidget {
@@ -85,7 +85,7 @@ class _ReportsStudioPageState extends State<ReportsStudioPage> {
             const SizedBox(height: 14),
             FilledButton.icon(
               onPressed: () async {
-                await Clipboard.setData(ClipboardData(text: active.plainText));
+                await setSecureClipboard(active.plainText);
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Report copied locally.')),

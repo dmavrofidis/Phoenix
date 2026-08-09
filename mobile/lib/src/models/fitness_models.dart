@@ -1092,6 +1092,13 @@ class AppPreferences {
     this.countdownCueSeconds = 3,
     this.lockTimeoutMinutes = 5,
     this.vaultPinHash = '',
+    this.textScale = 1,
+    this.reducedMotion = false,
+    this.colorVisionMode = 'standard',
+    this.readabilityFont = false,
+    this.oneHandMode = false,
+    this.touchTargetScale = 1,
+    this.voiceLabels = true,
   });
 
   final String languageCode;
@@ -1103,6 +1110,13 @@ class AppPreferences {
   final int countdownCueSeconds;
   final int lockTimeoutMinutes;
   final String vaultPinHash;
+  final double textScale;
+  final bool reducedMotion;
+  final String colorVisionMode;
+  final bool readabilityFont;
+  final bool oneHandMode;
+  final double touchTargetScale;
+  final bool voiceLabels;
 
   bool get hasVaultPin => vaultPinHash.isNotEmpty;
 
@@ -1116,6 +1130,13 @@ class AppPreferences {
     int? countdownCueSeconds,
     int? lockTimeoutMinutes,
     String? vaultPinHash,
+    double? textScale,
+    bool? reducedMotion,
+    String? colorVisionMode,
+    bool? readabilityFont,
+    bool? oneHandMode,
+    double? touchTargetScale,
+    bool? voiceLabels,
   }) => AppPreferences(
     languageCode: languageCode ?? this.languageCode,
     highContrast: highContrast ?? this.highContrast,
@@ -1126,6 +1147,13 @@ class AppPreferences {
     countdownCueSeconds: countdownCueSeconds ?? this.countdownCueSeconds,
     lockTimeoutMinutes: lockTimeoutMinutes ?? this.lockTimeoutMinutes,
     vaultPinHash: vaultPinHash ?? this.vaultPinHash,
+    textScale: textScale ?? this.textScale,
+    reducedMotion: reducedMotion ?? this.reducedMotion,
+    colorVisionMode: colorVisionMode ?? this.colorVisionMode,
+    readabilityFont: readabilityFont ?? this.readabilityFont,
+    oneHandMode: oneHandMode ?? this.oneHandMode,
+    touchTargetScale: touchTargetScale ?? this.touchTargetScale,
+    voiceLabels: voiceLabels ?? this.voiceLabels,
   );
 
   Map<String, Object> toJson() => {
@@ -1138,6 +1166,13 @@ class AppPreferences {
     'countdownCueSeconds': countdownCueSeconds,
     'lockTimeoutMinutes': lockTimeoutMinutes,
     'vaultPinHash': vaultPinHash,
+    'textScale': textScale,
+    'reducedMotion': reducedMotion,
+    'colorVisionMode': colorVisionMode,
+    'readabilityFont': readabilityFont,
+    'oneHandMode': oneHandMode,
+    'touchTargetScale': touchTargetScale,
+    'voiceLabels': voiceLabels,
   };
 
   factory AppPreferences.fromJson(Map<String, dynamic> json) => AppPreferences(
@@ -1150,6 +1185,16 @@ class AppPreferences {
     countdownCueSeconds: json['countdownCueSeconds'] as int? ?? 3,
     lockTimeoutMinutes: json['lockTimeoutMinutes'] as int? ?? 5,
     vaultPinHash: json['vaultPinHash'] as String? ?? '',
+    textScale: (json['textScale'] as num? ?? 1).toDouble().clamp(1, 1.6),
+    reducedMotion: json['reducedMotion'] as bool? ?? false,
+    colorVisionMode: json['colorVisionMode'] as String? ?? 'standard',
+    readabilityFont: json['readabilityFont'] as bool? ?? false,
+    oneHandMode: json['oneHandMode'] as bool? ?? false,
+    touchTargetScale: (json['touchTargetScale'] as num? ?? 1).toDouble().clamp(
+      1,
+      1.5,
+    ),
+    voiceLabels: json['voiceLabels'] as bool? ?? true,
   );
 }
 
@@ -1875,6 +1920,72 @@ class UserProfile {
   );
 }
 
+class CapabilityState {
+  const CapabilityState({
+    required this.capabilityId,
+    this.enabled = true,
+    this.guardLevel = 50,
+    this.mode = 'balanced',
+    this.note = '',
+    this.runCount = 0,
+    this.lastResult = '',
+    this.updatedAt,
+  });
+
+  final int capabilityId;
+  final bool enabled;
+  final int guardLevel;
+  final String mode;
+  final String note;
+  final int runCount;
+  final String lastResult;
+  final DateTime? updatedAt;
+
+  Map<String, Object?> toJson() => {
+    'capabilityId': capabilityId,
+    'enabled': enabled,
+    'guardLevel': guardLevel,
+    'mode': mode,
+    'note': note,
+    'runCount': runCount,
+    'lastResult': lastResult,
+    'updatedAt': updatedAt?.toIso8601String(),
+  };
+
+  factory CapabilityState.fromJson(Map<String, dynamic> json) =>
+      CapabilityState(
+        capabilityId: json['capabilityId'] as int,
+        enabled: json['enabled'] as bool? ?? true,
+        guardLevel: (json['guardLevel'] as int? ?? 50).clamp(0, 100),
+        mode: json['mode'] as String? ?? 'balanced',
+        note: json['note'] as String? ?? '',
+        runCount: (json['runCount'] as int? ?? 0).clamp(0, 1000000),
+        lastResult: json['lastResult'] as String? ?? '',
+        updatedAt: json['updatedAt'] == null
+            ? null
+            : DateTime.tryParse(json['updatedAt'] as String),
+      );
+
+  CapabilityState copyWith({
+    bool? enabled,
+    int? guardLevel,
+    String? mode,
+    String? note,
+    int? runCount,
+    String? lastResult,
+    DateTime? updatedAt,
+  }) => CapabilityState(
+    capabilityId: capabilityId,
+    enabled: enabled ?? this.enabled,
+    guardLevel: guardLevel ?? this.guardLevel,
+    mode: mode ?? this.mode,
+    note: note ?? this.note,
+    runCount: runCount ?? this.runCount,
+    lastResult: lastResult ?? this.lastResult,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+}
+
 class FitnessData {
   const FitnessData({
     required this.profile,
@@ -1928,6 +2039,7 @@ class FitnessData {
       'bodyweight',
     ],
     this.analyticsAnnotations = const [],
+    this.capabilityStates = const [],
   });
 
   final UserProfile? profile;
@@ -1976,6 +2088,7 @@ class FitnessData {
   final List<CoachRecommendationFeedback> coachRecommendationFeedback;
   final List<String> analyticsDashboardMetrics;
   final List<AnalyticsAnnotation> analyticsAnnotations;
+  final List<CapabilityState> capabilityStates;
 
   Map<String, Object?> toJson() => {
     'profile': profile?.toJson(),
@@ -2048,6 +2161,7 @@ class FitnessData {
     'analyticsAnnotations': analyticsAnnotations
         .map((item) => item.toJson())
         .toList(),
+    'capabilityStates': capabilityStates.map((item) => item.toJson()).toList(),
   };
 
   factory FitnessData.fromJson(Map<String, dynamic> json) {
@@ -2263,6 +2377,10 @@ class FitnessData {
                 AnalyticsAnnotation.fromJson(item as Map<String, dynamic>),
           )
           .toList(),
+      capabilityStates: (json['capabilityStates'] as List? ?? const [])
+          .map((item) => CapabilityState.fromJson(item as Map<String, dynamic>))
+          .where((item) => item.capabilityId >= 279 && item.capabilityId <= 567)
+          .toList(),
     );
   }
 
@@ -2314,6 +2432,7 @@ class FitnessData {
     List<CoachRecommendationFeedback>? coachRecommendationFeedback,
     List<String>? analyticsDashboardMetrics,
     List<AnalyticsAnnotation>? analyticsAnnotations,
+    List<CapabilityState>? capabilityStates,
   }) => FitnessData(
     profile: clearProfile ? null : profile ?? this.profile,
     templates: templates ?? this.templates,
@@ -2365,6 +2484,7 @@ class FitnessData {
     analyticsDashboardMetrics:
         analyticsDashboardMetrics ?? this.analyticsDashboardMetrics,
     analyticsAnnotations: analyticsAnnotations ?? this.analyticsAnnotations,
+    capabilityStates: capabilityStates ?? this.capabilityStates,
   );
 
   factory FitnessData.initial() => const FitnessData(

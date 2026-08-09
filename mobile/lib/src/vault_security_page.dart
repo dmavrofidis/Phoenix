@@ -18,6 +18,7 @@ class _VaultSecurityPageState extends State<VaultSecurityPage> {
   final _confirm = TextEditingController();
   bool _obscure = true;
   bool _busy = false;
+  int _retentionDays = 365;
 
   @override
   void dispose() {
@@ -36,6 +37,11 @@ class _VaultSecurityPageState extends State<VaultSecurityPage> {
         _message(
           valid
               ? l.text('Το vault ξεκλειδώθηκε.', 'Vault unlocked.')
+              : widget.store.unlockCooldownRemaining > Duration.zero
+              ? l.text(
+                  'Πολλές αποτυχίες. Περίμενε ${widget.store.unlockCooldownRemaining.inSeconds + 1}s.',
+                  'Too many attempts. Wait ${widget.store.unlockCooldownRemaining.inSeconds + 1}s.',
+                )
               : l.text('Λάθος PIN.', 'Incorrect PIN.'),
         );
         if (valid) _pin.clear();
@@ -79,6 +85,33 @@ class _VaultSecurityPageState extends State<VaultSecurityPage> {
       ..showSnackBar(SnackBar(content: Text(message)));
   }
 
+  Future<void> _applyRetention() async {
+    final accepted = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('APPLY RETENTION POLICY?'),
+        content: Text(
+          'Entries older than $_retentionDays days will be removed. A one-step local Undo snapshot will be kept.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('CANCEL'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('REMOVE OLD DATA'),
+          ),
+        ],
+      ),
+    );
+    if (accepted != true) return;
+    final removed = await widget.store.pruneHistoryBefore(
+      DateTime.now().subtract(Duration(days: _retentionDays)),
+    );
+    if (mounted) _message('$removed old local entries removed.');
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
@@ -113,6 +146,17 @@ class _VaultSecurityPageState extends State<VaultSecurityPage> {
                 ),
                 textAlign: TextAlign.center,
               ),
+              if (widget.store.failedUnlockAttempts > 0) ...[
+                const SizedBox(height: 8),
+                Text(
+                  l.text(
+                    'Αποτυχημένες προσπάθειες: ${widget.store.failedUnlockAttempts}',
+                    'Failed attempts: ${widget.store.failedUnlockAttempts}',
+                  ),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+              ],
               const SizedBox(height: 8),
               Text(
                 l.text(
@@ -198,6 +242,54 @@ class _VaultSecurityPageState extends State<VaultSecurityPage> {
                   label: Text(l.text('Αφαίρεση PIN', 'Remove PIN')),
                 ),
               ],
+              const SizedBox(height: 18),
+              const Divider(),
+              const Text(
+                'SECURITY HEALTH DASHBOARD',
+                style: TextStyle(fontWeight: FontWeight.w900),
+              ),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.admin_panel_settings_outlined),
+                title: Text(
+                  widget.store.hasVaultPin
+                      ? 'PROFILE-LEVEL PIN ACTIVE'
+                      : 'PROFILE-LEVEL PIN NOT SET',
+                ),
+                subtitle: const Text(
+                  'Each isolated local profile stores its own preference and PIN hash.',
+                ),
+              ),
+              const ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(Icons.enhanced_encryption_outlined),
+                title: Text('AES-256-GCM BACKUP AVAILABLE'),
+                subtitle: Text(
+                  'Password-derived keys are never stored by Phoenix.',
+                ),
+              ),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<int>(
+                initialValue: _retentionDays,
+                decoration: const InputDecoration(
+                  labelText: 'Keep detailed history',
+                  border: OutlineInputBorder(),
+                ),
+                items: const [
+                  DropdownMenuItem(value: 90, child: Text('90 days')),
+                  DropdownMenuItem(value: 180, child: Text('180 days')),
+                  DropdownMenuItem(value: 365, child: Text('365 days')),
+                  DropdownMenuItem(value: 730, child: Text('2 years')),
+                ],
+                onChanged: (value) =>
+                    setState(() => _retentionDays = value ?? _retentionDays),
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: _applyRetention,
+                icon: const Icon(Icons.auto_delete_outlined),
+                label: const Text('APPLY DATA RETENTION'),
+              ),
             ],
           ),
         );

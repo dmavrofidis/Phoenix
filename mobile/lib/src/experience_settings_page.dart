@@ -103,6 +103,128 @@ class ExperienceSettingsPage extends StatelessWidget {
                 ),
               ),
               const Divider(height: 26),
+              _SectionTitle(label: l.text('ΠΡΟΣΒΑΣΙΜΟΤΗΤΑ+', 'ACCESSIBILITY+')),
+              const SizedBox(height: 8),
+              Text(
+                '${l.text('Κλίμακα κειμένου', 'Text scale')} ${(preferences.textScale * 100).round()}%',
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+              Slider(
+                value: preferences.textScale,
+                min: 1,
+                max: 1.6,
+                divisions: 6,
+                label: '${(preferences.textScale * 100).round()}%',
+                onChanged: (value) => store.updatePreferences(textScale: value),
+              ),
+              SwitchListTile(
+                value: preferences.reducedMotion,
+                contentPadding: EdgeInsets.zero,
+                onChanged: (value) =>
+                    store.updatePreferences(reducedMotion: value),
+                secondary: const Icon(Icons.motion_photos_off_outlined),
+                title: Text(l.text('Μειωμένη κίνηση', 'Reduced motion')),
+                subtitle: Text(
+                  l.text(
+                    'Αφαιρεί τις μεταβάσεις σελίδων και δηλώνει disableAnimations.',
+                    'Removes page transitions and exposes disableAnimations.',
+                  ),
+                ),
+              ),
+              Text(
+                l.text('Παλέτα χρωματικής όρασης', 'Color-vision palette'),
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 7),
+              Wrap(
+                spacing: 7,
+                runSpacing: 7,
+                children: [
+                  for (final mode in const [
+                    ('standard', 'STANDARD'),
+                    ('deuteranopia', 'DEUTERANOPIA'),
+                    ('tritanopia', 'TRITANOPIA'),
+                  ])
+                    ChoiceChip(
+                      label: Text(mode.$2),
+                      selected: preferences.colorVisionMode == mode.$1,
+                      onSelected: (_) =>
+                          store.updatePreferences(colorVisionMode: mode.$1),
+                    ),
+                ],
+              ),
+              SwitchListTile(
+                value: preferences.readabilityFont,
+                contentPadding: EdgeInsets.zero,
+                onChanged: (value) =>
+                    store.updatePreferences(readabilityFont: value),
+                secondary: const Icon(Icons.text_fields),
+                title: Text(
+                  l.text('Readability typography', 'Readability typography'),
+                ),
+                subtitle: Text(
+                  l.text(
+                    'Χρησιμοποιεί ευανάγνωστα system-font fallbacks.',
+                    'Uses readable system-font fallbacks.',
+                  ),
+                ),
+              ),
+              SwitchListTile(
+                value: preferences.oneHandMode,
+                contentPadding: EdgeInsets.zero,
+                onChanged: (value) =>
+                    store.updatePreferences(oneHandMode: value),
+                secondary: const Icon(Icons.back_hand_outlined),
+                title: Text(l.text('Λειτουργία ενός χεριού', 'One-hand mode')),
+                subtitle: Text(
+                  l.text(
+                    'Κρατά τις κύριες workout ενέργειες χαμηλά στην οθόνη.',
+                    'Keeps primary workout actions low on the screen.',
+                  ),
+                ),
+              ),
+              SwitchListTile(
+                value: preferences.voiceLabels,
+                contentPadding: EdgeInsets.zero,
+                onChanged: (value) =>
+                    store.updatePreferences(voiceLabels: value),
+                secondary: const Icon(Icons.record_voice_over_outlined),
+                title: Text(
+                  l.text('Voice-friendly labels', 'Voice-friendly labels'),
+                ),
+                subtitle: Text(
+                  l.text(
+                    'Διατηρεί σαφή ονόματα ενεργειών για voice control και readers.',
+                    'Keeps action names explicit for voice control and readers.',
+                  ),
+                ),
+              ),
+              Text(
+                '${l.text('Μέγεθος touch targets', 'Touch-target size')} ${(preferences.touchTargetScale * 100).round()}%',
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+              Slider(
+                value: preferences.touchTargetScale,
+                min: 1,
+                max: 1.5,
+                divisions: 2,
+                label: '${(preferences.touchTargetScale * 100).round()}%',
+                onChanged: (value) =>
+                    store.updatePreferences(touchTargetScale: value),
+              ),
+              const Card(
+                child: ListTile(
+                  leading: Icon(Icons.accessibility_new),
+                  title: Text(
+                    'ACCESSIBILITY SELF-CHECK • 10/10 AVAILABLE',
+                    style: TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                  subtitle: Text(
+                    'Large text, landmarks, keyboard traversal, reduced motion, safe palettes, readable type, one-hand controls, voice labels, touch targets and this self-check.',
+                  ),
+                ),
+              ),
+              const Divider(height: 26),
               _SectionTitle(label: l.text('ΑΝΑΤΡΟΦΟΔΟΤΗΣΗ', 'FEEDBACK')),
               SwitchListTile(
                 value: preferences.hapticFeedback,

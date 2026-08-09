@@ -14,6 +14,7 @@ import '../nutrition_analytics_engine.dart';
 import '../periodization_engine.dart';
 import '../recovery_engine.dart';
 import '../recovery_lab_engine.dart';
+import '../structured_import_export_engine.dart';
 import '../training_analytics_engine.dart';
 import '../training_insights.dart';
 import '../training_program_engine.dart';
@@ -32,6 +33,8 @@ class FitnessStore extends ChangeNotifier {
   FitnessData? _undoData;
   String _undoLabel = '';
   bool _vaultUnlocked = true;
+  int _failedUnlockAttempts = 0;
+  DateTime? _unlockCooldownUntil;
   DataValidationReport _startupAudit = DataValidationEngine.audit(
     FitnessData.initial(),
   );
@@ -58,6 +61,14 @@ class FitnessStore extends ChangeNotifier {
   bool get isEnglish => preferences.languageCode == 'en';
   bool get hasVaultPin => preferences.hasVaultPin;
   bool get vaultUnlocked => !hasVaultPin || _vaultUnlocked;
+  int get failedUnlockAttempts => _failedUnlockAttempts;
+  Duration get unlockCooldownRemaining {
+    final until = _unlockCooldownUntil;
+    if (until == null) return Duration.zero;
+    final remaining = until.difference(DateTime.now());
+    return remaining.isNegative ? Duration.zero : remaining;
+  }
+
   bool get canUndo => _undoData != null;
   String get undoLabel => _undoLabel;
   DataValidationReport get startupAudit => _startupAudit;
@@ -65,6 +76,8 @@ class FitnessStore extends ChangeNotifier {
   List<DiagnosticEntry> get diagnostics => List.unmodifiable(_diagnostics);
   List<WorkoutReminder> get workoutReminders =>
       List.unmodifiable(_data.workoutReminders);
+  List<CapabilityState> get capabilityStates =>
+      List.unmodifiable(_data.capabilityStates);
   List<CustomExerciseDefinition> get customExercises =>
       List.unmodifiable(_data.customExercises);
   Map<String, double> get strengthTrainingMaxes =>
@@ -514,6 +527,13 @@ class FitnessStore extends ChangeNotifier {
     String? audioCueStyle,
     int? countdownCueSeconds,
     int? lockTimeoutMinutes,
+    double? textScale,
+    bool? reducedMotion,
+    String? colorVisionMode,
+    bool? readabilityFont,
+    bool? oneHandMode,
+    double? touchTargetScale,
+    bool? voiceLabels,
   }) async {
     final language = languageCode == null
         ? preferences.languageCode
@@ -536,6 +556,15 @@ class FitnessStore extends ChangeNotifier {
     final lockTimeout = lockTimeoutMinutes == null
         ? preferences.lockTimeoutMinutes
         : lockTimeoutMinutes.clamp(0, 60);
+    final visionMode = colorVisionMode == null
+        ? preferences.colorVisionMode
+        : const {
+            'standard',
+            'deuteranopia',
+            'tritanopia',
+          }.contains(colorVisionMode)
+        ? colorVisionMode
+        : 'standard';
     _data = _data.copyWith(
       preferences: preferences.copyWith(
         languageCode: language,
@@ -546,6 +575,13 @@ class FitnessStore extends ChangeNotifier {
         audioCueStyle: cueStyle,
         countdownCueSeconds: cueSeconds,
         lockTimeoutMinutes: lockTimeout,
+        textScale: textScale?.clamp(1, 1.6),
+        reducedMotion: reducedMotion,
+        colorVisionMode: visionMode,
+        readabilityFont: readabilityFont,
+        oneHandMode: oneHandMode,
+        touchTargetScale: touchTargetScale?.clamp(1, 1.5),
+        voiceLabels: voiceLabels,
       ),
     );
     await _repository.save(_data);
@@ -605,12 +641,22 @@ class FitnessStore extends ChangeNotifier {
       notifyListeners();
       return true;
     }
+    if (unlockCooldownRemaining > Duration.zero) return false;
     final valid =
         _isValidPin(pin) &&
         _constantTimeEquals(_pinHash(pin), preferences.vaultPinHash);
     if (valid) {
       _vaultUnlocked = true;
+      _failedUnlockAttempts = 0;
+      _unlockCooldownUntil = null;
       await feedback(success: true);
+      notifyListeners();
+    } else {
+      _failedUnlockAttempts++;
+      if (_failedUnlockAttempts >= 5) {
+        final seconds = (30 * (_failedUnlockAttempts - 4)).clamp(30, 300);
+        _unlockCooldownUntil = DateTime.now().add(Duration(seconds: seconds));
+      }
       notifyListeners();
     }
     return valid;
@@ -1348,6 +1394,85 @@ class FitnessStore extends ChangeNotifier {
     _data = _data.copyWith(wearableSummaries: sorted.take(730).toList());
     await _repository.save(_data);
     await feedback(success: true);
+    notifyListeners();
+  }
+
+  Future<int> importWorkoutLogs(List<WorkoutLog> imported) async {
+    if (imported.isEmpty || imported.length > 5000) {
+      throw const FormatException(
+        'Workout import must contain 1–5000 sessions.',
+      );
+    }
+    final existing = _data.logs
+        .map(
+          (item) =>
+              '${item.completedAt.toIso8601String()}|${item.templateName}',
+        )
+        .toSet();
+    final accepted = imported
+        .where(
+          (item) => !existing.contains(
+            '${item.completedAt.toIso8601String()}|${item.templateName}',
+          ),
+        )
+        .toList();
+    if (accepted.isEmpty) return 0;
+    _captureUndo('Import workout history');
+    final merged = [...accepted, ..._data.logs]
+      ..sort((a, b) => b.completedAt.compareTo(a.completedAt));
+    _data = _data.copyWith(logs: merged.take(10000).toList());
+    await _repository.save(_data);
+    notifyListeners();
+    return accepted.length;
+  }
+
+  Future<int> importMealEntries(List<MealEntry> imported) async {
+    if (imported.isEmpty || imported.length > 10000) {
+      throw const FormatException(
+        'Nutrition import must contain 1–10000 meals.',
+      );
+    }
+    final existing = _data.meals
+        .map((item) => '${item.loggedAt.toIso8601String()}|${item.name}')
+        .toSet();
+    final accepted = imported
+        .where(
+          (item) => !existing.contains(
+            '${item.loggedAt.toIso8601String()}|${item.name}',
+          ),
+        )
+        .toList();
+    if (accepted.isEmpty) return 0;
+    _captureUndo('Import nutrition history');
+    final merged = [...accepted, ..._data.meals]
+      ..sort((a, b) => b.loggedAt.compareTo(a.loggedAt));
+    _data = _data.copyWith(meals: merged.take(20000).toList());
+    await _repository.save(_data);
+    notifyListeners();
+    return accepted.length;
+  }
+
+  Future<void> restoreBackupSections({
+    required String backup,
+    required Set<String> sections,
+  }) async {
+    if (sections.isEmpty) {
+      throw const FormatException('Select at least one backup section.');
+    }
+    final candidate = StructuredImportExportEngine.applySelectiveRestore(
+      backup: backup,
+      current: _data,
+      sections: sections,
+    );
+    final audit = DataValidationEngine.audit(candidate);
+    if (audit.criticalCount > 0) {
+      throw const FormatException(
+        'Selected sections fail the integrity audit.',
+      );
+    }
+    _captureUndo('Selective backup restore');
+    _data = candidate;
+    await _repository.save(_data);
     notifyListeners();
   }
 
@@ -2870,6 +2995,106 @@ class FitnessStore extends ChangeNotifier {
     _data = _data.copyWith(analyticsDashboardMetrics: metrics);
     await _repository.save(_data);
     notifyListeners();
+  }
+
+  CapabilityState capabilityStateFor(int capabilityId) =>
+      _data.capabilityStates
+          .where((item) => item.capabilityId == capabilityId)
+          .firstOrNull ??
+      CapabilityState(capabilityId: capabilityId);
+
+  Future<void> saveCapabilityState(CapabilityState state) async {
+    if (state.capabilityId < 279 || state.capabilityId > 567) {
+      throw const FormatException('Unsupported capability identifier.');
+    }
+    if (state.guardLevel < 0 || state.guardLevel > 100) {
+      throw const FormatException('Guard level must stay between 0 and 100.');
+    }
+    if (!const {
+      'conservative',
+      'balanced',
+      'progressive',
+    }.contains(state.mode)) {
+      throw const FormatException('Unsupported capability mode.');
+    }
+    if (state.note.trim().length > 500 || state.lastResult.length > 2000) {
+      throw const FormatException('Capability text exceeds the safe limit.');
+    }
+    _data = _data.copyWith(
+      capabilityStates: [
+        state.copyWith(note: state.note.trim(), updatedAt: DateTime.now()),
+        ..._data.capabilityStates.where(
+          (item) => item.capabilityId != state.capabilityId,
+        ),
+      ].take(289).toList(),
+    );
+    await _repository.save(_data);
+    notifyListeners();
+  }
+
+  Future<CapabilityState> recordCapabilityRun({
+    required int capabilityId,
+    required String result,
+  }) async {
+    final current = capabilityStateFor(capabilityId);
+    final updated = current.copyWith(
+      enabled: true,
+      runCount: current.runCount + 1,
+      lastResult: result,
+      updatedAt: DateTime.now(),
+    );
+    await saveCapabilityState(updated);
+    return updated;
+  }
+
+  Future<int> pruneHistoryBefore(DateTime cutoff) async {
+    final day = DateTime(cutoff.year, cutoff.month, cutoff.day);
+    if (day.isAfter(DateTime.now().subtract(const Duration(days: 30)))) {
+      throw const FormatException(
+        'Retention cutoff must preserve at least 30 days.',
+      );
+    }
+    final before =
+        _data.logs.length +
+        _data.weights.length +
+        _data.meals.length +
+        _data.recoveryChecks.length +
+        _data.hydration.length +
+        _data.progressPhotos.length +
+        _data.wearableSummaries.length;
+    _captureUndo('Εφαρμογή data-retention policy');
+    _data = _data.copyWith(
+      logs: _data.logs
+          .where((item) => !item.completedAt.isBefore(day))
+          .toList(),
+      weights: _data.weights
+          .where((item) => !item.recordedAt.isBefore(day))
+          .toList(),
+      meals: _data.meals.where((item) => !item.loggedAt.isBefore(day)).toList(),
+      recoveryChecks: _data.recoveryChecks
+          .where((item) => !item.recordedAt.isBefore(day))
+          .toList(),
+      hydration: _data.hydration
+          .where((item) => !item.loggedAt.isBefore(day))
+          .toList(),
+      progressPhotos: _data.progressPhotos
+          .where((item) => !item.recordedAt.isBefore(day))
+          .toList(),
+      wearableSummaries: _data.wearableSummaries
+          .where((item) => !item.day.isBefore(day))
+          .toList(),
+    );
+    final after =
+        _data.logs.length +
+        _data.weights.length +
+        _data.meals.length +
+        _data.recoveryChecks.length +
+        _data.hydration.length +
+        _data.progressPhotos.length +
+        _data.wearableSummaries.length;
+    await _repository.save(_data);
+    notifyListeners();
+    return before - after;
   }
 
   Future<AnalyticsAnnotation> saveAnalyticsAnnotation({
