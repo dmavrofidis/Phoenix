@@ -9,6 +9,7 @@ class LocalPickedFile {
 
 Future<LocalPickedFile?> pickLocalFile({
   required List<String> extensions,
+  int maxBytes = 25 * 1024 * 1024,
 }) async => null;
 
 Future<bool> saveLocalBytes({

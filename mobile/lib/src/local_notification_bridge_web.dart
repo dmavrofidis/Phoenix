@@ -2,6 +2,10 @@
 
 import 'dart:html';
 
+import 'local_notification_schedule.dart';
+
+Future<bool> initializeLocalNotifications() async => Notification.supported;
+
 Future<bool> requestLocalNotificationPermission() async {
   if (!Notification.supported) return false;
   if (Notification.permission == 'granted') return true;
@@ -18,6 +22,10 @@ Future<bool> showLocalWorkoutNotification({
   Notification(title, body: body, icon: 'icons/Icon-192.png');
   return true;
 }
+
+Future<bool> syncLocalWorkoutNotifications({
+  required List<LocalWorkoutNotificationSchedule> reminders,
+}) async => false;
 
 Future<bool> installPhoenixPwa() async {
   final isReady =

@@ -11,6 +11,7 @@ import 'local_file_bridge.dart';
 import 'media_portability_engine.dart';
 import 'models/fitness_models.dart';
 import 'state/fitness_store.dart';
+import 'workout_notification_sync.dart';
 
 class MediaPortabilityPage extends StatelessWidget {
   const MediaPortabilityPage({super.key, required this.store});
@@ -81,7 +82,7 @@ class _ShareTabState extends State<_ShareTab> {
       mimeType: 'application/pdf',
     );
     if (!saved && mounted) {
-      _message('Το PDF download υποστηρίζεται στη web έκδοση.');
+      _message('Η αποθήκευση ακυρώθηκε ή δεν υποστηρίζεται στη συσκευή.');
     }
   }
 
@@ -93,7 +94,7 @@ class _ShareTabState extends State<_ShareTab> {
       mimeType: 'application/pdf',
     );
     if (!saved && mounted) {
-      _message('Το PDF download υποστηρίζεται στη web έκδοση.');
+      _message('Η αποθήκευση ακυρώθηκε ή δεν υποστηρίζεται στη συσκευή.');
     }
   }
 
@@ -866,33 +867,75 @@ class _TransferTabState extends State<_TransferTab> {
     if (mounted) _message('Αντιγράφηκε το QR frame ${_frameIndex + 1}.');
   }
 
+  Future<void> _exportBackupFile() async {
+    final now = DateTime.now();
+    final stamp =
+        '${now.year.toString().padLeft(4, '0')}-'
+        '${now.month.toString().padLeft(2, '0')}-'
+        '${now.day.toString().padLeft(2, '0')}';
+    final saved = await saveLocalBytes(
+      bytes: Uint8List.fromList(utf8.encode(widget.store.exportBackup())),
+      filename: 'phoenix-backup-$stamp.json',
+      mimeType: 'application/json',
+    );
+    if (!mounted) return;
+    _message(
+      saved
+          ? 'Το πλήρες local backup εξήχθη με ασφάλεια.'
+          : 'Η εξαγωγή ακυρώθηκε ή δεν υποστηρίζεται στη συσκευή.',
+    );
+  }
+
+  Future<void> _importBackupFile() async {
+    try {
+      final file = await pickLocalFile(
+        extensions: const <String>['json'],
+        maxBytes: 15 * 1024 * 1024,
+      );
+      if (file == null) return;
+      final backup = utf8.decode(file.bytes, allowMalformed: false);
+      await _confirmAndRestore(backup, source: 'Το backup αρχείου');
+    } on FormatException catch (error) {
+      if (mounted) _message(error.message);
+    }
+  }
+
+  Future<void> _confirmAndRestore(
+    String backup, {
+    required String source,
+  }) async {
+    if (!mounted) return;
+    final accepted = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('ΕΠΑΝΑΦΟΡΑ BACKUP;'),
+        content: const Text(
+          'Τα τρέχοντα δεδομένα θα αντικατασταθούν. Κράτησε πρώτα δικό σου backup.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('ΑΚΥΡΟ'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('ΕΠΑΝΑΦΟΡΑ'),
+          ),
+        ],
+      ),
+    );
+    if (accepted != true) return;
+    await widget.store.restoreBackup(backup);
+    await syncPhoenixWorkoutNotifications(widget.store);
+    if (mounted) _message('$source επαναφέρθηκε.');
+  }
+
   Future<void> _restoreFrames() async {
     try {
       final backup = MediaPortabilityEngine.assembleQrFrames(
         const LineSplitter().convert(_framesInput.text),
       );
-      final accepted = await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('ΕΠΑΝΑΦΟΡΑ QR BACKUP;'),
-          content: const Text(
-            'Τα τρέχοντα δεδομένα θα αντικατασταθούν. Κράτησε πρώτα δικό σου backup.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('ΑΚΥΡΟ'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('ΕΠΑΝΑΦΟΡΑ'),
-            ),
-          ],
-        ),
-      );
-      if (accepted != true) return;
-      await widget.store.restoreBackup(backup);
-      if (mounted) _message('Το QR backup επαναφέρθηκε.');
+      await _confirmAndRestore(backup, source: 'Το QR backup');
     } on FormatException catch (error) {
       if (mounted) _message(error.message);
     }
@@ -927,6 +970,29 @@ class _TransferTabState extends State<_TransferTab> {
       return ListView(
         padding: const EdgeInsets.fromLTRB(18, 16, 18, 32),
         children: [
+          Text(
+            'BACKUP FILE TRANSFER',
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 5),
+          const Text(
+            'Μετέφερε ολόκληρο το local-first προφίλ σου σε άλλη συσκευή, χωρίς λογαριασμό ή cloud.',
+          ),
+          const SizedBox(height: 10),
+          FilledButton.icon(
+            onPressed: _exportBackupFile,
+            icon: const Icon(Icons.download_outlined),
+            label: const Text('EXPORT BACKUP FILE'),
+          ),
+          const SizedBox(height: 6),
+          OutlinedButton.icon(
+            onPressed: _importBackupFile,
+            icon: const Icon(Icons.upload_file_outlined),
+            label: const Text('IMPORT BACKUP FILE'),
+          ),
+          const SizedBox(height: 24),
           Text(
             'QR BACKUP TRANSFER',
             style: Theme.of(

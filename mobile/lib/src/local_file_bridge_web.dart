@@ -13,6 +13,7 @@ class LocalPickedFile {
 
 Future<LocalPickedFile?> pickLocalFile({
   required List<String> extensions,
+  int maxBytes = 25 * 1024 * 1024,
 }) async {
   final input = FileUploadInputElement()
     ..accept = extensions.map((item) => '.$item').join(',')
@@ -23,6 +24,9 @@ Future<LocalPickedFile?> pickLocalFile({
     return null;
   }
   final file = input.files!.first;
+  if (file.size > maxBytes || !_hasAllowedExtension(file.name, extensions)) {
+    return null;
+  }
   final reader = FileReader()..readAsArrayBuffer(file);
   await reader.onLoad.first;
   final result = reader.result;
@@ -33,6 +37,13 @@ Future<LocalPickedFile?> pickLocalFile({
   };
   if (bytes == null) return null;
   return LocalPickedFile(name: file.name, bytes: bytes);
+}
+
+bool _hasAllowedExtension(String filename, List<String> extensions) {
+  final lowerName = filename.toLowerCase();
+  return extensions.any(
+    (extension) => lowerName.endsWith('.${extension.toLowerCase()}'),
+  );
 }
 
 Future<bool> saveLocalBytes({

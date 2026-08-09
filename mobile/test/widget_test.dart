@@ -44,6 +44,7 @@ import 'package:phoenix/src/habit_builder_engine.dart';
 import 'package:phoenix/src/habit_builder_page.dart';
 import 'package:phoenix/src/hypertrophy_engine.dart';
 import 'package:phoenix/src/hypertrophy_lab_page.dart';
+import 'package:phoenix/src/local_notification_schedule.dart';
 import 'package:phoenix/src/media_portability_engine.dart';
 import 'package:phoenix/src/media_portability_page.dart';
 import 'package:phoenix/src/meal_intelligence_engine.dart';
@@ -2897,6 +2898,50 @@ void main() {
     );
   });
 
+  test('weekly reminder βρίσκει πάντα την επόμενη σωστή εμφάνιση', () {
+    final mondayMorning = DateTime(2026, 8, 3, 9, 15);
+
+    expect(
+      nextWeeklyReminderOccurrence(
+        now: mondayMorning,
+        weekday: DateTime.monday,
+        minutesSinceMidnight: 18 * 60,
+      ),
+      DateTime(2026, 8, 3, 18),
+    );
+    expect(
+      nextWeeklyReminderOccurrence(
+        now: mondayMorning,
+        weekday: DateTime.monday,
+        minutesSinceMidnight: 8 * 60,
+      ),
+      DateTime(2026, 8, 10, 8),
+    );
+    expect(
+      nextWeeklyReminderOccurrence(
+        now: mondayMorning,
+        weekday: DateTime.wednesday,
+        minutesSinceMidnight: 7 * 60 + 30,
+      ),
+      DateTime(2026, 8, 5, 7, 30),
+    );
+  });
+
+  test('workout notification IDs και payloads είναι σταθερά', () {
+    const reminder = LocalWorkoutNotificationSchedule(
+      id: 'reminder-42',
+      weekday: DateTime.friday,
+      minutesSinceMidnight: 1080,
+      title: 'Phoenix workout reminder',
+      body: 'Upper body',
+      enabled: true,
+    );
+
+    expect(reminder.notificationId, stableWorkoutNotificationId('reminder-42'));
+    expect(reminder.notificationId, inInclusiveRange(0, 0x7fffffff));
+    expect(reminder.payload, 'phoenix-workout:reminder-42');
+  });
+
   test('coaching report engine δημιουργεί πραγματικό PDF', () async {
     final bytes = await CoachingReportEngine.buildCoachingReport(
       FitnessData.initial(),
@@ -2969,6 +3014,9 @@ void main() {
 
       await tester.tap(find.text('TRANSFER'));
       await tester.pumpAndSettle();
+      expect(find.text('BACKUP FILE TRANSFER'), findsOneWidget);
+      expect(find.text('EXPORT BACKUP FILE'), findsOneWidget);
+      expect(find.text('IMPORT BACKUP FILE'), findsOneWidget);
       expect(find.text('QR BACKUP TRANSFER'), findsOneWidget);
     },
   );

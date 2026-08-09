@@ -11,6 +11,8 @@ nutrition, weight, and Spotify-link data stays on the device.
 - categorized, searchable Toolbox for the complete feature set
 - Reports Studio for local progress and coach-handoff reports
 - Photo Meal Scan with local photo history and transparent estimates
+- native JSON backup file import/export for moving the complete local profile
+- operating-system workout reminders with weekly rescheduling
 - Greek onboarding with 10 personalization inputs
 - daily mission that advances through the correct training rotation
 - current-week target and completion progress on the dashboard
@@ -50,3 +52,12 @@ For the web build:
 ```powershell
 flutter build web --release --no-tree-shake-icons
 ```
+
+## Quality status
+
+- `flutter analyze`: no issues
+- `flutter test`: 351/351 passing
+- `flutter build web --release`: passing
+- Android and Windows native build prerequisites are not installed on this
+  workstation; their manifests, generated plugin registrants, and platform
+  configuration are committed with the app.

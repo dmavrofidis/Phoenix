@@ -8,8 +8,10 @@
 - κατηγοριοποιημένο, searchable Toolbox με 34 εργαλεία
 - Reports Studio για πλήρως τοπικές αναφορές
 - Photo Meal Scan με τοπικό photo history
+- Native JSON backup import/export για ασφαλή συνέχεια σε άλλη συσκευή
+- Εβδομαδιαίες local ειδοποιήσεις σε Android, iOS, macOS και Windows
 - `flutter analyze` χωρίς ευρήματα
-- `flutter test` με 349 tests passing
+- `flutter test` με 351 tests passing
 
 ## Τρέχουσα λειτουργική έκδοση
 
@@ -81,7 +83,7 @@
 - Μία ενεργή προπόνηση κάθε φορά
 - Ολοκλήρωση και ακύρωση συνεδρίας
 - Καταγραφή και ιστορικό σωματικού βάρους
-- Versioned πλήρες backup/restore μέσω ασφαλούς JSON
+- Versioned πλήρες backup/restore μέσω ασφαλούς JSON αρχείου, QR ή clipboard
 - Control Center με σύνοψη προφίλ και Data Vault
 - Έξι deterministic achievements με πραγματική πρόοδο
 - Ελληνικό/αγγλικό interface με άμεση αλλαγή γλώσσας
@@ -143,7 +145,7 @@ Center.
 - Drift/SQLite persistence και versioned migrations
 - αυτόματο integrity audit και τοπικό diagnostic trail
 - πολλαπλά απομονωμένα local profiles
-- app-lock timeout και εβδομαδιαία workout reminders
+- app-lock timeout και πραγματικά προγραμματισμένα εβδομαδιαία workout reminders
 - εγκαταστάσιμο offline PWA με δικό του cache-first service worker
 - ασφαλές Android App Bundle pipeline με ιδιωτικό upload keystore
 - ενιαίο security, accessibility και release audit
@@ -296,4 +298,4 @@ Center.
 - conservative goal forecasting με σαφές confidence και χωρίς εγγυήσεις
 - persistent annotation layer για συσχέτιση γεγονότων με τις τάσεις
 
-Τρέχουσα επαλήθευση: **clean analysis και 349/349 tests passing**.
+Τρέχουσα επαλήθευση: **clean analysis, 351/351 tests passing και production web build**.

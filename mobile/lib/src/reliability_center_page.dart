@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'local_notification_bridge.dart';
 import 'release_audit_engine.dart';
 import 'state/fitness_store.dart';
+import 'workout_notification_sync.dart';
 
 class ReliabilityCenterPage extends StatefulWidget {
   const ReliabilityCenterPage({super.key, required this.store});
@@ -168,14 +169,20 @@ class _ReliabilityCenterPageState extends State<ReliabilityCenterPage> {
       minutesSinceMidnight: time.hour * 60 + time.minute,
       templateId: templateId,
     );
+    await syncPhoenixWorkoutNotifications(widget.store);
   }
 
   Future<void> _enableNotifications() async {
     final granted = await requestLocalNotificationPermission();
+    final scheduled = granted
+        ? await syncPhoenixWorkoutNotifications(widget.store)
+        : false;
     if (mounted) {
       _message(
-        granted
-            ? 'Οι local browser notifications ενεργοποιήθηκαν.'
+        granted && scheduled
+            ? 'Οι ιδιωτικές local notifications ενεργοποιήθηκαν.'
+            : granted
+            ? 'Η άδεια δόθηκε, αλλά ο προγραμματισμός δεν υποστηρίζεται εδώ.'
             : 'Η άδεια notification δεν δόθηκε ή δεν υποστηρίζεται.',
       );
     }
@@ -403,7 +410,7 @@ class _RemindersTab extends StatelessWidget {
           OutlinedButton.icon(
             onPressed: onEnableNotifications,
             icon: const Icon(Icons.notifications_active_outlined),
-            label: const Text('ENABLE WEB NOTIFICATIONS'),
+            label: const Text('ENABLE NOTIFICATIONS'),
           ),
         ],
       ),
@@ -420,7 +427,27 @@ class _RemindersTab extends StatelessWidget {
         for (final reminder in store.workoutReminders)
           Card(
             child: SwitchListTile(
-              secondary: const Icon(Icons.alarm),
+              secondary: IconButton(
+                tooltip: 'Διαγραφή reminder',
+                icon: const Icon(Icons.delete_outline),
+                onPressed: () async {
+                  await store.removeWorkoutReminder(reminder.id);
+                  await syncPhoenixWorkoutNotifications(store);
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: const Text('Το reminder διαγράφηκε.'),
+                      action: SnackBarAction(
+                        label: 'UNDO',
+                        onPressed: () async {
+                          await store.undoLastMutation();
+                          await syncPhoenixWorkoutNotifications(store);
+                        },
+                      ),
+                    ),
+                  );
+                },
+              ),
               title: Text(
                 '${_weekday(reminder.weekday)} • ${reminder.timeLabel}',
                 style: const TextStyle(fontWeight: FontWeight.w900),
@@ -435,8 +462,10 @@ class _RemindersTab extends StatelessWidget {
                           'Unknown workout',
               ),
               value: reminder.enabled,
-              onChanged: (value) =>
-                  store.toggleWorkoutReminder(reminder.id, value),
+              onChanged: (value) async {
+                await store.toggleWorkoutReminder(reminder.id, value);
+                await syncPhoenixWorkoutNotifications(store);
+              },
             ),
           ),
     ],
