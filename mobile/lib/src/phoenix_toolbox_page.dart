@@ -26,6 +26,7 @@ import 'mobility_intelligence_page.dart';
 import 'mobility_page.dart';
 import 'nutrition_page.dart';
 import 'nutrition_planner_page.dart';
+import 'operations_studio_page.dart';
 import 'phoenix_l10n.dart';
 import 'photo_meal_scan_page.dart';
 import 'profile_editor_page.dart';
@@ -94,6 +95,7 @@ class _PhoenixToolboxPageState extends State<PhoenixToolboxPage> {
     'athlete-intelligence' => AdvancedFeaturePackPage(store: widget.store),
     'interval-timers' => IntervalTimerPage(store: widget.store),
     'safety-adaptation' => SafetyAdaptationPage(store: widget.store),
+    'operations-studio' => OperationsStudioPage(store: widget.store),
     'reports' => ReportsStudioPage(store: widget.store),
     'capability-studio' => CapabilityStudioPage(store: widget.store),
     'control' => ControlCenterPage(store: widget.store),
@@ -673,6 +675,18 @@ const _tools = <_ToolEntry>[
     englishDescription:
         '289 persisted local-first controls, audits, and planners.',
     keywords: '289 roadmap capability audit planner security accessibility',
+  ),
+  _ToolEntry(
+    route: 'operations-studio',
+    category: _ToolCategory.insights,
+    icon: Icons.settings_suggest_outlined,
+    greekTitle: 'Operations Studio',
+    englishTitle: 'Operations Studio',
+    greekDescription:
+        'Dashboard, reminders, locales, performance και data reliability.',
+    englishDescription:
+        'Dashboard, reminders, locales, performance and data reliability.',
+    keywords: 'dashboard reminder locale performance checksum duplicate',
   ),
   _ToolEntry(
     route: 'control',

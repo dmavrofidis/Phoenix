@@ -5,7 +5,9 @@ class PhoenixL10n {
 
   final Locale locale;
 
-  bool get isEnglish => locale.languageCode == 'en';
+  /// Non-Greek locales use the complete English fallback until a string has
+  /// an explicit locale-catalog translation.
+  bool get isEnglish => locale.languageCode != 'el';
 
   String text(String greek, String english) => isEnglish ? english : greek;
 

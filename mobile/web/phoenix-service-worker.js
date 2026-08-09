@@ -1,4 +1,4 @@
-const CACHE_VERSION = "phoenix-offline-v270";
+const CACHE_VERSION = "phoenix-offline-v289";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -76,6 +76,31 @@ self.addEventListener("fetch", (event) => {
         })
         .catch(() => cached);
       return cached || refresh;
+    }),
+  );
+});
+
+self.addEventListener("sync", (event) => {
+  if (event.tag !== "phoenix-local-maintenance") return;
+  event.waitUntil(
+    self.clients.matchAll({ type: "window" }).then((clients) => {
+      for (const client of clients) {
+        client.postMessage({ type: "PHOENIX_LOCAL_MAINTENANCE" });
+      }
+    }),
+  );
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data?.type !== "PHOENIX_CACHE_STATUS") return;
+  event.waitUntil(
+    caches.open(CACHE_VERSION).then(async (cache) => {
+      const keys = await cache.keys();
+      event.source?.postMessage({
+        type: "PHOENIX_CACHE_STATUS",
+        version: CACHE_VERSION,
+        entries: keys.length,
+      });
     }),
   );
 });

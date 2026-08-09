@@ -143,8 +143,14 @@ class ReleaseAuditEngine {
         id: 'accessibility',
         title: 'Accessibility and locale layer',
         detail:
-            'Greek/English, high contrast, scalable Material controls and semantics.',
-        status: const {'el', 'en'}.contains(data.preferences.languageCode)
+            'Greek/English plus German/Spanish fallback catalogs, high contrast, scalable Material controls and semantics.',
+        status:
+            const {
+              'el',
+              'en',
+              'de',
+              'es',
+            }.contains(data.preferences.languageCode)
             ? ReleaseAuditStatus.pass
             : ReleaseAuditStatus.fail,
       ),

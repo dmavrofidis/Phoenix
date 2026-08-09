@@ -7,10 +7,22 @@ class ProfileStates extends Table {
   TextColumn get displayName => text().withLength(min: 1, max: 60)();
   TextColumn get payload => text()();
   IntColumn get storageVersion => integer().withDefault(const Constant(1))();
+  TextColumn get checksum => text().withDefault(const Constant(''))();
   DateTimeColumn get updatedAt => dateTime()();
 
   @override
   Set<Column<Object>> get primaryKey => {profileId};
+}
+
+class ProfileSnapshots extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get profileId => text()();
+  TextColumn get payload => text()();
+  TextColumn get checksum => text()();
+  IntColumn get storageVersion => integer()();
+  TextColumn get reason => text()();
+  BoolColumn get quarantined => boolean().withDefault(const Constant(false))();
+  DateTimeColumn get createdAt => dateTime()();
 }
 
 class AppMeta extends Table {
@@ -41,12 +53,20 @@ class ReminderRows extends Table {
   Set<Column<Object>> get primaryKey => {reminderId};
 }
 
-@DriftDatabase(tables: [ProfileStates, AppMeta, DiagnosticRows, ReminderRows])
+@DriftDatabase(
+  tables: [
+    ProfileStates,
+    ProfileSnapshots,
+    AppMeta,
+    DiagnosticRows,
+    ReminderRows,
+  ],
+)
 class PhoenixDatabase extends _$PhoenixDatabase {
   PhoenixDatabase(super.executor);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -60,6 +80,10 @@ class PhoenixDatabase extends _$PhoenixDatabase {
       if (from < 3) {
         await migrator.createTable(appMeta);
         await migrator.createTable(reminderRows);
+      }
+      if (from < 4) {
+        await migrator.addColumn(profileStates, profileStates.checksum);
+        await migrator.createTable(profileSnapshots);
       }
     },
     beforeOpen: (details) async {

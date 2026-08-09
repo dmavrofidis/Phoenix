@@ -10,6 +10,7 @@ import '../data_validation_engine.dart';
 import '../exercise_substitution_engine.dart';
 import '../models/fitness_models.dart';
 import '../nutrition_goal_engine.dart';
+import '../operational_readiness_engine.dart';
 import '../nutrition_analytics_engine.dart';
 import '../periodization_engine.dart';
 import '../recovery_engine.dart';
@@ -58,7 +59,7 @@ class FitnessStore extends ChangeNotifier {
   List<WearableDailySummary> get wearableSummaries =>
       List.unmodifiable(_data.wearableSummaries);
   AppPreferences get preferences => _data.preferences;
-  bool get isEnglish => preferences.languageCode == 'en';
+  bool get isEnglish => preferences.languageCode != 'el';
   bool get hasVaultPin => preferences.hasVaultPin;
   bool get vaultUnlocked => !hasVaultPin || _vaultUnlocked;
   int get failedUnlockAttempts => _failedUnlockAttempts;
@@ -3095,6 +3096,17 @@ class FitnessStore extends ChangeNotifier {
     await _repository.save(_data);
     notifyListeners();
     return before - after;
+  }
+
+  Future<ReconciliationResult> reconcileDuplicateEvents() async {
+    final result = OperationalReadinessEngine.reconcileDuplicates(_data);
+    if (result.totalRemoved == 0) return result;
+    _undoData = _data;
+    _undoLabel = 'duplicate-event reconciliation';
+    _data = result.data;
+    await _repository.save(_data);
+    notifyListeners();
+    return result;
   }
 
   Future<AnalyticsAnnotation> saveAnalyticsAnnotation({

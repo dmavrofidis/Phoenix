@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:crypto/crypto.dart';
 import 'package:drift/drift.dart';
 
 import '../models/fitness_models.dart';
@@ -89,6 +90,80 @@ class DriftFitnessRepository
         message: 'Initialized Drift/SQLite profile from legacy local storage.',
       );
     }
+    final expectedChecksum = state.checksum;
+    final actualChecksum = _checksum(state.payload);
+    if (expectedChecksum.isNotEmpty && expectedChecksum != actualChecksum) {
+      await _database
+          .into(_database.profileSnapshots)
+          .insert(
+            ProfileSnapshotsCompanion.insert(
+              profileId: state.profileId,
+              payload: state.payload,
+              checksum: expectedChecksum,
+              storageVersion: state.storageVersion,
+              reason: 'checksum-mismatch',
+              quarantined: const Value(true),
+              createdAt: DateTime.now(),
+            ),
+          );
+      final snapshots =
+          await (_database.select(_database.profileSnapshots)
+                ..where(
+                  (row) =>
+                      row.profileId.equals(state!.profileId) &
+                      row.quarantined.equals(false),
+                )
+                ..orderBy([(row) => OrderingTerm.desc(row.createdAt)]))
+              .get();
+      final valid = snapshots
+          .where((item) => _checksum(item.payload) == item.checksum)
+          .firstOrNull;
+      if (valid == null) {
+        await recordDiagnostic(
+          category: 'integrity',
+          level: 'error',
+          message:
+              'Quarantined a profile with invalid checksum; no verified snapshot was available.',
+        );
+        throw const FormatException(
+          'Profile checksum mismatch. The payload was quarantined without being overwritten.',
+        );
+      }
+      await _database
+          .into(_database.profileStates)
+          .insertOnConflictUpdate(
+            ProfileStatesCompanion.insert(
+              profileId: state.profileId,
+              displayName: state.displayName,
+              payload: valid.payload,
+              storageVersion: Value(valid.storageVersion),
+              checksum: Value(valid.checksum),
+              updatedAt: DateTime.now(),
+            ),
+          );
+      await recordDiagnostic(
+        category: 'integrity',
+        level: 'warning',
+        message: 'Recovered active profile from the newest verified snapshot.',
+      );
+      state = await (_database.select(
+        _database.profileStates,
+      )..where((row) => row.profileId.equals(_activeProfileId))).getSingle();
+    }
+    if (state.checksum.isEmpty) {
+      await _database
+          .into(_database.profileStates)
+          .insertOnConflictUpdate(
+            ProfileStatesCompanion.insert(
+              profileId: state.profileId,
+              displayName: state.displayName,
+              payload: state.payload,
+              storageVersion: Value(state.storageVersion),
+              checksum: Value(actualChecksum),
+              updatedAt: state.updatedAt,
+            ),
+          );
+    }
     final migration = StorageMigrationEngine.migrate(
       jsonDecode(state.payload) as Map<String, dynamic>,
       fromVersion: state.storageVersion,
@@ -126,18 +201,61 @@ class DriftFitnessRepository
     required String name,
     required FitnessData data,
   }) async {
-    await _database
-        .into(_database.profileStates)
-        .insertOnConflictUpdate(
-          ProfileStatesCompanion.insert(
-            profileId: id,
-            displayName: name.trim(),
-            payload: jsonEncode(data.toJson()),
-            storageVersion: const Value(StorageMigrationEngine.currentVersion),
-            updatedAt: DateTime.now(),
-          ),
-        );
+    final payload = jsonEncode(data.toJson());
+    final checksum = _checksum(payload);
+    await _database.transaction(() async {
+      final existing = await (_database.select(
+        _database.profileStates,
+      )..where((row) => row.profileId.equals(id))).getSingleOrNull();
+      if (existing != null && existing.payload != payload) {
+        await _database
+            .into(_database.profileSnapshots)
+            .insert(
+              ProfileSnapshotsCompanion.insert(
+                profileId: id,
+                payload: existing.payload,
+                checksum: existing.checksum.isEmpty
+                    ? _checksum(existing.payload)
+                    : existing.checksum,
+                storageVersion: existing.storageVersion,
+                reason: 'before-write',
+                createdAt: DateTime.now(),
+              ),
+            );
+      }
+      await _database
+          .into(_database.profileStates)
+          .insertOnConflictUpdate(
+            ProfileStatesCompanion.insert(
+              profileId: id,
+              displayName: name.trim(),
+              payload: payload,
+              storageVersion: const Value(
+                StorageMigrationEngine.currentVersion,
+              ),
+              checksum: Value(checksum),
+              updatedAt: DateTime.now(),
+            ),
+          );
+      final snapshots =
+          await (_database.select(_database.profileSnapshots)
+                ..where(
+                  (row) =>
+                      row.profileId.equals(id) & row.quarantined.equals(false),
+                )
+                ..orderBy([(row) => OrderingTerm.desc(row.createdAt)]))
+              .get();
+      if (snapshots.length > 5) {
+        await (_database.delete(_database.profileSnapshots)..where(
+              (row) => row.id.isIn(snapshots.skip(5).map((item) => item.id)),
+            ))
+            .go();
+      }
+    });
   }
+
+  String _checksum(String payload) =>
+      sha256.convert(utf8.encode(payload)).toString();
 
   @override
   Future<List<LocalProfileInfo>> listProfiles() async {
@@ -180,21 +298,30 @@ class DriftFitnessRepository
     if (state == null) {
       throw const FormatException('Το local προφίλ δεν υπάρχει.');
     }
-    await _database
-        .into(_database.appMeta)
-        .insertOnConflictUpdate(
-          AppMetaCompanion.insert(key: 'activeProfileId', value: id),
-        );
-    _activeProfileId = id;
-    await recordDiagnostic(
-      category: 'profiles',
-      message: 'Switched active local profile.',
-    );
+    if (state.checksum.isNotEmpty &&
+        _checksum(state.payload) != state.checksum) {
+      throw const FormatException(
+        'Cannot switch to a profile that fails checksum verification.',
+      );
+    }
     final migration = StorageMigrationEngine.migrate(
       jsonDecode(state.payload) as Map<String, dynamic>,
       fromVersion: state.storageVersion,
     );
-    return FitnessData.fromJson(migration.json);
+    final data = FitnessData.fromJson(migration.json);
+    await _database.transaction(() async {
+      await _database
+          .into(_database.appMeta)
+          .insertOnConflictUpdate(
+            AppMetaCompanion.insert(key: 'activeProfileId', value: id),
+          );
+      _activeProfileId = id;
+    });
+    await recordDiagnostic(
+      category: 'profiles',
+      message: 'Switched active local profile transactionally.',
+    );
+    return data;
   }
 
   @override

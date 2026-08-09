@@ -2,7 +2,9 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:drift/native.dart';
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:phoenix/src/active_workout_page.dart';
 import 'package:phoenix/src/advanced_calisthenics_engine.dart';
@@ -67,6 +69,8 @@ import 'package:phoenix/src/nutrition_page.dart';
 import 'package:phoenix/src/nutrition_planner_engine.dart';
 import 'package:phoenix/src/nutrition_planner_page.dart';
 import 'package:phoenix/src/onboarding_page.dart';
+import 'package:phoenix/src/operational_readiness_engine.dart';
+import 'package:phoenix/src/operations_studio_page.dart';
 import 'package:phoenix/src/periodization_engine.dart';
 import 'package:phoenix/src/phoenix_toolbox_page.dart';
 import 'package:phoenix/src/program_editor_page.dart';
@@ -3476,6 +3480,83 @@ void main() {
     expect(restoredMain.workoutReminders, main.workoutReminders);
     expect(restoredMain.workoutReminders, isEmpty);
     expect(await repository.listProfiles(), hasLength(2));
+  });
+
+  test(
+    'profile persistence stores checksums and rotates verified snapshots',
+    () async {
+      final database = PhoenixDatabase(NativeDatabase.memory());
+      addTearDown(database.close);
+      final repository = DriftFitnessRepository(database: database);
+      var data = await repository.load();
+      for (var index = 0; index < 7; index++) {
+        data = data.copyWith(spotifyUrl: 'https://example.com/$index');
+        await repository.save(data);
+      }
+
+      final state = await database.select(database.profileStates).getSingle();
+      final snapshots = await database.select(database.profileSnapshots).get();
+
+      expect(state.checksum, hasLength(64));
+      expect(snapshots.where((item) => !item.quarantined).length, 5);
+      expect(snapshots.every((item) => item.checksum.length == 64), isTrue);
+    },
+  );
+
+  test(
+    'checksum mismatch is quarantined and recovered from verified snapshot',
+    () async {
+      final database = PhoenixDatabase(NativeDatabase.memory());
+      addTearDown(database.close);
+      final repository = DriftFitnessRepository(database: database);
+      final original = await repository.load();
+      await repository.save(
+        original.copyWith(spotifyUrl: 'https://example.com/new'),
+      );
+      await (database.update(
+        database.profileStates,
+      )..where((row) => row.profileId.equals('default'))).write(
+        const ProfileStatesCompanion(
+          payload: Value('{damaged'),
+          checksum: Value('invalid-checksum'),
+        ),
+      );
+
+      final recovered = await repository.load();
+      final snapshots = await database.select(database.profileSnapshots).get();
+
+      expect(recovered.spotifyUrl, original.spotifyUrl);
+      expect(snapshots.any((item) => item.quarantined), isTrue);
+      expect(
+        (await repository.recentDiagnostics()).first.message,
+        contains('verified snapshot'),
+      );
+    },
+  );
+
+  test('failed profile checksum leaves active profile unchanged', () async {
+    final database = PhoenixDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+    final repository = DriftFitnessRepository(database: database);
+    await repository.load();
+    final secondId = await repository.createProfile(
+      'Damaged Athlete',
+      FitnessData.initial(),
+    );
+    await (database.update(database.profileStates)
+          ..where((row) => row.profileId.equals(secondId)))
+        .write(const ProfileStatesCompanion(checksum: Value('bad')));
+
+    await expectLater(
+      repository.switchProfile(secondId),
+      throwsFormatException,
+    );
+
+    expect(repository.activeProfileId, 'default');
+    final active = await (database.select(
+      database.appMeta,
+    )..where((row) => row.key.equals('activeProfileId'))).getSingle();
+    expect(active.value, 'default');
   });
 
   test(
@@ -8851,5 +8932,231 @@ void main() {
     await tester.tap(find.text('ADAPTIVE'));
     await tester.pumpAndSettle();
     expect(find.text('TRAVEL, ADAPTIVE & LIFE-STAGE PLAN'), findsOneWidget);
+  });
+
+  test(
+    'dashboard configuration reorders backs up restores and rejects duplicates',
+    () {
+      final preset = OperationalReadinessEngine.dashboardPreset('strength');
+      final reordered = OperationalReadinessEngine.reorderDashboard(
+        preset,
+        preset.cards.reversed.toList(),
+        compact: true,
+      );
+      final restored = OperationalReadinessEngine.importDashboard(
+        OperationalReadinessEngine.exportDashboard(reordered),
+      );
+
+      expect(restored.cards, reordered.cards);
+      expect(restored.compact, isTrue);
+      expect(restored.preset, 'custom');
+      expect(
+        () => OperationalReadinessEngine.reorderDashboard(preset, const [
+          'readiness',
+          'readiness',
+        ]),
+        throwsFormatException,
+      );
+    },
+  );
+
+  test('quiet hours and snooze move reminders into an allowed window', () {
+    const policy = ReminderPolicy();
+    final late = DateTime(2026, 8, 7, 23, 30);
+
+    expect(OperationalReadinessEngine.isQuiet(late, policy), isTrue);
+    expect(
+      OperationalReadinessEngine.snooze(late, minutes: 30, policy: policy),
+      DateTime(2026, 8, 8, 7),
+    );
+    expect(
+      () => OperationalReadinessEngine.snooze(late, minutes: 2, policy: policy),
+      throwsFormatException,
+    );
+  });
+
+  test('smart reminders use context and enforce daily fatigue protection', () {
+    final now = DateTime(2026, 8, 7, 12);
+    final data = FitnessData.initial().copyWith(
+      dateAssignments: {'2026-08-07': 'iron-hybrid'},
+    );
+    final reminders = OperationalReadinessEngine.smartReminders(
+      data: data,
+      now: now,
+      policy: const ReminderPolicy(maximumPerDay: 3),
+    );
+    final exhausted = OperationalReadinessEngine.smartReminders(
+      data: data,
+      now: now,
+      policy: const ReminderPolicy(maximumPerDay: 2),
+      history: [
+        ReminderDelivery(kind: 'meal', scheduledAt: now, status: 'delivered'),
+        ReminderDelivery(
+          kind: 'hydration',
+          scheduledAt: now,
+          status: 'delivered',
+        ),
+      ],
+    );
+
+    expect(reminders.first.kind, 'workout');
+    expect(reminders, hasLength(3));
+    expect(
+      reminders.every(
+        (item) => !OperationalReadinessEngine.isQuiet(
+          item.scheduledAt,
+          const ReminderPolicy(maximumPerDay: 3),
+        ),
+      ),
+      isTrue,
+    );
+    expect(exhausted, isEmpty);
+  });
+
+  test('locale catalog formats dates decimals and language backups', () {
+    final german = OperationalReadinessEngine.localeReadiness('de');
+    final spanish = OperationalReadinessEngine.localeReadiness('es');
+
+    expect(german.coverage, 100);
+    expect(spanish.coverage, 100);
+    expect(OperationalReadinessEngine.localized('today', 'de'), 'Heute');
+    expect(
+      OperationalReadinessEngine.formatDate(DateTime(2026, 3, 7), 'de'),
+      '7 Mär 2026',
+    );
+    expect(OperationalReadinessEngine.parseDecimal('1.234,5', 'de'), 1234.5);
+    expect(
+      OperationalReadinessEngine.importLanguage(
+        OperationalReadinessEngine.exportLanguage('es'),
+      ),
+      'es',
+    );
+  });
+
+  test('performance budgets report measured regressions without telemetry', () {
+    final pass = OperationalReadinessEngine.performanceBudget(const {
+      'startup-ms': 900,
+      'database-query-ms': 40,
+      'json-serialization-ms': 20,
+      'chart-frame-ms': 12,
+      'rebuild-count': 10,
+      'web-bundle-mb': 8,
+      'image-memory-mb': 32,
+    });
+    final regression = OperationalReadinessEngine.performanceBudget(const {
+      'startup-ms': 1700,
+      'chart-frame-ms': 30,
+    });
+
+    expect(pass.passes, isTrue);
+    expect(regression.passes, isFalse);
+    expect(regression.violations, hasLength(2));
+  });
+
+  test('duplicate-event reconciliation is deterministic and checksummed', () {
+    final workout = WorkoutLog(
+      templateName: 'Strength',
+      completedAt: DateTime(2026, 8, 7),
+      minutes: 40,
+    );
+    final meal = MealEntry(
+      name: 'Meal',
+      calories: 500,
+      proteinGrams: 30,
+      carbohydrateGrams: 60,
+      fatGrams: 15,
+      loggedAt: DateTime(2026, 8, 7, 13),
+    );
+    final data = FitnessData.initial().copyWith(
+      logs: [workout, workout],
+      meals: [meal, meal],
+    );
+
+    final result = OperationalReadinessEngine.reconcileDuplicates(data);
+
+    expect(result.data.logs, hasLength(1));
+    expect(result.data.meals, hasLength(1));
+    expect(result.totalRemoved, 2);
+    expect(result.checksum, hasLength(64));
+    expect(result.checksum, OperationalReadinessEngine.checksum(result.data));
+  });
+
+  test(
+    'duplicate reconciliation persists and supports one-step undo',
+    () async {
+      final repository = MemoryRepository();
+      final workout = WorkoutLog(
+        templateName: 'Strength',
+        completedAt: DateTime(2026, 8, 7),
+        minutes: 40,
+      );
+      repository.value = FitnessData.initial().copyWith(
+        logs: [workout, workout],
+      );
+      final store = FitnessStore(repository);
+      await store.load();
+
+      final result = await store.reconcileDuplicateEvents();
+
+      expect(result.totalRemoved, 1);
+      expect(repository.value.logs, hasLength(1));
+      expect(store.canUndo, isTrue);
+      expect(await store.undoLastMutation(), isTrue);
+      expect(repository.value.logs, hasLength(2));
+    },
+  );
+
+  testWidgets('Operations Studio exposes five local operational controls', (
+    tester,
+  ) async {
+    final store = FitnessStore(MemoryRepository());
+    await store.load();
+    await tester.pumpWidget(
+      MaterialApp(home: OperationsStudioPage(store: store)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('OPERATIONS STUDIO'), findsOneWidget);
+    expect(find.text('CUSTOM DASHBOARD LAYOUT'), findsOneWidget);
+    await tester.tap(find.text('REMINDERS'));
+    await tester.pumpAndSettle();
+    expect(find.text('REMINDER FATIGUE PROTECTION'), findsOneWidget);
+    await tester.tap(find.text('LOCALES'));
+    await tester.pumpAndSettle();
+    expect(find.text('LOCALE READINESS'), findsOneWidget);
+    expect(find.textContaining('Heute'), findsOneWidget);
+    await tester.tap(find.text('DATA'));
+    await tester.pumpAndSettle();
+    expect(find.text('DATA RELIABILITY V4'), findsOneWidget);
+  });
+
+  testWidgets('desktop shell uses navigation rail and Ctrl-number shortcuts', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final repository = MemoryRepository()
+      ..value = FitnessData.initial().copyWith(
+        profile: const UserProfile(
+          goal: 'Strength',
+          trainingPlace: 'Home',
+          equipment: 'Bodyweight',
+          daysPerWeek: 3,
+          heightCentimeters: 180,
+          weightKilograms: 80,
+        ),
+      );
+    final store = FitnessStore(repository);
+    await store.load();
+    await tester.pumpWidget(MaterialApp(home: PhoenixShell(store: store)));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(NavigationRail), findsOneWidget);
+    expect(find.byType(NavigationBar), findsNothing);
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.digit2);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    await tester.pumpAndSettle();
+    expect(find.byType(WorkoutsPage), findsOneWidget);
   });
 }

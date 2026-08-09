@@ -52,6 +52,8 @@ class ExperienceSettingsPage extends StatelessWidget {
                 segments: const [
                   ButtonSegment(value: 'el', label: Text('Ελληνικά')),
                   ButtonSegment(value: 'en', label: Text('English')),
+                  ButtonSegment(value: 'de', label: Text('Deutsch')),
+                  ButtonSegment(value: 'es', label: Text('Español')),
                 ],
                 selected: {preferences.languageCode},
                 onSelectionChanged: (value) =>

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'active_workout_page.dart';
@@ -160,7 +161,12 @@ class _PhoenixAppState extends State<PhoenixApp> with WidgetsBindingObserver {
           title: 'Phoenix',
           debugShowCheckedModeBanner: false,
           locale: Locale(store.preferences.languageCode),
-          supportedLocales: const [Locale('el'), Locale('en')],
+          supportedLocales: const [
+            Locale('el'),
+            Locale('en'),
+            Locale('de'),
+            Locale('es'),
+          ],
           localizationsDelegates: const [
             GlobalMaterialLocalizations.delegate,
             GlobalWidgetsLocalizations.delegate,
@@ -389,32 +395,82 @@ class _PhoenixShellState extends State<PhoenixShell> {
           NutritionPage(store: widget.store),
           ProgressPage(store: widget.store),
         ];
-        return Scaffold(
-          body: SafeArea(child: pages[_index]),
-          bottomNavigationBar: NavigationBar(
-            selectedIndex: _index,
-            onDestinationSelected: (value) => setState(() => _index = value),
-            destinations: [
-              NavigationDestination(
-                icon: const Icon(Icons.space_dashboard_outlined),
-                selectedIcon: const Icon(Icons.space_dashboard),
-                label: context.l10n.text('Αρχική', 'Home'),
-              ),
-              NavigationDestination(
-                icon: const Icon(Icons.fitness_center_outlined),
-                selectedIcon: const Icon(Icons.fitness_center),
-                label: context.l10n.text('Προπόνηση', 'Training'),
-              ),
-              NavigationDestination(
-                icon: const Icon(Icons.restaurant_outlined),
-                selectedIcon: const Icon(Icons.restaurant),
-                label: context.l10n.text('Διατροφή', 'Nutrition'),
-              ),
-              NavigationDestination(
-                icon: const Icon(Icons.show_chart),
-                label: context.l10n.text('Πρόοδος', 'Progress'),
-              ),
-            ],
+        final labels = [
+          context.l10n.text('Αρχική', 'Home'),
+          context.l10n.text('Προπόνηση', 'Training'),
+          context.l10n.text('Διατροφή', 'Nutrition'),
+          context.l10n.text('Πρόοδος', 'Progress'),
+        ];
+        const icons = [
+          Icons.space_dashboard_outlined,
+          Icons.fitness_center_outlined,
+          Icons.restaurant_outlined,
+          Icons.show_chart,
+        ];
+        return CallbackShortcuts(
+          bindings: {
+            for (var index = 0; index < pages.length; index++)
+              SingleActivator(switch (index) {
+                0 => LogicalKeyboardKey.digit1,
+                1 => LogicalKeyboardKey.digit2,
+                2 => LogicalKeyboardKey.digit3,
+                _ => LogicalKeyboardKey.digit4,
+              }, control: true): () =>
+                  setState(() => _index = index),
+          },
+          child: Focus(
+            autofocus: true,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final desktop = constraints.maxWidth >= 900;
+                return Scaffold(
+                  body: SafeArea(
+                    child: desktop
+                        ? Row(
+                            children: [
+                              NavigationRail(
+                                extended: constraints.maxWidth >= 1200,
+                                selectedIndex: _index,
+                                onDestinationSelected: (value) =>
+                                    setState(() => _index = value),
+                                labelType: constraints.maxWidth >= 1200
+                                    ? NavigationRailLabelType.none
+                                    : NavigationRailLabelType.all,
+                                destinations: [
+                                  for (
+                                    var index = 0;
+                                    index < labels.length;
+                                    index++
+                                  )
+                                    NavigationRailDestination(
+                                      icon: Icon(icons[index]),
+                                      label: Text(labels[index]),
+                                    ),
+                                ],
+                              ),
+                              const VerticalDivider(width: 1),
+                              Expanded(child: pages[_index]),
+                            ],
+                          )
+                        : pages[_index],
+                  ),
+                  bottomNavigationBar: desktop
+                      ? null
+                      : NavigationBar(
+                          selectedIndex: _index,
+                          onDestinationSelected: (value) =>
+                              setState(() => _index = value),
+                          destinations: [
+                            for (var index = 0; index < labels.length; index++)
+                              NavigationDestination(
+                                icon: Icon(icons[index]),
+                                label: labels[index],
+                              ),
+                          ],
+                        ),
+                );
+              },
+            ),
           ),
         );
       },

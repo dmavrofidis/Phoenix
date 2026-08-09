@@ -58,6 +58,18 @@ class $ProfileStatesTable extends ProfileStates
     requiredDuringInsert: false,
     defaultValue: const Constant(1),
   );
+  static const VerificationMeta _checksumMeta = const VerificationMeta(
+    'checksum',
+  );
+  @override
+  late final GeneratedColumn<String> checksum = GeneratedColumn<String>(
+    'checksum',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
   static const VerificationMeta _updatedAtMeta = const VerificationMeta(
     'updatedAt',
   );
@@ -75,6 +87,7 @@ class $ProfileStatesTable extends ProfileStates
     displayName,
     payload,
     storageVersion,
+    checksum,
     updatedAt,
   ];
   @override
@@ -125,6 +138,12 @@ class $ProfileStatesTable extends ProfileStates
         ),
       );
     }
+    if (data.containsKey('checksum')) {
+      context.handle(
+        _checksumMeta,
+        checksum.isAcceptableOrUnknown(data['checksum']!, _checksumMeta),
+      );
+    }
     if (data.containsKey('updated_at')) {
       context.handle(
         _updatedAtMeta,
@@ -158,6 +177,10 @@ class $ProfileStatesTable extends ProfileStates
         DriftSqlType.int,
         data['${effectivePrefix}storage_version'],
       )!,
+      checksum: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}checksum'],
+      )!,
       updatedAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}updated_at'],
@@ -176,12 +199,14 @@ class ProfileState extends DataClass implements Insertable<ProfileState> {
   final String displayName;
   final String payload;
   final int storageVersion;
+  final String checksum;
   final DateTime updatedAt;
   const ProfileState({
     required this.profileId,
     required this.displayName,
     required this.payload,
     required this.storageVersion,
+    required this.checksum,
     required this.updatedAt,
   });
   @override
@@ -191,6 +216,7 @@ class ProfileState extends DataClass implements Insertable<ProfileState> {
     map['display_name'] = Variable<String>(displayName);
     map['payload'] = Variable<String>(payload);
     map['storage_version'] = Variable<int>(storageVersion);
+    map['checksum'] = Variable<String>(checksum);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
   }
@@ -201,6 +227,7 @@ class ProfileState extends DataClass implements Insertable<ProfileState> {
       displayName: Value(displayName),
       payload: Value(payload),
       storageVersion: Value(storageVersion),
+      checksum: Value(checksum),
       updatedAt: Value(updatedAt),
     );
   }
@@ -215,6 +242,7 @@ class ProfileState extends DataClass implements Insertable<ProfileState> {
       displayName: serializer.fromJson<String>(json['displayName']),
       payload: serializer.fromJson<String>(json['payload']),
       storageVersion: serializer.fromJson<int>(json['storageVersion']),
+      checksum: serializer.fromJson<String>(json['checksum']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
   }
@@ -226,6 +254,7 @@ class ProfileState extends DataClass implements Insertable<ProfileState> {
       'displayName': serializer.toJson<String>(displayName),
       'payload': serializer.toJson<String>(payload),
       'storageVersion': serializer.toJson<int>(storageVersion),
+      'checksum': serializer.toJson<String>(checksum),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
   }
@@ -235,12 +264,14 @@ class ProfileState extends DataClass implements Insertable<ProfileState> {
     String? displayName,
     String? payload,
     int? storageVersion,
+    String? checksum,
     DateTime? updatedAt,
   }) => ProfileState(
     profileId: profileId ?? this.profileId,
     displayName: displayName ?? this.displayName,
     payload: payload ?? this.payload,
     storageVersion: storageVersion ?? this.storageVersion,
+    checksum: checksum ?? this.checksum,
     updatedAt: updatedAt ?? this.updatedAt,
   );
   ProfileState copyWithCompanion(ProfileStatesCompanion data) {
@@ -253,6 +284,7 @@ class ProfileState extends DataClass implements Insertable<ProfileState> {
       storageVersion: data.storageVersion.present
           ? data.storageVersion.value
           : this.storageVersion,
+      checksum: data.checksum.present ? data.checksum.value : this.checksum,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
   }
@@ -264,14 +296,21 @@ class ProfileState extends DataClass implements Insertable<ProfileState> {
           ..write('displayName: $displayName, ')
           ..write('payload: $payload, ')
           ..write('storageVersion: $storageVersion, ')
+          ..write('checksum: $checksum, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(profileId, displayName, payload, storageVersion, updatedAt);
+  int get hashCode => Object.hash(
+    profileId,
+    displayName,
+    payload,
+    storageVersion,
+    checksum,
+    updatedAt,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -280,6 +319,7 @@ class ProfileState extends DataClass implements Insertable<ProfileState> {
           other.displayName == this.displayName &&
           other.payload == this.payload &&
           other.storageVersion == this.storageVersion &&
+          other.checksum == this.checksum &&
           other.updatedAt == this.updatedAt);
 }
 
@@ -288,6 +328,7 @@ class ProfileStatesCompanion extends UpdateCompanion<ProfileState> {
   final Value<String> displayName;
   final Value<String> payload;
   final Value<int> storageVersion;
+  final Value<String> checksum;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
   const ProfileStatesCompanion({
@@ -295,6 +336,7 @@ class ProfileStatesCompanion extends UpdateCompanion<ProfileState> {
     this.displayName = const Value.absent(),
     this.payload = const Value.absent(),
     this.storageVersion = const Value.absent(),
+    this.checksum = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -303,6 +345,7 @@ class ProfileStatesCompanion extends UpdateCompanion<ProfileState> {
     required String displayName,
     required String payload,
     this.storageVersion = const Value.absent(),
+    this.checksum = const Value.absent(),
     required DateTime updatedAt,
     this.rowid = const Value.absent(),
   }) : profileId = Value(profileId),
@@ -314,6 +357,7 @@ class ProfileStatesCompanion extends UpdateCompanion<ProfileState> {
     Expression<String>? displayName,
     Expression<String>? payload,
     Expression<int>? storageVersion,
+    Expression<String>? checksum,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
   }) {
@@ -322,6 +366,7 @@ class ProfileStatesCompanion extends UpdateCompanion<ProfileState> {
       if (displayName != null) 'display_name': displayName,
       if (payload != null) 'payload': payload,
       if (storageVersion != null) 'storage_version': storageVersion,
+      if (checksum != null) 'checksum': checksum,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
     });
@@ -332,6 +377,7 @@ class ProfileStatesCompanion extends UpdateCompanion<ProfileState> {
     Value<String>? displayName,
     Value<String>? payload,
     Value<int>? storageVersion,
+    Value<String>? checksum,
     Value<DateTime>? updatedAt,
     Value<int>? rowid,
   }) {
@@ -340,6 +386,7 @@ class ProfileStatesCompanion extends UpdateCompanion<ProfileState> {
       displayName: displayName ?? this.displayName,
       payload: payload ?? this.payload,
       storageVersion: storageVersion ?? this.storageVersion,
+      checksum: checksum ?? this.checksum,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
     );
@@ -360,6 +407,9 @@ class ProfileStatesCompanion extends UpdateCompanion<ProfileState> {
     if (storageVersion.present) {
       map['storage_version'] = Variable<int>(storageVersion.value);
     }
+    if (checksum.present) {
+      map['checksum'] = Variable<String>(checksum.value);
+    }
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
@@ -376,8 +426,520 @@ class ProfileStatesCompanion extends UpdateCompanion<ProfileState> {
           ..write('displayName: $displayName, ')
           ..write('payload: $payload, ')
           ..write('storageVersion: $storageVersion, ')
+          ..write('checksum: $checksum, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $ProfileSnapshotsTable extends ProfileSnapshots
+    with TableInfo<$ProfileSnapshotsTable, ProfileSnapshot> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ProfileSnapshotsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _profileIdMeta = const VerificationMeta(
+    'profileId',
+  );
+  @override
+  late final GeneratedColumn<String> profileId = GeneratedColumn<String>(
+    'profile_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _payloadMeta = const VerificationMeta(
+    'payload',
+  );
+  @override
+  late final GeneratedColumn<String> payload = GeneratedColumn<String>(
+    'payload',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _checksumMeta = const VerificationMeta(
+    'checksum',
+  );
+  @override
+  late final GeneratedColumn<String> checksum = GeneratedColumn<String>(
+    'checksum',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _storageVersionMeta = const VerificationMeta(
+    'storageVersion',
+  );
+  @override
+  late final GeneratedColumn<int> storageVersion = GeneratedColumn<int>(
+    'storage_version',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _reasonMeta = const VerificationMeta('reason');
+  @override
+  late final GeneratedColumn<String> reason = GeneratedColumn<String>(
+    'reason',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _quarantinedMeta = const VerificationMeta(
+    'quarantined',
+  );
+  @override
+  late final GeneratedColumn<bool> quarantined = GeneratedColumn<bool>(
+    'quarantined',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("quarantined" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    profileId,
+    payload,
+    checksum,
+    storageVersion,
+    reason,
+    quarantined,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'profile_snapshots';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ProfileSnapshot> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('profile_id')) {
+      context.handle(
+        _profileIdMeta,
+        profileId.isAcceptableOrUnknown(data['profile_id']!, _profileIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_profileIdMeta);
+    }
+    if (data.containsKey('payload')) {
+      context.handle(
+        _payloadMeta,
+        payload.isAcceptableOrUnknown(data['payload']!, _payloadMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_payloadMeta);
+    }
+    if (data.containsKey('checksum')) {
+      context.handle(
+        _checksumMeta,
+        checksum.isAcceptableOrUnknown(data['checksum']!, _checksumMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_checksumMeta);
+    }
+    if (data.containsKey('storage_version')) {
+      context.handle(
+        _storageVersionMeta,
+        storageVersion.isAcceptableOrUnknown(
+          data['storage_version']!,
+          _storageVersionMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_storageVersionMeta);
+    }
+    if (data.containsKey('reason')) {
+      context.handle(
+        _reasonMeta,
+        reason.isAcceptableOrUnknown(data['reason']!, _reasonMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_reasonMeta);
+    }
+    if (data.containsKey('quarantined')) {
+      context.handle(
+        _quarantinedMeta,
+        quarantined.isAcceptableOrUnknown(
+          data['quarantined']!,
+          _quarantinedMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ProfileSnapshot map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ProfileSnapshot(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      profileId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}profile_id'],
+      )!,
+      payload: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}payload'],
+      )!,
+      checksum: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}checksum'],
+      )!,
+      storageVersion: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}storage_version'],
+      )!,
+      reason: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}reason'],
+      )!,
+      quarantined: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}quarantined'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $ProfileSnapshotsTable createAlias(String alias) {
+    return $ProfileSnapshotsTable(attachedDatabase, alias);
+  }
+}
+
+class ProfileSnapshot extends DataClass implements Insertable<ProfileSnapshot> {
+  final int id;
+  final String profileId;
+  final String payload;
+  final String checksum;
+  final int storageVersion;
+  final String reason;
+  final bool quarantined;
+  final DateTime createdAt;
+  const ProfileSnapshot({
+    required this.id,
+    required this.profileId,
+    required this.payload,
+    required this.checksum,
+    required this.storageVersion,
+    required this.reason,
+    required this.quarantined,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['profile_id'] = Variable<String>(profileId);
+    map['payload'] = Variable<String>(payload);
+    map['checksum'] = Variable<String>(checksum);
+    map['storage_version'] = Variable<int>(storageVersion);
+    map['reason'] = Variable<String>(reason);
+    map['quarantined'] = Variable<bool>(quarantined);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  ProfileSnapshotsCompanion toCompanion(bool nullToAbsent) {
+    return ProfileSnapshotsCompanion(
+      id: Value(id),
+      profileId: Value(profileId),
+      payload: Value(payload),
+      checksum: Value(checksum),
+      storageVersion: Value(storageVersion),
+      reason: Value(reason),
+      quarantined: Value(quarantined),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory ProfileSnapshot.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ProfileSnapshot(
+      id: serializer.fromJson<int>(json['id']),
+      profileId: serializer.fromJson<String>(json['profileId']),
+      payload: serializer.fromJson<String>(json['payload']),
+      checksum: serializer.fromJson<String>(json['checksum']),
+      storageVersion: serializer.fromJson<int>(json['storageVersion']),
+      reason: serializer.fromJson<String>(json['reason']),
+      quarantined: serializer.fromJson<bool>(json['quarantined']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'profileId': serializer.toJson<String>(profileId),
+      'payload': serializer.toJson<String>(payload),
+      'checksum': serializer.toJson<String>(checksum),
+      'storageVersion': serializer.toJson<int>(storageVersion),
+      'reason': serializer.toJson<String>(reason),
+      'quarantined': serializer.toJson<bool>(quarantined),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  ProfileSnapshot copyWith({
+    int? id,
+    String? profileId,
+    String? payload,
+    String? checksum,
+    int? storageVersion,
+    String? reason,
+    bool? quarantined,
+    DateTime? createdAt,
+  }) => ProfileSnapshot(
+    id: id ?? this.id,
+    profileId: profileId ?? this.profileId,
+    payload: payload ?? this.payload,
+    checksum: checksum ?? this.checksum,
+    storageVersion: storageVersion ?? this.storageVersion,
+    reason: reason ?? this.reason,
+    quarantined: quarantined ?? this.quarantined,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  ProfileSnapshot copyWithCompanion(ProfileSnapshotsCompanion data) {
+    return ProfileSnapshot(
+      id: data.id.present ? data.id.value : this.id,
+      profileId: data.profileId.present ? data.profileId.value : this.profileId,
+      payload: data.payload.present ? data.payload.value : this.payload,
+      checksum: data.checksum.present ? data.checksum.value : this.checksum,
+      storageVersion: data.storageVersion.present
+          ? data.storageVersion.value
+          : this.storageVersion,
+      reason: data.reason.present ? data.reason.value : this.reason,
+      quarantined: data.quarantined.present
+          ? data.quarantined.value
+          : this.quarantined,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ProfileSnapshot(')
+          ..write('id: $id, ')
+          ..write('profileId: $profileId, ')
+          ..write('payload: $payload, ')
+          ..write('checksum: $checksum, ')
+          ..write('storageVersion: $storageVersion, ')
+          ..write('reason: $reason, ')
+          ..write('quarantined: $quarantined, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    profileId,
+    payload,
+    checksum,
+    storageVersion,
+    reason,
+    quarantined,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ProfileSnapshot &&
+          other.id == this.id &&
+          other.profileId == this.profileId &&
+          other.payload == this.payload &&
+          other.checksum == this.checksum &&
+          other.storageVersion == this.storageVersion &&
+          other.reason == this.reason &&
+          other.quarantined == this.quarantined &&
+          other.createdAt == this.createdAt);
+}
+
+class ProfileSnapshotsCompanion extends UpdateCompanion<ProfileSnapshot> {
+  final Value<int> id;
+  final Value<String> profileId;
+  final Value<String> payload;
+  final Value<String> checksum;
+  final Value<int> storageVersion;
+  final Value<String> reason;
+  final Value<bool> quarantined;
+  final Value<DateTime> createdAt;
+  const ProfileSnapshotsCompanion({
+    this.id = const Value.absent(),
+    this.profileId = const Value.absent(),
+    this.payload = const Value.absent(),
+    this.checksum = const Value.absent(),
+    this.storageVersion = const Value.absent(),
+    this.reason = const Value.absent(),
+    this.quarantined = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  ProfileSnapshotsCompanion.insert({
+    this.id = const Value.absent(),
+    required String profileId,
+    required String payload,
+    required String checksum,
+    required int storageVersion,
+    required String reason,
+    this.quarantined = const Value.absent(),
+    required DateTime createdAt,
+  }) : profileId = Value(profileId),
+       payload = Value(payload),
+       checksum = Value(checksum),
+       storageVersion = Value(storageVersion),
+       reason = Value(reason),
+       createdAt = Value(createdAt);
+  static Insertable<ProfileSnapshot> custom({
+    Expression<int>? id,
+    Expression<String>? profileId,
+    Expression<String>? payload,
+    Expression<String>? checksum,
+    Expression<int>? storageVersion,
+    Expression<String>? reason,
+    Expression<bool>? quarantined,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (profileId != null) 'profile_id': profileId,
+      if (payload != null) 'payload': payload,
+      if (checksum != null) 'checksum': checksum,
+      if (storageVersion != null) 'storage_version': storageVersion,
+      if (reason != null) 'reason': reason,
+      if (quarantined != null) 'quarantined': quarantined,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  ProfileSnapshotsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? profileId,
+    Value<String>? payload,
+    Value<String>? checksum,
+    Value<int>? storageVersion,
+    Value<String>? reason,
+    Value<bool>? quarantined,
+    Value<DateTime>? createdAt,
+  }) {
+    return ProfileSnapshotsCompanion(
+      id: id ?? this.id,
+      profileId: profileId ?? this.profileId,
+      payload: payload ?? this.payload,
+      checksum: checksum ?? this.checksum,
+      storageVersion: storageVersion ?? this.storageVersion,
+      reason: reason ?? this.reason,
+      quarantined: quarantined ?? this.quarantined,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (profileId.present) {
+      map['profile_id'] = Variable<String>(profileId.value);
+    }
+    if (payload.present) {
+      map['payload'] = Variable<String>(payload.value);
+    }
+    if (checksum.present) {
+      map['checksum'] = Variable<String>(checksum.value);
+    }
+    if (storageVersion.present) {
+      map['storage_version'] = Variable<int>(storageVersion.value);
+    }
+    if (reason.present) {
+      map['reason'] = Variable<String>(reason.value);
+    }
+    if (quarantined.present) {
+      map['quarantined'] = Variable<bool>(quarantined.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ProfileSnapshotsCompanion(')
+          ..write('id: $id, ')
+          ..write('profileId: $profileId, ')
+          ..write('payload: $payload, ')
+          ..write('checksum: $checksum, ')
+          ..write('storageVersion: $storageVersion, ')
+          ..write('reason: $reason, ')
+          ..write('quarantined: $quarantined, ')
+          ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
   }
@@ -1376,6 +1938,9 @@ abstract class _$PhoenixDatabase extends GeneratedDatabase {
   _$PhoenixDatabase(QueryExecutor e) : super(e);
   $PhoenixDatabaseManager get managers => $PhoenixDatabaseManager(this);
   late final $ProfileStatesTable profileStates = $ProfileStatesTable(this);
+  late final $ProfileSnapshotsTable profileSnapshots = $ProfileSnapshotsTable(
+    this,
+  );
   late final $AppMetaTable appMeta = $AppMetaTable(this);
   late final $DiagnosticRowsTable diagnosticRows = $DiagnosticRowsTable(this);
   late final $ReminderRowsTable reminderRows = $ReminderRowsTable(this);
@@ -1385,6 +1950,7 @@ abstract class _$PhoenixDatabase extends GeneratedDatabase {
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities => [
     profileStates,
+    profileSnapshots,
     appMeta,
     diagnosticRows,
     reminderRows,
@@ -1397,6 +1963,7 @@ typedef $$ProfileStatesTableCreateCompanionBuilder =
       required String displayName,
       required String payload,
       Value<int> storageVersion,
+      Value<String> checksum,
       required DateTime updatedAt,
       Value<int> rowid,
     });
@@ -1406,6 +1973,7 @@ typedef $$ProfileStatesTableUpdateCompanionBuilder =
       Value<String> displayName,
       Value<String> payload,
       Value<int> storageVersion,
+      Value<String> checksum,
       Value<DateTime> updatedAt,
       Value<int> rowid,
     });
@@ -1436,6 +2004,11 @@ class $$ProfileStatesTableFilterComposer
 
   ColumnFilters<int> get storageVersion => $composableBuilder(
     column: $table.storageVersion,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get checksum => $composableBuilder(
+    column: $table.checksum,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1474,6 +2047,11 @@ class $$ProfileStatesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get checksum => $composableBuilder(
+    column: $table.checksum,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
     column: $table.updatedAt,
     builder: (column) => ColumnOrderings(column),
@@ -1504,6 +2082,9 @@ class $$ProfileStatesTableAnnotationComposer
     column: $table.storageVersion,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get checksum =>
+      $composableBuilder(column: $table.checksum, builder: (column) => column);
 
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
@@ -1550,6 +2131,7 @@ class $$ProfileStatesTableTableManager
                 Value<String> displayName = const Value.absent(),
                 Value<String> payload = const Value.absent(),
                 Value<int> storageVersion = const Value.absent(),
+                Value<String> checksum = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ProfileStatesCompanion(
@@ -1557,6 +2139,7 @@ class $$ProfileStatesTableTableManager
                 displayName: displayName,
                 payload: payload,
                 storageVersion: storageVersion,
+                checksum: checksum,
                 updatedAt: updatedAt,
                 rowid: rowid,
               ),
@@ -1566,6 +2149,7 @@ class $$ProfileStatesTableTableManager
                 required String displayName,
                 required String payload,
                 Value<int> storageVersion = const Value.absent(),
+                Value<String> checksum = const Value.absent(),
                 required DateTime updatedAt,
                 Value<int> rowid = const Value.absent(),
               }) => ProfileStatesCompanion.insert(
@@ -1573,6 +2157,7 @@ class $$ProfileStatesTableTableManager
                 displayName: displayName,
                 payload: payload,
                 storageVersion: storageVersion,
+                checksum: checksum,
                 updatedAt: updatedAt,
                 rowid: rowid,
               ),
@@ -1599,6 +2184,271 @@ typedef $$ProfileStatesTableProcessedTableManager =
         BaseReferences<_$PhoenixDatabase, $ProfileStatesTable, ProfileState>,
       ),
       ProfileState,
+      PrefetchHooks Function()
+    >;
+typedef $$ProfileSnapshotsTableCreateCompanionBuilder =
+    ProfileSnapshotsCompanion Function({
+      Value<int> id,
+      required String profileId,
+      required String payload,
+      required String checksum,
+      required int storageVersion,
+      required String reason,
+      Value<bool> quarantined,
+      required DateTime createdAt,
+    });
+typedef $$ProfileSnapshotsTableUpdateCompanionBuilder =
+    ProfileSnapshotsCompanion Function({
+      Value<int> id,
+      Value<String> profileId,
+      Value<String> payload,
+      Value<String> checksum,
+      Value<int> storageVersion,
+      Value<String> reason,
+      Value<bool> quarantined,
+      Value<DateTime> createdAt,
+    });
+
+class $$ProfileSnapshotsTableFilterComposer
+    extends Composer<_$PhoenixDatabase, $ProfileSnapshotsTable> {
+  $$ProfileSnapshotsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get profileId => $composableBuilder(
+    column: $table.profileId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get payload => $composableBuilder(
+    column: $table.payload,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get checksum => $composableBuilder(
+    column: $table.checksum,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get storageVersion => $composableBuilder(
+    column: $table.storageVersion,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get reason => $composableBuilder(
+    column: $table.reason,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get quarantined => $composableBuilder(
+    column: $table.quarantined,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ProfileSnapshotsTableOrderingComposer
+    extends Composer<_$PhoenixDatabase, $ProfileSnapshotsTable> {
+  $$ProfileSnapshotsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get profileId => $composableBuilder(
+    column: $table.profileId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get payload => $composableBuilder(
+    column: $table.payload,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get checksum => $composableBuilder(
+    column: $table.checksum,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get storageVersion => $composableBuilder(
+    column: $table.storageVersion,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get reason => $composableBuilder(
+    column: $table.reason,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get quarantined => $composableBuilder(
+    column: $table.quarantined,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ProfileSnapshotsTableAnnotationComposer
+    extends Composer<_$PhoenixDatabase, $ProfileSnapshotsTable> {
+  $$ProfileSnapshotsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get profileId =>
+      $composableBuilder(column: $table.profileId, builder: (column) => column);
+
+  GeneratedColumn<String> get payload =>
+      $composableBuilder(column: $table.payload, builder: (column) => column);
+
+  GeneratedColumn<String> get checksum =>
+      $composableBuilder(column: $table.checksum, builder: (column) => column);
+
+  GeneratedColumn<int> get storageVersion => $composableBuilder(
+    column: $table.storageVersion,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get reason =>
+      $composableBuilder(column: $table.reason, builder: (column) => column);
+
+  GeneratedColumn<bool> get quarantined => $composableBuilder(
+    column: $table.quarantined,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$ProfileSnapshotsTableTableManager
+    extends
+        RootTableManager<
+          _$PhoenixDatabase,
+          $ProfileSnapshotsTable,
+          ProfileSnapshot,
+          $$ProfileSnapshotsTableFilterComposer,
+          $$ProfileSnapshotsTableOrderingComposer,
+          $$ProfileSnapshotsTableAnnotationComposer,
+          $$ProfileSnapshotsTableCreateCompanionBuilder,
+          $$ProfileSnapshotsTableUpdateCompanionBuilder,
+          (
+            ProfileSnapshot,
+            BaseReferences<
+              _$PhoenixDatabase,
+              $ProfileSnapshotsTable,
+              ProfileSnapshot
+            >,
+          ),
+          ProfileSnapshot,
+          PrefetchHooks Function()
+        > {
+  $$ProfileSnapshotsTableTableManager(
+    _$PhoenixDatabase db,
+    $ProfileSnapshotsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ProfileSnapshotsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ProfileSnapshotsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ProfileSnapshotsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> profileId = const Value.absent(),
+                Value<String> payload = const Value.absent(),
+                Value<String> checksum = const Value.absent(),
+                Value<int> storageVersion = const Value.absent(),
+                Value<String> reason = const Value.absent(),
+                Value<bool> quarantined = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => ProfileSnapshotsCompanion(
+                id: id,
+                profileId: profileId,
+                payload: payload,
+                checksum: checksum,
+                storageVersion: storageVersion,
+                reason: reason,
+                quarantined: quarantined,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String profileId,
+                required String payload,
+                required String checksum,
+                required int storageVersion,
+                required String reason,
+                Value<bool> quarantined = const Value.absent(),
+                required DateTime createdAt,
+              }) => ProfileSnapshotsCompanion.insert(
+                id: id,
+                profileId: profileId,
+                payload: payload,
+                checksum: checksum,
+                storageVersion: storageVersion,
+                reason: reason,
+                quarantined: quarantined,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ProfileSnapshotsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$PhoenixDatabase,
+      $ProfileSnapshotsTable,
+      ProfileSnapshot,
+      $$ProfileSnapshotsTableFilterComposer,
+      $$ProfileSnapshotsTableOrderingComposer,
+      $$ProfileSnapshotsTableAnnotationComposer,
+      $$ProfileSnapshotsTableCreateCompanionBuilder,
+      $$ProfileSnapshotsTableUpdateCompanionBuilder,
+      (
+        ProfileSnapshot,
+        BaseReferences<
+          _$PhoenixDatabase,
+          $ProfileSnapshotsTable,
+          ProfileSnapshot
+        >,
+      ),
+      ProfileSnapshot,
       PrefetchHooks Function()
     >;
 typedef $$AppMetaTableCreateCompanionBuilder =
@@ -2170,6 +3020,8 @@ class $PhoenixDatabaseManager {
   $PhoenixDatabaseManager(this._db);
   $$ProfileStatesTableTableManager get profileStates =>
       $$ProfileStatesTableTableManager(_db, _db.profileStates);
+  $$ProfileSnapshotsTableTableManager get profileSnapshots =>
+      $$ProfileSnapshotsTableTableManager(_db, _db.profileSnapshots);
   $$AppMetaTableTableManager get appMeta =>
       $$AppMetaTableTableManager(_db, _db.appMeta);
   $$DiagnosticRowsTableTableManager get diagnosticRows =>
