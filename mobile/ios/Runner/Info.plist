@@ -2,6 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+    <key>NSCameraUsageDescription</key>
+    <string>Phoenix uses the camera only to capture a meal photo for a local nutrition estimate.</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>Phoenix lets you choose a meal photo for a local nutrition estimate.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>

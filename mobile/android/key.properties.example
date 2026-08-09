@@ -1,0 +1,4 @@
+storePassword=CHANGE_ME
+keyPassword=CHANGE_ME
+keyAlias=phoenix-upload
+storeFile=C:\\secure\\phoenix-upload-keystore.jks
