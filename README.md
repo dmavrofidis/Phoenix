@@ -5,13 +5,16 @@
 ## Τρέχον handoff
 
 - Phoenix Today αρχική εμπειρία με καθημερινές ενέργειες
-- κατηγοριοποιημένο, searchable Toolbox με 34 εργαλεία
+- κατηγοριοποιημένο, searchable Toolbox με 42 εργαλεία
 - Reports Studio για πλήρως τοπικές αναφορές
 - Photo Meal Scan με τοπικό photo history
 - Native JSON backup import/export για ασφαλή συνέχεια σε άλλη συσκευή
 - Εβδομαδιαίες local ειδοποιήσεις σε Android, iOS, macOS και Windows
 - `flutter analyze` χωρίς ευρήματα
-- `flutter test` με 351 tests passing
+- Capability Studio με 289 persisted local-first controls (#279–#567)
+- Athlete Intelligence, Interval Timer Lab, Safety & Adaptation και Operations Studio
+- Drift reliability v4 με checksums, snapshots, quarantine και duplicate reconciliation
+- `flutter test` με 391 tests passing
 
 ## Τρέχουσα λειτουργική έκδοση
 
@@ -298,4 +301,16 @@ Center.
 - conservative goal forecasting με σαφές confidence και χωρίς εγγυήσεις
 - persistent annotation layer για συσχέτιση γεγονότων με τις τάσεις
 
-Τρέχουσα επαλήθευση: **clean analysis, 351/351 tests passing και production web build**.
+## Phoenix 289 delivery
+
+Η τρέχουσα φάση καλύπτει ακριβώς τα IDs **#279–#567**, δηλαδή 289
+αριθμημένες local-first αναβαθμίσεις. Κάθε ID διαθέτει persisted operational
+control και audit στο Capability Studio, ενώ τα κρίσιμα σύνολα έχουν βαθύτερη
+υλοποίηση σε ασφάλεια, imports, wearables, timers, adaptive training,
+reminders, platform readiness και database reliability.
+
+Αναλυτική, ειλικρινής αντιστοίχιση και όρια υλοποίησης:
+[PHOENIX_289_UPGRADES.md](docs/PHOENIX_289_UPGRADES.md).
+
+Τρέχουσα επαλήθευση: **clean analysis, 391/391 tests passing, production web
+build και successful Wasm dry-run**.
