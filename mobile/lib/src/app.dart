@@ -503,24 +503,39 @@ class DashboardPage extends StatelessWidget {
                 ),
               ),
             ),
-            IconButton.filledTonal(
-              tooltip: context.l10n.text('Αναζήτηση', 'Search'),
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (context) => GlobalSearchPage(store: store),
+            Semantics(
+              label: context.l10n.text('Αναζήτηση', 'Search'),
+              button: true,
+              child: ExcludeSemantics(
+                child: IconButton.filledTonal(
+                  tooltip: context.l10n.text('Αναζήτηση', 'Search'),
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (context) => GlobalSearchPage(store: store),
+                    ),
+                  ),
+                  icon: const Icon(Icons.search),
                 ),
               ),
-              icon: const Icon(Icons.search),
             ),
             const SizedBox(width: 7),
-            IconButton.filledTonal(
-              tooltip: 'Control Center',
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (context) => ControlCenterPage(store: store),
+            Semantics(
+              label: context.l10n.text('Κέντρο ελέγχου', 'Control Center'),
+              button: true,
+              child: ExcludeSemantics(
+                child: IconButton.filledTonal(
+                  tooltip: context.l10n.text(
+                    'Κέντρο ελέγχου',
+                    'Control Center',
+                  ),
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (context) => ControlCenterPage(store: store),
+                    ),
+                  ),
+                  icon: const Icon(Icons.settings_outlined),
                 ),
               ),
-              icon: const Icon(Icons.settings_outlined),
             ),
           ],
         ),

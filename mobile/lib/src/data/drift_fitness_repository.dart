@@ -23,6 +23,28 @@ class LocalProfileInfo {
   final bool isActive;
 }
 
+class LocalProfileSnapshotInfo {
+  const LocalProfileSnapshotInfo({
+    required this.id,
+    required this.profileId,
+    required this.checksum,
+    required this.reason,
+    required this.quarantined,
+    required this.createdAt,
+    required this.sizeBytes,
+    required this.verified,
+  });
+
+  final int id;
+  final String profileId;
+  final String checksum;
+  final String reason;
+  final bool quarantined;
+  final DateTime createdAt;
+  final int sizeBytes;
+  final bool verified;
+}
+
 class DiagnosticEntry {
   const DiagnosticEntry({
     required this.level,
@@ -39,6 +61,10 @@ class DiagnosticEntry {
 
 abstract interface class ReliabilityRepository {
   Future<List<LocalProfileInfo>> listProfiles();
+  Future<List<LocalProfileSnapshotInfo>> listProfileSnapshots({
+    String? profileId,
+  });
+  Future<FitnessData> restoreProfileSnapshot(int id);
   Future<String> createProfile(String name, FitnessData data);
   Future<FitnessData> switchProfile(String id);
   Future<void> deleteProfile(String id);
@@ -271,6 +297,77 @@ class DriftFitnessRepository
           isActive: row.profileId == _activeProfileId,
         ),
     ];
+  }
+
+  @override
+  Future<List<LocalProfileSnapshotInfo>> listProfileSnapshots({
+    String? profileId,
+  }) async {
+    final selectedProfileId = profileId ?? _activeProfileId;
+    final rows =
+        await (_database.select(_database.profileSnapshots)
+              ..where((row) => row.profileId.equals(selectedProfileId))
+              ..orderBy([
+                (row) => OrderingTerm.desc(row.createdAt),
+                (row) => OrderingTerm.desc(row.id),
+              ]))
+            .get();
+    return [
+      for (final row in rows)
+        LocalProfileSnapshotInfo(
+          id: row.id,
+          profileId: row.profileId,
+          checksum: row.checksum,
+          reason: row.reason,
+          quarantined: row.quarantined,
+          createdAt: row.createdAt,
+          sizeBytes: utf8.encode(row.payload).length,
+          verified: !row.quarantined && _checksum(row.payload) == row.checksum,
+        ),
+    ];
+  }
+
+  @override
+  Future<FitnessData> restoreProfileSnapshot(int id) async {
+    final snapshot = await (_database.select(
+      _database.profileSnapshots,
+    )..where((row) => row.id.equals(id))).getSingleOrNull();
+    if (snapshot == null) {
+      throw const FormatException('The recovery snapshot no longer exists.');
+    }
+    if (snapshot.profileId != _activeProfileId) {
+      throw const FormatException(
+        'Only snapshots of the active local profile can be restored.',
+      );
+    }
+    if (snapshot.quarantined ||
+        _checksum(snapshot.payload) != snapshot.checksum) {
+      throw const FormatException(
+        'This snapshot is quarantined or failed checksum verification.',
+      );
+    }
+
+    final migration = StorageMigrationEngine.migrate(
+      jsonDecode(snapshot.payload) as Map<String, dynamic>,
+      fromVersion: snapshot.storageVersion,
+    );
+    final restored = FitnessData.fromJson(migration.json);
+    final profile = await (_database.select(
+      _database.profileStates,
+    )..where((row) => row.profileId.equals(_activeProfileId))).getSingle();
+
+    // The current state is snapshotted before it is replaced, which makes
+    // recovery reversible without exposing snapshot payloads to the UI.
+    await _writeProfile(
+      id: _activeProfileId,
+      name: profile.displayName,
+      data: restored,
+    );
+    await recordDiagnostic(
+      category: 'recovery',
+      message: 'Restored the active profile from a verified local snapshot.',
+    );
+    return restored;
   }
 
   @override

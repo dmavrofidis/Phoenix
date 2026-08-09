@@ -7,6 +7,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'coaching_report_engine.dart';
+import 'encrypted_sync_engine.dart';
 import 'local_file_bridge.dart';
 import 'media_portability_engine.dart';
 import 'models/fitness_models.dart';
@@ -901,14 +902,17 @@ class _TransferTabState extends State<_TransferTab> {
     }
   }
 
-  Future<String?> _requestExportPassword({required bool confirm}) async {
+  Future<String?> _requestExportPassword({
+    required bool confirm,
+    String purpose = 'BACKUP',
+  }) async {
     final password = TextEditingController();
     final confirmation = TextEditingController();
     try {
       return await showDialog<String>(
         context: context,
         builder: (context) => AlertDialog(
-          title: Text(confirm ? 'ENCRYPT BACKUP' : 'DECRYPT BACKUP'),
+          title: Text(confirm ? 'ENCRYPT $purpose' : 'DECRYPT $purpose'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -998,6 +1002,151 @@ class _TransferTabState extends State<_TransferTab> {
     }
   }
 
+  Future<void> _exportEncryptedSync() async {
+    final password = await _requestExportPassword(
+      confirm: true,
+      purpose: 'SYNC PACKAGE',
+    );
+    if (password == null) return;
+    try {
+      final now = DateTime.now();
+      final envelope = await EncryptedSyncEngine.create(
+        data: widget.store.data,
+        password: password,
+        deviceId: 'phoenix-local-device',
+        revision: now.microsecondsSinceEpoch,
+        createdAt: now,
+      );
+      final saved = await saveLocalBytes(
+        bytes: Uint8List.fromList(utf8.encode(envelope)),
+        filename: 'phoenix-device-sync.phxsync',
+        mimeType: 'application/octet-stream',
+      );
+      if (mounted) {
+        _message(
+          saved
+              ? 'Encrypted sync package exported. Move it with any provider you trust.'
+              : 'Sync package export was cancelled or is unsupported.',
+        );
+      }
+    } on FormatException catch (error) {
+      if (mounted) _message(error.message);
+    }
+  }
+
+  Future<void> _importEncryptedSync() async {
+    final file = await pickLocalFile(
+      extensions: const <String>['phxsync'],
+      maxBytes: EncryptedSyncEngine.maximumEnvelopeBytes,
+    );
+    if (file == null || !mounted) return;
+    final password = await _requestExportPassword(
+      confirm: false,
+      purpose: 'SYNC PACKAGE',
+    );
+    if (password == null) return;
+    try {
+      final incoming = await EncryptedSyncEngine.open(
+        envelope: utf8.decode(file.bytes, allowMalformed: false),
+        password: password,
+      );
+      final preview = EncryptedSyncEngine.preview(
+        local: widget.store.data,
+        incoming: incoming,
+      );
+      if (!mounted) return;
+      if (preview.alreadyInSync) {
+        _message('Both devices already contain the same verified data.');
+        return;
+      }
+      final resolution = await _chooseSyncResolution(preview, incoming);
+      if (resolution == null || resolution == SyncResolution.keepLocal) {
+        if (resolution == SyncResolution.keepLocal && mounted) {
+          _message('Local data kept unchanged.');
+        }
+        return;
+      }
+      final resolved = EncryptedSyncEngine.resolve(
+        local: widget.store.data,
+        incoming: incoming,
+        resolution: resolution,
+      );
+      await widget.store.applyApprovedSyncData(resolved);
+      await syncPhoenixWorkoutNotifications(widget.store);
+      if (mounted) {
+        _message(
+          resolution == SyncResolution.mergeSafely
+              ? 'Safe merge applied locally. Undo is available.'
+              : 'Incoming device state applied locally. Undo is available.',
+        );
+      }
+    } on FormatException catch (error) {
+      if (mounted) _message(error.message);
+    }
+  }
+
+  Future<SyncResolution?> _chooseSyncResolution(
+    SyncConflictPreview preview,
+    EncryptedSyncPackage incoming,
+  ) => showDialog<SyncResolution>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('REVIEW ENCRYPTED SYNC'),
+      content: SizedBox(
+        width: 520,
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Revision ${incoming.revision} • ${incoming.createdAt.toLocal()}',
+              ),
+              const SizedBox(height: 8),
+              Text(
+                preview.baseMatchesLocal
+                    ? 'The incoming base matches this device.'
+                    : 'The incoming package was created from a different local state.',
+              ),
+              const SizedBox(height: 12),
+              Text('Changed sections: ${preview.changedSections.join(', ')}'),
+              if (preview.conflicts.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                const Text(
+                  'CONFLICTS',
+                  style: TextStyle(fontWeight: FontWeight.w900),
+                ),
+                for (final conflict in preview.conflicts) Text('• $conflict'),
+              ],
+              const SizedBox(height: 12),
+              const Text(
+                'Nothing changes until you choose. Safe merge adds unique records and keeps local values on conflicts.',
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('CANCEL'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context, SyncResolution.keepLocal),
+          child: const Text('KEEP LOCAL'),
+        ),
+        FilledButton.tonal(
+          onPressed: () => Navigator.pop(context, SyncResolution.mergeSafely),
+          child: const Text('SAFE MERGE'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, SyncResolution.useIncoming),
+          child: const Text('USE INCOMING'),
+        ),
+      ],
+    ),
+  );
+
   Future<void> _confirmAndRestore(
     String backup, {
     required String source,
@@ -1066,6 +1215,7 @@ class _TransferTabState extends State<_TransferTab> {
       if (_frameIndex >= frames.length) _frameIndex = 0;
       final wearable = widget.store.wearableSummaries;
       return ListView(
+        key: const ValueKey('media-transfer-scroll'),
         padding: const EdgeInsets.fromLTRB(18, 16, 18, 32),
         children: [
           Text(
@@ -1173,6 +1323,31 @@ class _TransferTabState extends State<_TransferTab> {
                 label: const Text('VERIFY & RESTORE'),
               ),
             ],
+          ),
+          const SizedBox(height: 18),
+          const Card(
+            child: ListTile(
+              leading: Icon(Icons.sync_lock_outlined),
+              title: Text(
+                'PROVIDER-NEUTRAL DEVICE SYNC',
+                style: TextStyle(fontWeight: FontWeight.w900),
+              ),
+              subtitle: Text(
+                'Manual encrypted package with conflict preview. Transport it through a private folder, drive or cable; Phoenix never contacts that provider.',
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          OutlinedButton.icon(
+            onPressed: _exportEncryptedSync,
+            icon: const Icon(Icons.sync_lock_outlined),
+            label: const Text('EXPORT ENCRYPTED SYNC'),
+          ),
+          const SizedBox(height: 6),
+          OutlinedButton.icon(
+            onPressed: _importEncryptedSync,
+            icon: const Icon(Icons.rule_folder_outlined),
+            label: const Text('IMPORT & REVIEW SYNC'),
           ),
           const SizedBox(height: 22),
           Text(

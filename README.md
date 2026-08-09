@@ -8,13 +8,17 @@
 - κατηγοριοποιημένο, searchable Toolbox με 42 εργαλεία
 - Reports Studio για πλήρως τοπικές αναφορές
 - Photo Meal Scan με τοπικό photo history
-- Native JSON backup import/export για ασφαλή συνέχεια σε άλλη συσκευή
+- Native JSON, AES-256-GCM backup και reviewed `.phxsync` handoff για ασφαλή συνέχεια σε άλλη συσκευή
 - Εβδομαδιαίες local ειδοποιήσεις σε Android, iOS, macOS και Windows
 - `flutter analyze` χωρίς ευρήματα
 - Capability Studio με 289 persisted local-first controls (#279–#567)
 - Athlete Intelligence, Interval Timer Lab, Safety & Adaptation και Operations Studio
-- Drift reliability v4 με checksums, snapshots, quarantine και duplicate reconciliation
-- `flutter test` με 391 tests passing
+- Drift reliability v4 με checksums, Recovery Vault, quarantine και reversible restore
+- Provider-neutral encrypted device sync με conflict preview και safe merge
+- Local performance profiler και reviewed German/Spanish application-shell catalog
+- `flutter test` με 404 tests passing
+
+Για συνέχεια από δεύτερο laptop, ακολούθησε το [private GitHub handoff](docs/CROSS_DEVICE_SETUP.md). Για release δες το [Phoenix 1.1 RC handoff](docs/PHOENIX_1_1_RC.md).
 
 ## Τρέχουσα λειτουργική έκδοση
 

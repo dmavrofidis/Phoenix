@@ -4,6 +4,7 @@ import 'package:crypto/crypto.dart';
 import 'package:intl/intl.dart';
 
 import 'models/fitness_models.dart';
+import 'phoenix_translations.dart';
 
 class DashboardConfiguration {
   const DashboardConfiguration({
@@ -403,13 +404,13 @@ class OperationalReadinessEngine {
       key.replaceAll('-', ' ');
 
   static LocaleReadiness localeReadiness(String languageCode) {
-    final translated = localeCatalog.values
-        .where((values) => values[languageCode]?.trim().isNotEmpty ?? false)
-        .length;
+    final translated = languageCode == 'el' || languageCode == 'en'
+        ? PhoenixTranslations.catalog.length
+        : PhoenixTranslations.translatedCount(languageCode);
     return LocaleReadiness(
       languageCode: languageCode,
       translated: translated,
-      total: localeCatalog.length,
+      total: PhoenixTranslations.catalog.length,
       fallbackLanguage: 'en',
       isRtlReady: true,
     );
@@ -518,6 +519,10 @@ class OperationalReadinessEngine {
       'startup-ms': 1500,
       'database-query-ms': 100,
       'json-serialization-ms': 75,
+      'json-deserialization-ms': 100,
+      'integrity-audit-ms': 75,
+      'reconciliation-ms': 100,
+      'profile-payload-kb': 8192,
       'chart-frame-ms': 16.7,
       'rebuild-count': 20,
       'web-bundle-mb': 12,

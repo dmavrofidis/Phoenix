@@ -1,0 +1,55 @@
+name: Phoenix Quality Gates
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phoenix-quality-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.44.8"
+          channel: stable
+          cache: true
+
+      - name: Repository safety
+        shell: pwsh
+        run: ./scripts/verify_repository_safety.ps1
+
+      - name: Resolve dependencies
+        working-directory: mobile
+        run: flutter pub get
+
+      - name: Verify generated Drift code
+        working-directory: mobile
+        run: dart run build_runner build
+
+      - name: Formatting
+        working-directory: mobile
+        run: dart format --output=none --set-exit-if-changed lib test
+
+      - name: Static analysis
+        working-directory: mobile
+        run: flutter analyze
+
+      - name: Tests
+        working-directory: mobile
+        run: flutter test
+
+      - name: Production web build
+        working-directory: mobile
+        run: flutter build web --release

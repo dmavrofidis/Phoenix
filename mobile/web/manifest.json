@@ -24,9 +24,10 @@
         {
             "action": "./?file-handler=1",
             "accept": {
-                "application/json": [".json", ".phx"],
+                "application/json": [".json"],
                 "text/csv": [".csv"],
-                "application/gpx+xml": [".gpx"]
+                "application/gpx+xml": [".gpx"],
+                "application/octet-stream": [".phx", ".phxsync"]
             }
         }
     ],

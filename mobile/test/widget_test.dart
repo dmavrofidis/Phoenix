@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
 
 import 'package:drift/native.dart';
@@ -40,6 +41,7 @@ import 'package:phoenix/src/data_validation_page.dart';
 import 'package:phoenix/src/deterministic_coach_engine.dart';
 import 'package:phoenix/src/equipment_presets.dart';
 import 'package:phoenix/src/education_library.dart';
+import 'package:phoenix/src/encrypted_sync_engine.dart';
 import 'package:phoenix/src/exercise_guide.dart';
 import 'package:phoenix/src/exercise_intelligence_engine.dart';
 import 'package:phoenix/src/exercise_intelligence_page.dart';
@@ -55,6 +57,7 @@ import 'package:phoenix/src/interval_timer_engine.dart';
 import 'package:phoenix/src/interval_timer_page.dart';
 import 'package:phoenix/src/local_notification_schedule.dart';
 import 'package:phoenix/src/local_collaboration_engine.dart';
+import 'package:phoenix/src/local_performance_profiler.dart';
 import 'package:phoenix/src/media_portability_engine.dart';
 import 'package:phoenix/src/media_portability_page.dart';
 import 'package:phoenix/src/meal_intelligence_engine.dart';
@@ -72,6 +75,8 @@ import 'package:phoenix/src/onboarding_page.dart';
 import 'package:phoenix/src/operational_readiness_engine.dart';
 import 'package:phoenix/src/operations_studio_page.dart';
 import 'package:phoenix/src/periodization_engine.dart';
+import 'package:phoenix/src/phoenix_l10n.dart';
+import 'package:phoenix/src/phoenix_translations.dart';
 import 'package:phoenix/src/phoenix_toolbox_page.dart';
 import 'package:phoenix/src/program_editor_page.dart';
 import 'package:phoenix/src/program_architecture_engine.dart';
@@ -3193,6 +3198,156 @@ void main() {
   );
 
   test(
+    'provider-neutral sync encrypts metadata and previews divergent devices',
+    () async {
+      final local = FitnessData.initial().copyWith(
+        spotifyUrl: 'https://example.com/local',
+        hydration: [
+          HydrationEntry(milliliters: 500, loggedAt: DateTime(2026, 8, 7, 9)),
+        ],
+      );
+      final incomingData = FitnessData.initial().copyWith(
+        spotifyUrl: 'https://example.com/incoming',
+        preferences: const AppPreferences(languageCode: 'de'),
+        hydration: [
+          HydrationEntry(milliliters: 750, loggedAt: DateTime(2026, 8, 7, 11)),
+        ],
+      );
+      final envelope = await EncryptedSyncEngine.create(
+        data: incomingData,
+        password: 'correct horse battery staple',
+        deviceId: 'test-laptop',
+        revision: 42,
+        baseChecksum: EncryptedSyncEngine.checksum(local),
+        createdAt: DateTime.utc(2026, 8, 7, 12),
+      );
+      final incoming = await EncryptedSyncEngine.open(
+        envelope: envelope,
+        password: 'correct horse battery staple',
+      );
+      final preview = EncryptedSyncEngine.preview(
+        local: local,
+        incoming: incoming,
+      );
+
+      expect(envelope, isNot(contains('example.com/incoming')));
+      expect(incoming.revision, 42);
+      expect(preview.baseMatchesLocal, isTrue);
+      expect(
+        preview.changedSections,
+        containsAll(['hydration', 'preferences']),
+      );
+      expect(preview.conflicts, isNotEmpty);
+      await expectLater(
+        EncryptedSyncEngine.open(
+          envelope: envelope,
+          password: 'wrong password value',
+        ),
+        throwsFormatException,
+      );
+    },
+  );
+
+  test(
+    'safe sync merge is deterministic and never mutates its inputs',
+    () async {
+      final local = FitnessData.initial().copyWith(
+        spotifyUrl: 'https://example.com/local',
+        hydration: [
+          HydrationEntry(milliliters: 500, loggedAt: DateTime(2026, 8, 7, 9)),
+        ],
+      );
+      final remote = FitnessData.initial().copyWith(
+        spotifyUrl: 'https://example.com/remote',
+        hydration: [
+          HydrationEntry(milliliters: 750, loggedAt: DateTime(2026, 8, 7, 11)),
+        ],
+      );
+      final before = jsonEncode(local.toJson());
+      final envelope = await EncryptedSyncEngine.create(
+        data: remote,
+        password: 'correct horse battery staple',
+        deviceId: 'other-laptop',
+        revision: 1,
+      );
+      final incoming = await EncryptedSyncEngine.open(
+        envelope: envelope,
+        password: 'correct horse battery staple',
+      );
+      final first = EncryptedSyncEngine.resolve(
+        local: local,
+        incoming: incoming,
+        resolution: SyncResolution.mergeSafely,
+      );
+      final second = EncryptedSyncEngine.resolve(
+        local: local,
+        incoming: incoming,
+        resolution: SyncResolution.mergeSafely,
+      );
+
+      expect(jsonEncode(local.toJson()), before);
+      expect(first.spotifyUrl, 'https://example.com/local');
+      expect(first.hydration, hasLength(2));
+      expect(first.toJson(), second.toJson());
+    },
+  );
+
+  test('approved sync application is local, persisted and undoable', () async {
+    final repository = MemoryRepository();
+    final store = FitnessStore(repository);
+    await store.load();
+    final incoming = store.data.copyWith(
+      spotifyUrl: 'https://example.com/approved',
+    );
+
+    await store.applyApprovedSyncData(incoming);
+
+    expect(repository.value.spotifyUrl, 'https://example.com/approved');
+    expect(store.canUndo, isTrue);
+    expect(await store.undoLastMutation(), isTrue);
+    expect(repository.value.spotifyUrl, isEmpty);
+  });
+
+  test('failed sync integrity audit leaves local data untouched', () async {
+    final repository = MemoryRepository();
+    final store = FitnessStore(repository);
+    await store.load();
+    final before = jsonEncode(store.data.toJson());
+    final invalid = store.data.copyWith(
+      templates: [...store.data.templates, store.data.templates.first],
+    );
+
+    await expectLater(
+      store.applyApprovedSyncData(invalid),
+      throwsFormatException,
+    );
+
+    expect(jsonEncode(store.data.toJson()), before);
+    expect(jsonEncode(repository.value.toJson()), before);
+    expect(store.canUndo, isFalse);
+  });
+
+  test('local performance profile reports bounded finite measurements', () {
+    final measurements = LocalPerformanceProfiler.measure(
+      FitnessData.initial(),
+    );
+    final report = OperationalReadinessEngine.performanceBudget(measurements);
+
+    expect(
+      measurements.keys,
+      containsAll([
+        'json-serialization-ms',
+        'json-deserialization-ms',
+        'integrity-audit-ms',
+        'reconciliation-ms',
+        'profile-payload-kb',
+      ]),
+    );
+    expect(measurements.values.every((value) => value.isFinite), isTrue);
+    expect(report.passes, isTrue);
+  });
+
+  test(
     'accessibility preferences είναι bounded και backward compatible',
     () async {
       final store = FitnessStore(MemoryRepository());
@@ -3332,6 +3487,13 @@ void main() {
       expect(find.text('EXPORT BACKUP FILE'), findsOneWidget);
       expect(find.text('IMPORT BACKUP FILE'), findsOneWidget);
       expect(find.text('QR BACKUP TRANSFER'), findsOneWidget);
+      await tester.drag(
+        find.byKey(const ValueKey('media-transfer-scroll')),
+        const Offset(0, -900),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('EXPORT ENCRYPTED SYNC'), findsOneWidget);
+      expect(find.text('IMPORT & REVIEW SYNC'), findsOneWidget);
     },
   );
 
@@ -3504,6 +3666,66 @@ void main() {
   );
 
   test(
+    'Recovery Vault lists metadata and restores without losing current state',
+    () async {
+      final database = PhoenixDatabase(NativeDatabase.memory());
+      addTearDown(database.close);
+      final repository = DriftFitnessRepository(database: database);
+      final initial = await repository.load();
+      await repository.save(
+        initial.copyWith(spotifyUrl: 'https://example.com/first'),
+      );
+      await repository.save(
+        initial.copyWith(spotifyUrl: 'https://example.com/current'),
+      );
+
+      final beforeRestore = await repository.listProfileSnapshots();
+      expect(beforeRestore, isNotEmpty);
+      expect(beforeRestore.first.verified, isTrue);
+      expect(beforeRestore.first.sizeBytes, greaterThan(0));
+      expect(beforeRestore.first.checksum, hasLength(64));
+
+      final restored = await repository.restoreProfileSnapshot(
+        beforeRestore.first.id,
+      );
+      final afterRestore = await repository.listProfileSnapshots();
+
+      expect(restored.spotifyUrl, 'https://example.com/first');
+      expect((await repository.load()).spotifyUrl, restored.spotifyUrl);
+      expect(afterRestore.length, greaterThanOrEqualTo(beforeRestore.length));
+      expect((await repository.recentDiagnostics()).first.category, 'recovery');
+    },
+  );
+
+  test('Recovery Vault refuses quarantined or altered snapshots', () async {
+    final database = PhoenixDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+    final repository = DriftFitnessRepository(database: database);
+    final current = await repository.load();
+    final id = await database
+        .into(database.profileSnapshots)
+        .insert(
+          ProfileSnapshotsCompanion.insert(
+            profileId: 'default',
+            payload: jsonEncode(current.toJson()),
+            checksum: 'invalid',
+            storageVersion: StorageMigrationEngine.currentVersion,
+            reason: 'test-quarantine',
+            quarantined: const Value(true),
+            createdAt: DateTime(2026, 8, 7),
+          ),
+        );
+
+    final snapshots = await repository.listProfileSnapshots();
+    expect(snapshots.singleWhere((item) => item.id == id).verified, isFalse);
+    await expectLater(
+      repository.restoreProfileSnapshot(id),
+      throwsFormatException,
+    );
+    expect((await repository.load()).toJson(), current.toJson());
+  });
+
+  test(
     'checksum mismatch is quarantined and recovered from verified snapshot',
     () async {
       final database = PhoenixDatabase(NativeDatabase.memory());
@@ -3627,7 +3849,7 @@ void main() {
   });
 
   testWidgets(
-    'Reliability Center exposes status profiles reminders and audit',
+    'Reliability Center exposes status profiles recovery reminders and audit',
     (tester) async {
       final store = FitnessStore(MemoryRepository());
       await store.load();
@@ -3640,6 +3862,7 @@ void main() {
       expect(find.text('DRIFT / SQLITE ACTIVE'), findsOneWidget);
       expect(find.text('STATUS'), findsOneWidget);
       expect(find.text('PROFILES'), findsOneWidget);
+      expect(find.text('RECOVERY'), findsOneWidget);
       expect(find.text('REMINDERS'), findsOneWidget);
       expect(find.text('AUDIT'), findsOneWidget);
 
@@ -3652,6 +3875,35 @@ void main() {
       expect(find.textContaining('RELEASE AUDIT'), findsOneWidget);
     },
   );
+
+  testWidgets('Recovery Vault asks before restoring verified data', (
+    tester,
+  ) async {
+    final database = PhoenixDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+    final repository = DriftFitnessRepository(database: database);
+    final store = FitnessStore(repository);
+    await store.load();
+    await repository.save(
+      store.data.copyWith(spotifyUrl: 'https://example.com/change'),
+    );
+    await store.refreshReliabilityData();
+    await tester.pumpWidget(
+      MaterialApp(home: ReliabilityCenterPage(store: store)),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('RECOVERY'));
+    await tester.pumpAndSettle();
+    expect(find.text('LOCAL RECOVERY VAULT'), findsOneWidget);
+    expect(find.text('VERIFIED SNAPSHOT'), findsWidgets);
+
+    await tester.tap(find.byTooltip('Restore verified snapshot').first);
+    await tester.pumpAndSettle();
+    expect(find.text('RESTORE VERIFIED SNAPSHOT?'), findsOneWidget);
+    expect(find.text('CANCEL'), findsOneWidget);
+    expect(find.text('RESTORE'), findsOneWidget);
+  });
 
   test('exercise taxonomy identifies category and movement pattern', () {
     final squat = ExerciseIntelligenceEngine.profileFor('Goblet squat');
@@ -9159,4 +9411,179 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(WorkoutsPage), findsOneWidget);
   });
+
+  testWidgets(
+    'responsive shell remains usable across phone and tablet widths',
+    (tester) async {
+      final repository = MemoryRepository()
+        ..value = FitnessData.initial().copyWith(
+          profile: const UserProfile(
+            goal: 'Strength',
+            trainingPlace: 'Home',
+            equipment: 'Bodyweight',
+            daysPerWeek: 3,
+            heightCentimeters: 180,
+            weightKilograms: 80,
+          ),
+        );
+      final store = FitnessStore(repository);
+      await store.load();
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      for (final size in const [
+        Size(360, 800),
+        Size(600, 900),
+        Size(899, 700),
+      ]) {
+        await tester.binding.setSurfaceSize(size);
+        await tester.pumpWidget(MaterialApp(home: PhoenixShell(store: store)));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(NavigationBar), findsOneWidget);
+        expect(
+          tester.takeException(),
+          isNull,
+          reason: 'Unexpected layout exception at ${size.width}×${size.height}',
+        );
+      }
+    },
+  );
+
+  testWidgets('primary shell controls expose accessible semantic labels', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    final repository = MemoryRepository()
+      ..value = FitnessData.initial().copyWith(
+        profile: const UserProfile(
+          goal: 'Strength',
+          trainingPlace: 'Home',
+          equipment: 'Bodyweight',
+          daysPerWeek: 3,
+          heightCentimeters: 180,
+          weightKilograms: 80,
+        ),
+      );
+    final store = FitnessStore(repository);
+    await store.load();
+    await tester.pumpWidget(MaterialApp(home: PhoenixShell(store: store)));
+    await tester.pumpAndSettle();
+
+    expect(find.bySemanticsLabel('Search'), findsOneWidget);
+    expect(find.bySemanticsLabel('Control Center'), findsOneWidget);
+    expect(find.text('Home'), findsWidgets);
+    expect(find.text('Training'), findsWidgets);
+    semantics.dispose();
+  });
+
+  test('every historical storage version reaches the current schema', () {
+    final source = FitnessData.initial().toJson();
+    for (
+      var version = 1;
+      version <= StorageMigrationEngine.currentVersion;
+      version++
+    ) {
+      final result = StorageMigrationEngine.migrate(
+        source,
+        fromVersion: version,
+      );
+      expect(result.toVersion, StorageMigrationEngine.currentVersion);
+      expect(
+        result.appliedSteps,
+        hasLength(StorageMigrationEngine.currentVersion - version),
+      );
+      expect(FitnessData.fromJson(result.json), isA<FitnessData>());
+    }
+  });
+
+  test('malformed structured imports fail closed across fuzz corpus', () {
+    const invalidWorkoutCsv = [
+      '',
+      'date,workout,exercise,reps,weight',
+      'date,workout,exercise,reps,weight\nnot-a-date,A,B,8,20',
+      'date,workout,exercise,reps,weight\n2026-08-07,A,B,9999,20',
+      'date,workout\n2026-08-07,A',
+      'date,workout,exercise,reps,weight\n2026-08-07,A,B,-1,20',
+    ];
+    const invalidNutritionCsv = [
+      '',
+      'date,name,calories,protein,carbs,fat',
+      'date,name,calories,protein,carbs,fat\nbad,Lunch,500,20,30,10',
+      'date,name,calories,protein,carbs,fat\n2026-08-07,Lunch,50000,20,30,10',
+      'date,name,calories\n2026-08-07,Lunch,500',
+    ];
+    const invalidGpx = [
+      '',
+      '<gpx><trkpt lat="91" lon="0"></trkpt><trkpt lat="0" lon="0"></trkpt></gpx>',
+      '<gpx><trkpt lat="0" lon="181"></trkpt><trkpt lat="0" lon="0"></trkpt></gpx>',
+      '<gpx><trkpt lat="0" lon="0"></trkpt></gpx>',
+      '<gpx>not xml</gpx>',
+    ];
+
+    for (final source in invalidWorkoutCsv) {
+      expect(
+        () => StructuredImportExportEngine.parseWorkoutCsv(source),
+        throwsFormatException,
+      );
+    }
+    for (final source in invalidNutritionCsv) {
+      expect(
+        () => StructuredImportExportEngine.parseNutritionCsv(source),
+        throwsFormatException,
+      );
+    }
+    for (final source in invalidGpx) {
+      expect(
+        () => StructuredImportExportEngine.parseGpx(source),
+        throwsFormatException,
+      );
+    }
+  });
+
+  test('PWA manifest and service worker preserve offline import contracts', () {
+    final manifest =
+        jsonDecode(File('web/manifest.json').readAsStringSync())
+            as Map<String, dynamic>;
+    final handlers = manifest['file_handlers'] as List<dynamic>;
+    final accept =
+        (handlers.single as Map<String, dynamic>)['accept']
+            as Map<String, dynamic>;
+    final worker = File('web/phoenix-service-worker.js').readAsStringSync();
+
+    expect(manifest['display'], 'standalone');
+    expect(manifest['prefer_related_applications'], isFalse);
+    expect(manifest['share_target'], isA<Map<String, dynamic>>());
+    expect(
+      accept.keys,
+      containsAll(['application/json', 'text/csv', 'application/octet-stream']),
+    );
+    expect(accept['application/octet-stream'], contains('.phxsync'));
+    expect(worker, contains('CACHE_VERSION'));
+    expect(worker, contains('offline'));
+  });
+
+  test(
+    'German and Spanish shell translations are reviewed and deterministic',
+    () {
+      const german = PhoenixL10n(Locale('de'));
+      const spanish = PhoenixL10n(Locale('es'));
+      const english = PhoenixL10n(Locale('en'));
+
+      expect(german.text('Αρχική', 'Home'), 'Start');
+      expect(spanish.text('Διατροφή', 'Nutrition'), 'Nutrición');
+      expect(english.text('Αποθήκευση', 'Save'), 'Save');
+      expect(
+        german.text('Άγνωστο', 'Feature-specific copy'),
+        'Feature-specific copy',
+      );
+      expect(
+        PhoenixTranslations.translatedCount('de'),
+        PhoenixTranslations.catalog.length,
+      );
+      expect(
+        PhoenixTranslations.translatedCount('es'),
+        PhoenixTranslations.catalog.length,
+      );
+    },
+  );
 }

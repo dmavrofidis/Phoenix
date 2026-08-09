@@ -1,7 +1,6 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 
+import 'local_performance_profiler.dart';
 import 'operational_readiness_engine.dart';
 import 'secure_clipboard.dart';
 import 'state/fitness_store.dart';
@@ -20,17 +19,35 @@ class _OperationsStudioPageState extends State<OperationsStudioPage> {
   int _quietStart = 22 * 60;
   int _quietEnd = 7 * 60;
   int _maxReminders = 4;
-  late final PerformanceBudgetReport _performance;
+  late PerformanceBudgetReport _performance;
+  bool _profiling = false;
 
   @override
   void initState() {
     super.initState();
     _dashboard = _loadDashboard();
-    final timer = Stopwatch()..start();
-    jsonEncode(widget.store.data.toJson());
-    timer.stop();
-    _performance = OperationalReadinessEngine.performanceBudget({
-      'json-serialization-ms': timer.elapsedMicroseconds / 1000,
+    _performance = OperationalReadinessEngine.performanceBudget(
+      LocalPerformanceProfiler.measure(widget.store.data),
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) => _profilePerformance());
+  }
+
+  Future<void> _profilePerformance() async {
+    if (_profiling) return;
+    setState(() => _profiling = true);
+    final measurements = LocalPerformanceProfiler.measure(widget.store.data);
+    try {
+      final queryMilliseconds = await widget.store.benchmarkReliabilityQuery();
+      if (queryMilliseconds != null) {
+        measurements['database-query-ms'] = queryMilliseconds;
+      }
+    } on Object {
+      measurements['database-query-ms'] = -1;
+    }
+    if (!mounted) return;
+    setState(() {
+      _performance = OperationalReadinessEngine.performanceBudget(measurements);
+      _profiling = false;
     });
   }
 
@@ -284,7 +301,7 @@ class _OperationsStudioPageState extends State<OperationsStudioPage> {
         icon: Icons.translate_outlined,
         title: 'LOCALE READINESS',
         detail:
-            'German and Spanish use a verified core catalog plus complete English fallback. Phoenix reports that boundary instead of claiming an unverified full translation.',
+            'German and Spanish use a reviewed application-shell catalog plus a complete English fallback for feature-specific copy. Coverage is reported explicitly.',
       ),
       const SizedBox(height: 12),
       for (final code in const ['el', 'en', 'de', 'es'])
@@ -334,6 +351,20 @@ class _OperationsStudioPageState extends State<OperationsStudioPage> {
         title: 'LOCAL PERFORMANCE BUDGETS',
         detail:
             'Measurements run on this device. No telemetry leaves Phoenix, and unmeasured targets stay explicitly unmeasured.',
+      ),
+      const SizedBox(height: 12),
+      Align(
+        alignment: Alignment.centerLeft,
+        child: FilledButton.icon(
+          onPressed: _profiling ? null : _profilePerformance,
+          icon: _profiling
+              ? const SizedBox.square(
+                  dimension: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.play_arrow),
+          label: Text(_profiling ? 'PROFILING LOCALLY…' : 'RUN LOCAL PROFILE'),
+        ),
       ),
       const SizedBox(height: 12),
       for (final entry in _performance.budgets.entries)

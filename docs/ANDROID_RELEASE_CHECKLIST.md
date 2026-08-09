@@ -6,12 +6,12 @@ This checklist keeps Android production work reproducible without changing the d
 
 - Confirm `applicationId` is `com.phoenix.fitness`.
 - Read `versionName` and `versionCode` from `mobile/pubspec.yaml`; CI or the release operator may override them with Flutter's `--build-name` and `--build-number` flags.
-- Build a signed App Bundle only when `mobile/android/key.properties` is supplied outside source control. The repository otherwise uses debug signing for local verification.
+- Build signed release artifacts only when `mobile/android/key.properties` is supplied outside source control. Release tasks fail closed when signing is absent; they never fall back to the debug key.
 - Record the Git commit and Flutter version beside every artifact.
 
 ## Privacy and platform configuration
 
-- Android cloud backup and device transfer remain disabled for Phoenix health profiles. Portability is handled through explicit, encrypted `.phx` exports.
+- Android cloud backup and device transfer remain disabled for Phoenix health profiles. Portability is handled through explicit encrypted `.phx` backups or reviewed `.phxsync` packages.
 - Cleartext traffic is disabled. Optional media links must use HTTPS.
 - The only requested permissions are Internet (optional HTTPS media), Camera (explicit meal/photo capture), notification delivery, and boot-completed rescheduling.
 - Verify the `phoenix_workout_reminders` notification channel on Android 13+ and confirm denial leaves the app fully usable.
@@ -27,14 +27,10 @@ This checklist keeps Android production work reproducible without changing the d
 
 ## Pre-release commands
 
-Run from `mobile`:
+Run from the repository root:
 
 ```powershell
-flutter pub get
-dart format --output=none --set-exit-if-changed lib test
-flutter analyze
-flutter test
-flutter build appbundle --release --build-name <x.y.z> --build-number <integer>
+.\scripts\build_android_release.ps1
 ```
 
 Android SDK/signing may be unavailable on a contributor machine. In that case, do not install or alter system components: record the missing toolchain and run the platform-neutral analyze, tests and web build.
@@ -47,7 +43,8 @@ Android SDK/signing may be unavailable on a contributor machine. In that case, d
 - Exercise profile switching and verify isolation.
 - Trigger a reminder inside and outside quiet hours.
 - Confirm background privacy shield and vault cooldown.
-- Confirm German/Spanish core catalog strings use English fallback where a full translation is not yet present.
+- Confirm reviewed German/Spanish application-shell strings and the explicit English fallback for feature-specific copy.
+- Export a `.phxsync`, review a divergent-device conflict, keep local, then repeat and apply a safe merge.
 
 ## Store gate
 

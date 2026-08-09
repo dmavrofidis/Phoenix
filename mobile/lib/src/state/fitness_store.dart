@@ -40,6 +40,7 @@ class FitnessStore extends ChangeNotifier {
     FitnessData.initial(),
   );
   List<LocalProfileInfo> _localProfiles = const [];
+  List<LocalProfileSnapshotInfo> _profileSnapshots = const [];
   List<DiagnosticEntry> _diagnostics = const [];
 
   String _nextId(String prefix) =>
@@ -74,6 +75,8 @@ class FitnessStore extends ChangeNotifier {
   String get undoLabel => _undoLabel;
   DataValidationReport get startupAudit => _startupAudit;
   List<LocalProfileInfo> get localProfiles => List.unmodifiable(_localProfiles);
+  List<LocalProfileSnapshotInfo> get profileSnapshots =>
+      List.unmodifiable(_profileSnapshots);
   List<DiagnosticEntry> get diagnostics => List.unmodifiable(_diagnostics);
   List<WorkoutReminder> get workoutReminders =>
       List.unmodifiable(_data.workoutReminders);
@@ -1565,9 +1568,11 @@ class FitnessStore extends ChangeNotifier {
         level: _startupAudit.criticalCount > 0 ? 'warning' : 'info',
       );
       _localProfiles = await repository.listProfiles();
+      _profileSnapshots = await repository.listProfileSnapshots();
       _diagnostics = await repository.recentDiagnostics();
     } on Object {
       _localProfiles = const [];
+      _profileSnapshots = const [];
       _diagnostics = const [];
     }
   }
@@ -1575,6 +1580,19 @@ class FitnessStore extends ChangeNotifier {
   Future<void> refreshReliabilityData() async {
     await _refreshReliabilityData();
     notifyListeners();
+  }
+
+  Future<double?> benchmarkReliabilityQuery() async {
+    final repository = _reliabilityRepository;
+    if (repository == null) return null;
+    final timer = Stopwatch()..start();
+    await Future.wait([
+      repository.listProfiles(),
+      repository.listProfileSnapshots(),
+      repository.recentDiagnostics(limit: 25),
+    ]);
+    timer.stop();
+    return timer.elapsedMicroseconds / 1000;
   }
 
   Future<void> createLocalProfile(String name) async {
@@ -1607,6 +1625,57 @@ class FitnessStore extends ChangeNotifier {
       throw UnsupportedError('Multiple profiles require Drift storage.');
     }
     await repository.deleteProfile(id);
+    await _refreshReliabilityData();
+    notifyListeners();
+  }
+
+  Future<void> restoreLocalSnapshot(int id) async {
+    final repository = _reliabilityRepository;
+    if (repository == null) {
+      throw UnsupportedError('Recovery snapshots require Drift storage.');
+    }
+    _captureUndo('Recovery Vault restore');
+    try {
+      _data = await repository.restoreProfileSnapshot(id);
+    } on Object {
+      _undoData = null;
+      _undoLabel = '';
+      rethrow;
+    }
+    _activeWorkout = null;
+    _activeSince = null;
+    _activeSets.clear();
+    _previewWithoutProfile = false;
+    _vaultUnlocked = !_data.preferences.hasVaultPin;
+    _startupAudit = DataValidationEngine.audit(_data);
+    await _refreshReliabilityData();
+    notifyListeners();
+  }
+
+  Future<void> applyApprovedSyncData(FitnessData data) async {
+    if (data.templates.isEmpty) {
+      throw const FormatException(
+        'Synced data must include workout templates.',
+      );
+    }
+    final candidate = FitnessData.fromJson(
+      jsonDecode(jsonEncode(data.toJson())) as Map<String, dynamic>,
+    );
+    final audit = DataValidationEngine.audit(candidate);
+    if (audit.criticalCount > 0) {
+      throw const FormatException(
+        'Synced data failed the local integrity audit and was not applied.',
+      );
+    }
+    _captureUndo('Encrypted device sync');
+    _data = candidate;
+    _activeWorkout = null;
+    _activeSince = null;
+    _activeSets.clear();
+    _previewWithoutProfile = false;
+    _vaultUnlocked = !_data.preferences.hasVaultPin;
+    _startupAudit = audit;
+    await _repository.save(_data);
     await _refreshReliabilityData();
     notifyListeners();
   }

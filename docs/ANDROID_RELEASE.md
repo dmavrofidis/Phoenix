@@ -14,8 +14,10 @@
 ```
 
 Το script εκτελεί dependency resolution, generated Drift code, formatting,
-static analysis, ολόκληρη τη test suite και release AAB με obfuscation. Τα
+static analysis, ολόκληρη τη test suite και signed release AAB/APK με obfuscation. Τα
 split debug symbols πρέπει να αποθηκευτούν ιδιωτικά μαζί με κάθε release.
+
+Η release ρύθμιση αποτυγχάνει αν λείπει το `key.properties` ή το ιδιωτικό keystore· δεν χρησιμοποιεί ποτέ debug signing. Το script γράφει επίσης SHA-256 checksums για το AAB και το APK.
 
 ## GitHub Actions secrets
 

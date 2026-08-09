@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import 'data/drift_fitness_repository.dart';
 import 'local_notification_bridge.dart';
 import 'release_audit_engine.dart';
 import 'state/fitness_store.dart';
@@ -81,6 +82,37 @@ class _ReliabilityCenterPageState extends State<ReliabilityCenterPage> {
     if (accepted != true) return;
     await widget.store.switchLocalProfile(id);
     if (mounted) _message('Ενεργό προφίλ: $name');
+  }
+
+  Future<void> _restoreSnapshot(LocalProfileSnapshotInfo snapshot) async {
+    final accepted = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('RESTORE VERIFIED SNAPSHOT?'),
+        content: const Text(
+          'The current profile state will first be saved as a new snapshot. '
+          'The selected verified state will then replace it.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('CANCEL'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.pop(context, true),
+            icon: const Icon(Icons.restore),
+            label: const Text('RESTORE'),
+          ),
+        ],
+      ),
+    );
+    if (accepted != true) return;
+    try {
+      await widget.store.restoreLocalSnapshot(snapshot.id);
+      if (mounted) _message('Verified local snapshot restored.');
+    } on Object catch (error) {
+      if (mounted) _message('$error');
+    }
   }
 
   Future<void> _addReminder() async {
@@ -203,14 +235,16 @@ class _ReliabilityCenterPageState extends State<ReliabilityCenterPage> {
         pwaReady: kIsWeb,
       );
       return DefaultTabController(
-        length: 4,
+        length: 5,
         child: Scaffold(
           appBar: AppBar(
             title: const Text('RELIABILITY CENTER'),
             bottom: const TabBar(
+              isScrollable: true,
               tabs: [
                 Tab(text: 'STATUS', icon: Icon(Icons.dns_outlined)),
                 Tab(text: 'PROFILES', icon: Icon(Icons.people_outline)),
+                Tab(text: 'RECOVERY', icon: Icon(Icons.restore_page_outlined)),
                 Tab(
                   text: 'REMINDERS',
                   icon: Icon(Icons.notifications_outlined),
@@ -227,6 +261,7 @@ class _ReliabilityCenterPageState extends State<ReliabilityCenterPage> {
                 onAdd: _addProfile,
                 onSwitch: _switchProfile,
               ),
+              _RecoveryTab(store: widget.store, onRestore: _restoreSnapshot),
               _RemindersTab(
                 store: widget.store,
                 onAdd: _addReminder,
@@ -254,7 +289,7 @@ class _StatusTab extends StatelessWidget {
         icon: Icons.storage,
         title: 'DRIFT / SQLITE ACTIVE',
         subtitle:
-            'Schema v3 • ${store.localProfiles.length} local profile(s) • '
+            'Schema v4 • ${store.localProfiles.length} local profile(s) • '
             '${store.startupAudit.checkedRecords} audited records',
       ),
       if (kIsWeb) ...[
@@ -382,6 +417,85 @@ class _ProfilesTab extends StatelessWidget {
     ],
   );
 }
+
+class _RecoveryTab extends StatelessWidget {
+  const _RecoveryTab({required this.store, required this.onRestore});
+
+  final FitnessStore store;
+  final Future<void> Function(LocalProfileSnapshotInfo snapshot) onRestore;
+
+  @override
+  Widget build(BuildContext context) => RefreshIndicator(
+    onRefresh: store.refreshReliabilityData,
+    child: ListView(
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 32),
+      children: [
+        const _HeroStatus(
+          icon: Icons.shield_outlined,
+          title: 'LOCAL RECOVERY VAULT',
+          subtitle:
+              'Verified snapshots can be restored. Quarantined or altered data remains read-only.',
+        ),
+        const SizedBox(height: 12),
+        const Text(
+          'Phoenix keeps up to five verified states per local profile. Restoring never deletes the current state: it becomes a new rollback point first.',
+        ),
+        const SizedBox(height: 12),
+        if (store.profileSnapshots.isEmpty)
+          const Card(
+            child: ListTile(
+              leading: Icon(Icons.history_toggle_off),
+              title: Text('No recovery snapshots yet'),
+              subtitle: Text(
+                'Snapshots are created automatically before local data changes.',
+              ),
+            ),
+          )
+        else
+          for (final snapshot in store.profileSnapshots)
+            Card(
+              child: ListTile(
+                leading: Icon(
+                  snapshot.verified ? Icons.verified : Icons.gpp_bad_outlined,
+                  color: snapshot.verified
+                      ? const Color(0xFF66BB6A)
+                      : const Color(0xFFEF5350),
+                ),
+                title: Text(
+                  snapshot.verified ? 'VERIFIED SNAPSHOT' : 'QUARANTINED',
+                  style: const TextStyle(fontWeight: FontWeight.w900),
+                ),
+                subtitle: Text(
+                  '${_dateTime(snapshot.createdAt)} • ${snapshot.reason}\n'
+                  '${_formatBytes(snapshot.sizeBytes)} • SHA-256 ${_shortChecksum(snapshot.checksum)}',
+                ),
+                isThreeLine: true,
+                trailing: snapshot.verified
+                    ? IconButton(
+                        tooltip: 'Restore verified snapshot',
+                        onPressed: () => onRestore(snapshot),
+                        icon: const Icon(Icons.restore),
+                      )
+                    : const Tooltip(
+                        message: 'Unsafe snapshots cannot be restored',
+                        child: Icon(Icons.lock_outline),
+                      ),
+              ),
+            ),
+      ],
+    ),
+  );
+}
+
+String _formatBytes(int bytes) {
+  if (bytes < 1024) return '$bytes B';
+  final kibibytes = bytes / 1024;
+  if (kibibytes < 1024) return '${kibibytes.toStringAsFixed(1)} KiB';
+  return '${(kibibytes / 1024).toStringAsFixed(1)} MiB';
+}
+
+String _shortChecksum(String checksum) =>
+    checksum.length <= 12 ? checksum : '${checksum.substring(0, 12)}…';
 
 class _RemindersTab extends StatelessWidget {
   const _RemindersTab({
