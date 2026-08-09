@@ -7,6 +7,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:phoenix/src/active_workout_page.dart';
 import 'package:phoenix/src/advanced_calisthenics_engine.dart';
 import 'package:phoenix/src/advanced_calisthenics_page.dart';
+import 'package:phoenix/src/advanced_feature_pack_engine.dart';
+import 'package:phoenix/src/advanced_feature_pack_page.dart';
 import 'package:phoenix/src/advanced_analytics_engine.dart';
 import 'package:phoenix/src/advanced_analytics_page.dart';
 import 'package:phoenix/src/advanced_coach_engine.dart';
@@ -47,6 +49,8 @@ import 'package:phoenix/src/habit_builder_engine.dart';
 import 'package:phoenix/src/habit_builder_page.dart';
 import 'package:phoenix/src/hypertrophy_engine.dart';
 import 'package:phoenix/src/hypertrophy_lab_page.dart';
+import 'package:phoenix/src/interval_timer_engine.dart';
+import 'package:phoenix/src/interval_timer_page.dart';
 import 'package:phoenix/src/local_notification_schedule.dart';
 import 'package:phoenix/src/local_collaboration_engine.dart';
 import 'package:phoenix/src/media_portability_engine.dart';
@@ -8420,5 +8424,267 @@ void main() {
     await tester.tap(find.text('COPY REPORT'));
     await tester.pump();
     expect(find.text('COPY REPORT'), findsOneWidget);
+  });
+
+  test('wearable intelligence uses personal medians and reports quality', () {
+    final now = DateTime(2026, 8, 7, 12);
+    final data = FitnessData.initial().copyWith(
+      wearableSummaries: [
+        for (var day = 0; day < 14; day++)
+          WearableDailySummary(
+            id: 'wearable-$day',
+            day: now.subtract(Duration(days: day)),
+            source: day.isEven ? 'Health Connect' : 'CSV',
+            steps: day == 0 ? 3000 : 8000,
+            restingHeartRate: 58,
+            sleepMinutes: 450,
+          ),
+      ],
+    );
+
+    final report = AdvancedFeaturePackEngine.wearable(data, now: now);
+
+    expect(report.stepsBaseline, 8000);
+    expect(report.sleepMinutesBaseline, 450);
+    expect(report.qualityScore, 100);
+    expect(report.missingDays, 0);
+    expect(report.sourceCounts, {'Health Connect': 7, 'CSV': 7});
+    expect(report.readinessContribution, greaterThan(50));
+    expect(report.hrvAvailable, isFalse);
+  });
+
+  test(
+    'athlete progress derives XP levels and earned badges from local data',
+    () {
+      final now = DateTime(2026, 8, 7);
+      final data = FitnessData.initial().copyWith(
+        logs: [
+          for (var index = 0; index < 10; index++)
+            WorkoutLog(
+              templateName: 'Strength',
+              completedAt: now.subtract(Duration(days: index)),
+              minutes: 40,
+              sets: [
+                ExerciseSetLog(
+                  exerciseName: 'Squat',
+                  reps: 5,
+                  weightKilograms: 80,
+                  rir: 2,
+                  holdSeconds: 0,
+                  loggedAt: now.subtract(Duration(days: index)),
+                ),
+              ],
+            ),
+        ],
+        skillAssessments: [
+          SkillAssessmentResult(
+            id: 'skill-1',
+            skillId: 'pull-up',
+            value: 60,
+            unit: 'seconds',
+            level: 5,
+            recordedAt: now,
+          ),
+        ],
+      );
+
+      final progress = AdvancedFeaturePackEngine.athleteProgress(data);
+
+      expect(progress.experiencePoints, 1090);
+      expect(progress.level, 4);
+      expect(progress.badges, containsAll(['First Session', 'Consistency 10']));
+      expect(progress.badges, contains('Skill Builder'));
+      expect(progress.rarity['Skill Builder'], 'epic');
+    },
+  );
+
+  test(
+    'challenge builder enforces safety limits and measures local progress',
+    () {
+      expect(
+        () => AdvancedFeaturePackEngine.customChallenge(
+          title: 'Unsafe steps',
+          metric: 'steps',
+          target: 400000,
+          days: 14,
+        ),
+        throwsFormatException,
+      );
+      final now = DateTime(2026, 8, 7);
+      final challenge = AdvancedFeaturePackEngine.customChallenge(
+        title: 'Steady steps',
+        metric: 'steps',
+        target: 10000,
+        days: 7,
+      );
+      final data = FitnessData.initial().copyWith(
+        wearableSummaries: [
+          WearableDailySummary(
+            id: 'one',
+            day: now,
+            source: 'manual',
+            steps: 6000,
+          ),
+          WearableDailySummary(
+            id: 'two',
+            day: now.subtract(const Duration(days: 1)),
+            source: 'manual',
+            steps: 5000,
+          ),
+        ],
+      );
+
+      final progress = AdvancedFeaturePackEngine.challengeProgress(
+        challenge,
+        data,
+        now: now,
+      );
+
+      expect(progress.current, 11000);
+      expect(progress.ratio, 1);
+      expect(progress.completed, isTrue);
+      expect(progress.activeDays, hasLength(2));
+    },
+  );
+
+  test('advanced logging completeness exposes present and missing fields', () {
+    final full = AdvancedFeaturePackEngine.loggingCompleteness(
+      ExerciseSetLog(
+        exerciseName: 'Squat',
+        reps: 5,
+        weightKilograms: 80,
+        rir: 2,
+        holdSeconds: 0,
+        loggedAt: DateTime(2026, 8, 7),
+        setRpe: 8,
+        velocityNote: 'fast',
+        techniqueChecks: const ['depth', 'bracing'],
+      ),
+    );
+    final sparse = AdvancedFeaturePackEngine.loggingCompleteness(
+      ExerciseSetLog(
+        exerciseName: 'Plank',
+        reps: 0,
+        weightKilograms: 0,
+        rir: -1,
+        holdSeconds: 0,
+        loggedAt: DateTime(2026, 8, 7),
+      ),
+    );
+
+    expect(full.score, 100);
+    expect(full.missing, isEmpty);
+    expect(sparse.score, lessThan(50));
+    expect(sparse.missing, contains('technique'));
+  });
+
+  test('month calendar combines plans completions and deload markers', () {
+    final day = DateTime(2026, 8, 7);
+    final data = FitnessData.initial().copyWith(
+      dateAssignments: {'2026-08-07': 'iron-hybrid'},
+      logs: [
+        WorkoutLog(templateName: 'IRON HYBRID', completedAt: day, minutes: 45),
+      ],
+    );
+
+    final calendar = AdvancedFeaturePackEngine.monthCalendar(data, month: day);
+    final summary = calendar.singleWhere((item) => item.day.day == 7);
+
+    expect(calendar, hasLength(31));
+    expect(summary.planned, isNotEmpty);
+    expect(summary.completed, ['IRON HYBRID']);
+    expect(calendar.any((item) => item.isDeload), isTrue);
+  });
+
+  test('interval engine advances countdown phases rounds and completion', () {
+    final timer = IntervalTimerEngine.custom(
+      name: 'Fast Test',
+      rounds: 2,
+      segments: const [
+        TimerSegment(label: 'WORK', seconds: 10),
+        TimerSegment(label: 'REST', seconds: 5),
+      ],
+    );
+
+    expect(
+      IntervalTimerEngine.snapshot(timer, Duration.zero).phase,
+      'GET READY',
+    );
+    final first = IntervalTimerEngine.snapshot(
+      timer,
+      const Duration(seconds: 3),
+    );
+    expect(first.phase, 'WORK');
+    expect(first.round, 1);
+    expect(first.remainingSeconds, 10);
+    final second = IntervalTimerEngine.snapshot(
+      timer,
+      const Duration(seconds: 18),
+    );
+    expect(second.phase, 'WORK');
+    expect(second.round, 2);
+    expect(
+      IntervalTimerEngine.snapshot(
+        timer,
+        const Duration(seconds: 33),
+      ).isComplete,
+      isTrue,
+    );
+  });
+
+  test('interval builder rejects unsafe duration and invalid segments', () {
+    expect(
+      () => IntervalTimerEngine.custom(
+        name: 'Too long',
+        rounds: 100,
+        segments: const [TimerSegment(label: 'WORK', seconds: 3600)],
+      ),
+      throwsFormatException,
+    );
+    expect(
+      () => IntervalTimerEngine.custom(
+        name: 'Bad segment',
+        rounds: 1,
+        segments: const [TimerSegment(label: '', seconds: 10)],
+      ),
+      throwsFormatException,
+    );
+    expect(IntervalTimerEngine.formatSeconds(125), '2:05');
+  });
+
+  testWidgets('Athlete Intelligence exposes five evidence-based views', (
+    tester,
+  ) async {
+    final store = FitnessStore(MemoryRepository());
+    await store.load();
+    await tester.pumpWidget(
+      MaterialApp(home: AdvancedFeaturePackPage(store: store)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('ATHLETE INTELLIGENCE'), findsOneWidget);
+    expect(find.text('WEARABLE QUALITY & READINESS'), findsOneWidget);
+    await tester.tap(find.text('PROGRESS'));
+    await tester.pumpAndSettle();
+    expect(find.text('LOCAL XP & BADGES'), findsOneWidget);
+    await tester.tap(find.text('ASSESSMENT'));
+    await tester.pumpAndSettle();
+    expect(find.text('MODULAR ONBOARDING ASSESSMENT'), findsOneWidget);
+  });
+
+  testWidgets('Interval Timer Lab adds independent preset timers', (
+    tester,
+  ) async {
+    final store = FitnessStore(MemoryRepository());
+    await store.load();
+    await tester.pumpWidget(MaterialApp(home: IntervalTimerPage(store: store)));
+    await tester.pumpAndSettle();
+
+    expect(find.text('INTERVAL TIMER LAB'), findsOneWidget);
+    expect(find.text('MULTI-TIMER WORKSPACE'), findsOneWidget);
+    await tester.tap(find.text('TABATA 8'));
+    await tester.pump();
+    expect(find.text('TABATA 8'), findsNWidgets(2));
+    expect(find.text('GET READY'), findsOneWidget);
   });
 }

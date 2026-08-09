@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'advanced_analytics_page.dart';
 import 'advanced_calisthenics_page.dart';
+import 'advanced_feature_pack_page.dart';
 import 'advanced_coach_page.dart';
 import 'analytics_studio_page.dart';
 import 'body_composition_page.dart';
@@ -17,6 +18,7 @@ import 'exercise_intelligence_page.dart';
 import 'experience_settings_page.dart';
 import 'habit_builder_page.dart';
 import 'hypertrophy_lab_page.dart';
+import 'interval_timer_page.dart';
 import 'local_collaboration_page.dart';
 import 'media_portability_page.dart';
 import 'meal_intelligence_page.dart';
@@ -88,6 +90,8 @@ class _PhoenixToolboxPageState extends State<PhoenixToolboxPage> {
     'advanced-coach' => AdvancedCoachPage(store: widget.store),
     'analytics' => AdvancedAnalyticsPage(store: widget.store),
     'analytics-studio' => AnalyticsStudioPage(store: widget.store),
+    'athlete-intelligence' => AdvancedFeaturePackPage(store: widget.store),
+    'interval-timers' => IntervalTimerPage(store: widget.store),
     'reports' => ReportsStudioPage(store: widget.store),
     'capability-studio' => CapabilityStudioPage(store: widget.store),
     'control' => ControlCenterPage(store: widget.store),
@@ -442,6 +446,17 @@ const _tools = <_ToolEntry>[
     keywords: 'cardio aerobic zone 2 conditioning αντοχή',
   ),
   _ToolEntry(
+    route: 'interval-timers',
+    category: _ToolCategory.training,
+    icon: Icons.timer_outlined,
+    greekTitle: 'Interval Timer Lab',
+    englishTitle: 'Interval Timer Lab',
+    greekDescription: 'EMOM, AMRAP, Tabata και πολλαπλά ανεξάρτητα timers.',
+    englishDescription:
+        'EMOM, AMRAP, Tabata and independent concurrent timers.',
+    keywords: 'timer emom amrap tabata interval countdown',
+  ),
+  _ToolEntry(
     route: 'running',
     category: _ToolCategory.training,
     icon: Icons.directions_run,
@@ -610,6 +625,18 @@ const _tools = <_ToolEntry>[
     greekDescription: 'Custom metrics, συγκρίσεις, heatmaps και forecasts.',
     englishDescription: 'Custom metrics, comparisons, heatmaps and forecasts.',
     keywords: 'dashboard monotony strain forecast',
+  ),
+  _ToolEntry(
+    route: 'athlete-intelligence',
+    category: _ToolCategory.insights,
+    icon: Icons.insights_outlined,
+    greekTitle: 'Athlete Intelligence',
+    englishTitle: 'Athlete Intelligence',
+    greekDescription:
+        'Wearable quality, XP, challenges, assessment και calendar.',
+    englishDescription:
+        'Wearable quality, XP, challenges, assessment and calendar.',
+    keywords: 'wearable readiness xp badge challenge assessment calendar',
   ),
   _ToolEntry(
     route: 'reports',
