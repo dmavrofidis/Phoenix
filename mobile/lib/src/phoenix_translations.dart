@@ -9,6 +9,7 @@ class PhoenixTranslations {
     'Training': {'de': 'Training', 'es': 'Entrenamiento'},
     'Nutrition': {'de': 'Ernährung', 'es': 'Nutrición'},
     'Progress': {'de': 'Fortschritt', 'es': 'Progreso'},
+    'More': {'de': 'Mehr', 'es': 'Más'},
     'Search': {'de': 'Suchen', 'es': 'Buscar'},
     'Welcome back': {'de': 'Willkommen zurück', 'es': 'Bienvenido de nuevo'},
     'Small steps. Serious progress.': {

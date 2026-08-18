@@ -1,4 +1,5 @@
 import 'models/fitness_models.dart';
+import 'equipment_availability.dart';
 
 class ExerciseIntelligenceProfile {
   const ExerciseIntelligenceProfile({
@@ -257,6 +258,9 @@ class ExerciseIntelligenceEngine {
     ExerciseIntelligenceProfile profile,
     UserProfile? user,
   ) {
+    if (!EquipmentAvailability.supportsExercise(profile.name, user)) {
+      return false;
+    }
     if (profile.equipment.every(
       (item) => const {'bodyweight', 'floor', 'wall'}.contains(_normal(item)),
     )) {
@@ -293,6 +297,7 @@ class ExerciseIntelligenceEngine {
     final ranked = <ExerciseSubstitutionScore>[];
     for (final candidate in allProfiles(data)) {
       if (_normal(candidate.name) == _normal(target.name)) continue;
+      if (!isEquipmentCompatible(candidate, data.profile)) continue;
       if (candidate.cautionAreas.any((item) => avoid.contains(_normal(item)))) {
         continue;
       }
@@ -317,10 +322,8 @@ class ExerciseIntelligenceEngine {
           .intersection(target.secondaryMuscles.map(_normal).toSet())
           .length;
       score += (secondaryOverlap * 5).clamp(0, 10);
-      if (isEquipmentCompatible(candidate, data.profile)) {
-        score += 12;
-        reasons.add('available equipment');
-      }
+      score += 12;
+      reasons.add('available equipment');
       final difficultyGap = (candidate.difficulty - target.difficulty).abs();
       score += (10 - difficultyGap * 3).clamp(0, 10);
       if (_normal(target.regression) == _normal(candidate.name) ||
@@ -440,6 +443,9 @@ class ExerciseIntelligenceEngine {
     if (name.contains('sled')) return const ['sled'];
     if (name.contains('bike')) return const ['bike'];
     if (name.contains('εργομετρο')) return const ['rowing machine'];
+    if (name.contains('διαδρομ') || name.contains('treadmill')) {
+      return const ['treadmill'];
+    }
     if (name.contains('σακιδιο')) return const ['backpack'];
     return fallback;
   }
@@ -475,6 +481,7 @@ class ExerciseIntelligenceEngine {
     'bench': ['παγκο', 'bench'],
     'backpack': ['σακιδιο', 'backpack'],
     'gymnastic rings': ['κρικ', 'ring'],
+    'treadmill': ['διαδρομ', 'treadmill'],
   };
 
   static const _fallbackSeed = _ExerciseSeed(

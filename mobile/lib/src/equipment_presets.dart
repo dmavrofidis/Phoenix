@@ -42,6 +42,12 @@ class EquipmentPresetCatalog {
       ],
     ),
     EquipmentPreset(
+      id: 'treadmill-basic',
+      name: 'Απλός διάδρομος',
+      description: 'Περπάτημα ή ήπιο τρέξιμο σε οικιακό διάδρομο.',
+      keywords: ['διάδρομ', 'treadmill', 'περπάτημα', 'walk'],
+    ),
+    EquipmentPreset(
       id: 'gym-full',
       name: 'Full Gym',
       description: 'Μπάρες, μηχανήματα, τροχαλίες, αλτήρες και conditioning.',

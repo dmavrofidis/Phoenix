@@ -354,7 +354,10 @@ class _ProgramEditorPageState extends State<ProgramEditorPage> {
               itemBuilder: (context, index) {
                 final exercise = _exercises[index];
                 final prescription = _prescriptions[exercise]!;
-                final guide = ExerciseGuideCatalog.forExercise(exercise);
+                final guide = ExerciseGuideCatalog.forExercise(
+                  exercise,
+                  atHome: widget.store.profile?.trainingPlace == 'Σπίτι',
+                );
                 return Card(
                   key: ValueKey(exercise),
                   margin: const EdgeInsets.only(bottom: 10),

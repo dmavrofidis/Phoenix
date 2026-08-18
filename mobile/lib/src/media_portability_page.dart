@@ -596,6 +596,16 @@ class _MediaTabState extends State<_MediaTab> {
     }
   }
 
+  Future<void> _pastePlaylist() async {
+    final clipboard = await Clipboard.getData(Clipboard.kTextPlain);
+    final value = clipboard?.text?.trim() ?? '';
+    if (value.isEmpty) {
+      _message('Δεν βρέθηκε αντιγραμμένος σύνδεσμος.');
+      return;
+    }
+    setState(() => _playlist.text = value);
+  }
+
   Future<void> _saveVideo() async {
     final exercise = _videoExercise;
     if (exercise == null) return;
@@ -771,14 +781,24 @@ class _MediaTabState extends State<_MediaTab> {
           TextField(
             controller: _playlist,
             decoration: InputDecoration(
-              labelText: 'Spotify playlist / album / track URL',
+              labelText: 'Spotify ή Apple Music σύνδεσμος',
               border: const OutlineInputBorder(),
-              suffixIcon: IconButton(
-                tooltip: 'Άνοιγμα',
-                onPressed: _playlist.text.trim().isEmpty
-                    ? null
-                    : () => _open(_playlist.text.trim()),
-                icon: const Icon(Icons.open_in_new),
+              suffixIcon: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    tooltip: 'Επικόλληση',
+                    onPressed: _pastePlaylist,
+                    icon: const Icon(Icons.content_paste),
+                  ),
+                  IconButton(
+                    tooltip: 'Άνοιγμα',
+                    onPressed: _playlist.text.trim().isEmpty
+                        ? null
+                        : () => _open(_playlist.text.trim()),
+                    icon: const Icon(Icons.open_in_new),
+                  ),
+                ],
               ),
             ),
           ),

@@ -33,13 +33,14 @@ class RecoveryCheckInCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
+    final colors = Theme.of(context).colorScheme;
     final checkIn = store.todaysRecoveryCheckIn;
     final plan = store.todaysRecoveryPlan;
     final color = switch (plan?.mode) {
       RecoveryMode.ready => const Color(0xFF66BB6A),
       RecoveryMode.controlled => const Color(0xFFFFB74D),
       RecoveryMode.recovery => const Color(0xFFEF5350),
-      null => const Color(0xFFFF6E40),
+      null => colors.primary,
     };
 
     return InkWell(
@@ -48,8 +49,8 @@ class RecoveryCheckInCard extends StatelessWidget {
       child: Ink(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: .09),
-          border: Border.all(color: color.withValues(alpha: .38)),
+          color: colors.surfaceContainerLow,
+          border: Border.all(color: color.withValues(alpha: .2)),
           borderRadius: BorderRadius.circular(18),
         ),
         child: Row(
@@ -120,7 +121,7 @@ class RecoveryCheckInCard extends StatelessWidget {
                                 'fatigue ${checkIn.soreness}/5',
                           ),
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: .55),
+                      color: colors.onSurfaceVariant,
                       fontSize: 12,
                     ),
                   ),

@@ -50,11 +50,20 @@ class MobilityRoutine {
 class SessionPreparationEngine {
   const SessionPreparationEngine._();
 
-  static SessionPreparationPlan forWorkout(WorkoutTemplate workout) {
+  static SessionPreparationPlan forWorkout(
+    WorkoutTemplate workout, {
+    UserProfile? profile,
+  }) {
     final names = workout.exercises.join(' ').toLowerCase();
+    final isHome = profile?.trainingPlace == 'Σπίτι';
+    final equipment = profile?.equipment.toLowerCase() ?? '';
+    final hasBands = equipment.contains('λάστιχ') || equipment.contains('band');
+    final hasTreadmill =
+        equipment.contains('διάδρομ') || equipment.contains('treadmill');
     final lowerBody = _containsAny(names, [
       'squat',
       'καθίσ',
+      'κάθισμα',
       'bulgarian',
       'προβολ',
       'άρσεις',
@@ -73,32 +82,48 @@ class SessionPreparationEngine {
 
     return SessionPreparationPlan(
       warmup: [
-        const ProtocolStep(
+        ProtocolStep(
           title: 'Ανέβασε θερμοκρασία',
-          durationSeconds: 120,
-          cue: 'Γρήγορο περπάτημα, ποδήλατο ή ήρεμο rowing.',
+          durationSeconds: isHome ? 90 : 120,
+          cue: isHome
+              ? hasTreadmill
+                    ? 'Ήρεμο περπάτημα στον διάδρομο ή επιτόπου, σε άνετο ρυθμό.'
+                    : 'Ήρεμο περπάτημα επιτόπου και χαλαρές κινήσεις χεριών.'
+              : 'Γρήγορο περπάτημα, ποδήλατο ή ήρεμο rowing.',
         ),
         if (lowerBody)
-          const ProtocolStep(
+          ProtocolStep(
             title: 'Ισχία και αστράγαλοι',
-            durationSeconds: 90,
-            cue: 'Ελεγχόμενα ανοίγματα ισχίων και knee-to-wall.',
+            durationSeconds: isHome ? 60 : 90,
+            cue: isHome
+                ? 'Κράτησε μια σταθερή καρέκλα και κάνε ήρεμους κύκλους ισχίων και αστραγάλων.'
+                : 'Ελεγχόμενα ανοίγματα ισχίων και knee-to-wall.',
           ),
         if (upperPush || upperPull)
-          const ProtocolStep(
+          ProtocolStep(
             title: 'Ώμοι και ωμοπλάτες',
-            durationSeconds: 90,
-            cue: 'Κύκλοι ώμων, band pull-aparts και scapular κινήσεις.',
+            durationSeconds: isHome ? 60 : 90,
+            cue: isHome
+                ? hasBands
+                      ? 'Ήρεμοι κύκλοι ώμων και πολύ ελαφριές ανοίξεις με το λάστιχο.'
+                      : 'Ήρεμοι κύκλοι ώμων και αργά wall slides χωρίς εξοπλισμό.'
+                : 'Κύκλοι ώμων, band pull-aparts και scapular κινήσεις.',
           ),
-        const ProtocolStep(
+        ProtocolStep(
           title: 'Ενεργοποίηση κορμού',
           durationSeconds: 60,
-          cue: 'Dead bug ή ήπιο plank χωρίς κόπωση.',
+          cue: isHome
+              ? 'Bird dog ή dead bug πάνω σε χαλί, χωρίς να κουραστείς.'
+              : 'Dead bug ή ήπιο plank χωρίς κόπωση.',
         ),
-        const ProtocolStep(
-          title: 'Ramp-up πρώτης άσκησης',
-          durationSeconds: 180,
-          cue: '2–4 προοδευτικά σετ πριν από το πρώτο working set.',
+        ProtocolStep(
+          title: isHome
+              ? 'Δοκίμασε την πρώτη κίνηση'
+              : 'Ramp-up πρώτης άσκησης',
+          durationSeconds: isHome ? 90 : 180,
+          cue: isHome
+              ? 'Κάνε 5 αργές, εύκολες επαναλήψεις και έλεγξε ότι ο χώρος γύρω σου είναι ελεύθερος.'
+              : '2–4 προοδευτικά σετ πριν από το πρώτο working set.',
         ),
       ],
       cooldown: [

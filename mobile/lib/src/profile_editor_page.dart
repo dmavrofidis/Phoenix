@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'equipment_quick_choices.dart';
 import 'models/fitness_models.dart';
 import 'phoenix_l10n.dart';
 import 'state/fitness_store.dart';
@@ -185,7 +186,10 @@ class _ProfileEditorPageState extends State<ProfileEditorPage> {
                   setState(() => _place = value.first),
             ),
             const SizedBox(height: 14),
+            EquipmentQuickChoices(controller: _equipment),
+            const SizedBox(height: 10),
             TextFormField(
+              key: const ValueKey('profile-equipment-input'),
               controller: _equipment,
               decoration: InputDecoration(
                 labelText: l.text(
@@ -315,8 +319,8 @@ class _ProfileEditorPageState extends State<ProfileEditorPage> {
               ),
               subtitle: Text(
                 l.text(
-                  'Τα δικά σου custom προγράμματα παραμένουν.',
-                  'Your custom programs will be preserved.',
+                  'Οι αλλαγές σε χώρο, εξοπλισμό ή στόχο εφαρμόζονται αυτόματα. Τα δικά σου προγράμματα παραμένουν.',
+                  'Changes to place, equipment, or goal apply automatically. Your own programs stay untouched.',
                 ),
               ),
             ),

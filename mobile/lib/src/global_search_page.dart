@@ -173,7 +173,10 @@ class _GlobalSearchPageState extends State<GlobalSearchPage> {
       };
     }
     if (result.type == SearchResultType.exercise) {
-      final guide = ExerciseGuideCatalog.forExercise(result.title);
+      final guide = ExerciseGuideCatalog.forExercise(
+        result.title,
+        atHome: widget.store.profile?.trainingPlace == 'Σπίτι',
+      );
       if (guide != null) {
         await showExerciseGuide(context, result.title, guide);
       } else if (mounted) {

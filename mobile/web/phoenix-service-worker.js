@@ -1,4 +1,4 @@
-const CACHE_VERSION = "phoenix-offline-v290";
+const CACHE_VERSION = "phoenix-offline-v299";
 const APP_SHELL = [
   "./",
   "./index.html",

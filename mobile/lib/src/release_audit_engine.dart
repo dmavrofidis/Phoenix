@@ -127,7 +127,8 @@ class ReleaseAuditEngine {
       ReleaseAuditCheck(
         id: 'urls',
         title: 'External media transport',
-        detail: 'Stored media links are HTTPS-only and Spotify is PKCE-ready.',
+        detail:
+            'Stored media links are HTTPS-only; Spotify is PKCE-ready and Apple Music links stay local.',
         status: safeUrls ? ReleaseAuditStatus.pass : ReleaseAuditStatus.fail,
       ),
       ReleaseAuditCheck(

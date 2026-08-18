@@ -1,3 +1,4 @@
+import 'equipment_availability.dart';
 import 'models/fitness_models.dart';
 
 class ExerciseAlternative {
@@ -27,7 +28,10 @@ class ExerciseSubstitutionEngine {
     final pain = painAreas.map((item) => item.toLowerCase()).toSet();
     return candidates
         .where((candidate) => !excluded.contains(candidate.name))
-        .where((candidate) => _matchesEquipment(candidate.name, profile))
+        .where(
+          (candidate) =>
+              EquipmentAvailability.supportsExercise(candidate.name, profile),
+        )
         .where((candidate) => !_conflictsWithPain(candidate.name, pain))
         .map(
           (candidate) => pain.isEmpty
@@ -307,43 +311,6 @@ class ExerciseSubstitutionEngine {
       ];
     }
     return const [];
-  }
-
-  static bool _matchesEquipment(String exercise, UserProfile? profile) {
-    if (profile == null || profile.trainingPlace != 'Σπίτι') return true;
-    final equipment = profile.equipment.toLowerCase();
-    final hasDumbbells = _containsAny(equipment, [
-      'αλτήρ',
-      'βάρη',
-      'kettlebell',
-      'πλήρες',
-    ]);
-    final hasBand = _containsAny(equipment, ['λάστιχ', 'πλήρες']);
-    final hasBar = _containsAny(equipment, [
-      'μονόζυγ',
-      'pull-up',
-      'μπάρα',
-      'πλήρες',
-    ]);
-    final name = exercise.toLowerCase();
-    if (_containsAny(name, [
-      'front squat',
-      'trap-bar',
-      'landmine',
-      'τροχαλίας',
-      'εργόμετρο',
-      'air bike',
-    ])) {
-      return false;
-    }
-    if (_containsAny(name, ['αλτήρ', 'farmer', 'goblet']) && !hasDumbbells) {
-      return false;
-    }
-    if (_containsAny(name, ['λάστιχο', 'pallof', 'face pull']) && !hasBand) {
-      return false;
-    }
-    if (_containsAny(name, ['έλξεις', 'hanging']) && !hasBar) return false;
-    return true;
   }
 
   static bool _containsAny(String value, List<String> terms) =>

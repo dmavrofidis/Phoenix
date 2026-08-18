@@ -7,6 +7,7 @@ class ExerciseGuide {
     required this.bandCount,
     required this.execution,
     required this.avoid,
+    this.equipmentLabel = '',
   });
 
   final String assetPath;
@@ -14,13 +15,16 @@ class ExerciseGuide {
   final int bandCount;
   final String execution;
   final String avoid;
+  final String equipmentLabel;
 }
 
 class ExerciseGuideCatalog {
   const ExerciseGuideCatalog._();
 
-  static ExerciseGuide? forExercise(String exercise) {
+  static ExerciseGuide? forExercise(String exercise, {bool atHome = false}) {
     final name = exercise.toLowerCase();
+
+    if (atHome) return _forHomeExercise(name);
 
     if (name.contains('landmine')) {
       return _advanced(
@@ -250,6 +254,182 @@ class ExerciseGuideCatalog {
     return null;
   }
 
+  static ExerciseGuide? _forHomeExercise(String name) {
+    if (name.contains('διάδρομ') || name.contains('treadmill')) {
+      return _homeCardio(
+        0,
+        'Περπάτα όρθιος και άνετα, με μικρό σταθερό βήμα και χωρίς να κρατιέσαι σφιχτά.',
+        'Μην ανεβάζεις ταχύτητα ή κλίση αν χάνεις τον φυσικό σου ρυθμό.',
+      );
+    }
+    if (name.contains('step-up') || name.contains('σκαλοπάτι')) {
+      return _homeCardio(
+        1,
+        'Βάλε όλο το πέλμα στη σταθερή χαμηλή επιφάνεια και ανέβα αργά.',
+        'Μη χρησιμοποιείς καρέκλα ή ασταθές έπιπλο ως σκαλοπάτι.',
+      );
+    }
+    if (name.contains('bear crawl')) {
+      return _homeCardio(
+        2,
+        'Κράτησε τον κορμό σταθερό και κίνησε αντίθετο χέρι και πόδι αργά.',
+        'Μη σηκώνεις ψηλά τους γοφούς και σταμάτα αν ενοχλούνται οι καρποί.',
+      );
+    }
+    if (name.contains('mountain climber')) {
+      return _homeCardio(
+        3,
+        'Από σταθερή σανίδα, φέρε ένα γόνατο μπροστά χωρίς αναπήδηση.',
+        'Μην κυνηγάς ταχύτητα όταν μετακινείται η μέση ή οι ώμοι.',
+      );
+    }
+
+    if (name.contains('κωπηλατική με λάστιχο') || name.contains('band row')) {
+      return _homeBands(
+        0,
+        'Με ασφαλή άγκυρα, τράβα τους αγκώνες πίσω και επέστρεψε αργά.',
+        'Μη χρησιμοποιείς χαλαρή πόρτα ή φθαρμένο λάστιχο.',
+      );
+    }
+    if (name.contains('πιέσεις ώμων με λάστιχο') ||
+        name.contains('band shoulder')) {
+      return _homeBands(
+        1,
+        'Πάτησε το λάστιχο σταθερά και πίεσε ψηλά χωρίς να καμπυλώνει η μέση.',
+        'Μην αφήνεις το λάστιχο να γλιστρά κάτω από τα πέλματα.',
+      );
+    }
+    if (name.contains('face pull')) {
+      return _homeBands(
+        2,
+        'Τράβα το λάστιχο προς το πρόσωπο με τους αγκώνες ανοιχτούς και ήρεμη επιστροφή.',
+        'Μην ανασηκώνεις τους ώμους και μη χρησιμοποιείς ασταθή άγκυρα.',
+      );
+    }
+    if (name.contains('έλξεις') || name.contains('pull-up')) {
+      return _homePullUp(
+        'Ανέβα με βοήθεια από το χαμηλό σκαλοπάτι και κατέβα αργά, κρατώντας τους ώμους ενεργούς.',
+        'Μην πηδάς προς τη μπάρα, μην αιωρείσαι και μη χρησιμοποιείς ασταθές μονόζυγο ή καρέκλα.',
+      );
+    }
+
+    if (name.contains('goblet') ||
+        ((name.contains('squat') || name.contains('κάθισ')) &&
+            (name.contains('αλτήρ') || name.contains('βαράκ')))) {
+      return _homeDumbbells(
+        0,
+        'Κράτησε το βάρος κοντά στο στήθος, πάτησε όλο το πέλμα και κάθισε ελεγχόμενα.',
+        'Μην επιλέγεις βάθος που σε κάνει να χάνεις ισορροπία ή ουδέτερη μέση.',
+      );
+    }
+    if (name.contains('ρουμανικ') &&
+        (name.contains('αλτήρ') || name.contains('βαράκ'))) {
+      return _homeDumbbells(
+        1,
+        'Στείλε τους γοφούς πίσω και κράτησε τους αλτήρες κοντά στα πόδια.',
+        'Μην κυνηγάς βάθος όταν αρχίζει να στρογγυλεύει η πλάτη.',
+      );
+    }
+    if (name.contains('κωπηλατική') &&
+        (name.contains('αλτήρ') || name.contains('βαράκ'))) {
+      return _homeDumbbells(
+        2,
+        'Στηρίξου σε σταθερή καρέκλα και τράβα τον αγκώνα προς το ισχίο.',
+        'Μην στρίβεις τον κορμό και μη χρησιμοποιείς ασταθές έπιπλο.',
+      );
+    }
+    if (name.contains('πιέσεις ώμων') &&
+        (name.contains('αλτήρ') || name.contains('βαράκ'))) {
+      return _homeDumbbells(
+        3,
+        'Σφίξε ήπια τον κορμό και πίεσε τους αλτήρες ψηλά με έλεγχο.',
+        'Μην υπερεκτείνεις τη μέση και μη βιάζεις την επιστροφή.',
+      );
+    }
+
+    if (name.contains('κάθισμα και σήκωμα') ||
+        name.contains('καθίσματα σε καρέκλα') ||
+        name.contains('καθίσματα σε πάγκο') ||
+        name.contains('chair sit')) {
+      return _homeNoEquipment(
+        0,
+        'Κάθισε απαλά σε σταθερή καρέκλα και σήκω πιέζοντας όλο το πέλμα.',
+        'Μην πέφτεις στο κάθισμα και μη χρησιμοποιείς καρέκλα με ροδάκια.',
+      );
+    }
+    if (name.contains('squat') || name.contains('κάθισ')) {
+      return _homeNoEquipment(
+        0,
+        'Χρησιμοποίησε σταθερή καρέκλα ως οδηγό και σήκω πιέζοντας όλο το πέλμα.',
+        'Μην κατεβαίνεις βαθύτερα από όσο κρατάς έλεγχο και ισορροπία.',
+      );
+    }
+    if (name.contains('κάμψεις στον τοίχο') || name.contains('wall push')) {
+      return _homeNoEquipment(
+        1,
+        'Κράτησε το σώμα σε μία γραμμή και πλησίασε αργά το στήθος στον τοίχο.',
+        'Μην αφήνεις τη μέση να κρεμάσει και μη βιάζεις την επιστροφή.',
+      );
+    }
+    if (name.contains('ανάστροφες προβολές') ||
+        name.contains('bulgarian') ||
+        name.contains('reverse lunge')) {
+      return _homeNoEquipment(
+        2,
+        'Κράτησε ελαφρά μια σταθερή καρέκλα και κάνε μικρό ελεγχόμενο βήμα πίσω.',
+        'Μην πιέζεις σε βάθος που σε κάνει να χάνεις ισορροπία.',
+      );
+    }
+    if (name.contains('γέφυρα') || name.contains('hip thrust')) {
+      return _homeNoEquipment(
+        3,
+        'Πίεσε τα πέλματα στο πάτωμα και σήκωσε τους γοφούς μέχρι ουδέτερη θέση.',
+        'Μην υπερεκτείνεις τη μέση και μη σπρώχνεις από τον αυχένα.',
+      );
+    }
+
+    if (name.contains('hip hinge') ||
+        name.contains('good morning') ||
+        name.contains('ρουμανικ')) {
+      return _homeNoEquipmentB(
+        0,
+        'Με μαλακά γόνατα, στείλε τους γοφούς πίσω και κράτησε τη μέση ουδέτερη.',
+        'Μην μετατρέπεις την κίνηση σε βαθύ κάθισμα και μη στρογγυλεύεις την πλάτη.',
+      );
+    }
+    if (name.contains('κάμψεις σε σταθερό τραπέζι') ||
+        name.contains('κάμψεις σε υπερυψωμένη') ||
+        name.contains('incline push') ||
+        name.contains('pike') ||
+        name.contains('κάμψεις')) {
+      return _homeNoEquipmentB(
+        1,
+        'Χρησιμοποίησε σταθερό τραπέζι, κράτησε το σώμα ίσιο και κατέβα αργά.',
+        'Μη χρησιμοποιείς τραπεζάκι που μπορεί να μετακινηθεί ή να ανατραπεί.',
+      );
+    }
+    if (name.contains('bird dog')) {
+      return _homeNoEquipmentB(
+        2,
+        'Τέντωσε αντίθετο χέρι και πόδι χωρίς να στρίβει η λεκάνη.',
+        'Μην σηκώνεις το πόδι ψηλότερα από όσο κρατάς ουδέτερη μέση.',
+      );
+    }
+    if (name.contains('dead bug') ||
+        name.contains('hollow') ||
+        name.contains('core')) {
+      return _homeNoEquipmentB(
+        3,
+        'Κράτησε τη μέση ελεγχόμενη και άνοιξε αργά αντίθετο χέρι και πόδι.',
+        'Μίκρυνε αμέσως το εύρος αν η μέση αρχίζει να σηκώνεται.',
+      );
+    }
+
+    // At home, hiding an unmatched guide is safer than showing a gym photo
+    // that may also imply equipment the user does not own.
+    return null;
+  }
+
   static ExerciseGuide _push(int index, String execution, String avoid) =>
       _guide('push-guide.png', index, 3, execution, avoid);
 
@@ -277,19 +457,131 @@ class ExerciseGuideCatalog {
   static ExerciseGuide _advanced(int index, String execution, String avoid) =>
       _guide('advanced-guide.png', index, 4, execution, avoid);
 
+  static ExerciseGuide _homeNoEquipment(
+    int index,
+    String execution,
+    String avoid,
+  ) => _guide(
+    'home-no-equipment-guide-v1.jpg',
+    index,
+    4,
+    execution,
+    avoid,
+    equipmentLabel: 'ΣΠΙΤΙ • ΧΩΡΙΣ ΕΞΟΠΛΙΣΜΟ',
+  );
+
+  static ExerciseGuide _homeNoEquipmentB(
+    int index,
+    String execution,
+    String avoid,
+  ) => _guide(
+    'home-no-equipment-guide-b-v1.jpg',
+    index,
+    4,
+    execution,
+    avoid,
+    equipmentLabel: 'ΣΠΙΤΙ • ΧΩΡΙΣ ΕΞΟΠΛΙΣΜΟ',
+  );
+
+  static ExerciseGuide _homeDumbbells(
+    int index,
+    String execution,
+    String avoid,
+  ) => _guide(
+    'home-dumbbells-guide-v1.jpg',
+    index,
+    4,
+    execution,
+    avoid,
+    equipmentLabel: 'ΣΠΙΤΙ • ΑΛΤΗΡΕΣ',
+  );
+
+  static ExerciseGuide _homeCardio(int index, String execution, String avoid) =>
+      _guide(
+        'home-cardio-guide-v1.jpg',
+        index,
+        4,
+        execution,
+        avoid,
+        equipmentLabel: index == 0
+            ? 'ΣΠΙΤΙ • ΑΠΛΟΣ ΔΙΑΔΡΟΜΟΣ'
+            : 'ΣΠΙΤΙ • ΧΩΡΙΣ ΕΞΟΠΛΙΣΜΟ',
+      );
+
+  static ExerciseGuide _homeBands(int index, String execution, String avoid) =>
+      _guide(
+        'home-bands-guide-v1.jpg',
+        index,
+        4,
+        execution,
+        avoid,
+        equipmentLabel: 'ΣΠΙΤΙ • ΛΑΣΤΙΧΟ',
+      );
+
+  static ExerciseGuide _homePullUp(String execution, String avoid) => _guide(
+    'home-pullup-guide-v1.png',
+    0,
+    1,
+    execution,
+    avoid,
+    equipmentLabel: 'ΣΠΙΤΙ • ΜΟΝΟΖΥΓΟ • ΧΩΡΙΣ ΛΑΣΤΙΧΟ',
+  );
+
   static ExerciseGuide _guide(
     String filename,
     int bandIndex,
     int bandCount,
     String execution,
-    String avoid,
-  ) => ExerciseGuide(
+    String avoid, {
+    String equipmentLabel = '',
+  }) => ExerciseGuide(
     assetPath: 'assets/exercise_guides/$filename',
     bandIndex: bandIndex,
     bandCount: bandCount,
     execution: execution,
     avoid: avoid,
+    equipmentLabel: equipmentLabel,
   );
+}
+
+class ExerciseGuidePreview extends StatelessWidget {
+  const ExerciseGuidePreview({
+    super.key,
+    required this.guide,
+    required this.semanticLabel,
+    this.width = double.infinity,
+    this.height = 160,
+    this.borderRadius = const BorderRadius.all(Radius.circular(14)),
+  });
+
+  final ExerciseGuide guide;
+  final String semanticLabel;
+  final double width;
+  final double height;
+  final BorderRadius borderRadius;
+
+  @override
+  Widget build(BuildContext context) {
+    final alignment = guide.bandCount == 1
+        ? 0.0
+        : -1 + (2 * guide.bandIndex / (guide.bandCount - 1));
+    return Semantics(
+      image: true,
+      label: semanticLabel,
+      child: ClipRRect(
+        borderRadius: borderRadius,
+        child: Image.asset(
+          guide.assetPath,
+          width: width,
+          height: height,
+          fit: BoxFit.cover,
+          alignment: Alignment(0, alignment),
+          filterQuality: FilterQuality.medium,
+          excludeFromSemantics: true,
+        ),
+      ),
+    );
+  }
 }
 
 Future<void> showExerciseGuide(
@@ -323,6 +615,32 @@ Future<void> showExerciseGuide(
             ),
           ),
           const SizedBox(height: 16),
+          if (guide.equipmentLabel.isNotEmpty) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: Theme.of(
+                  context,
+                ).colorScheme.primary.withValues(alpha: .1),
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.primary.withValues(alpha: .24),
+                ),
+              ),
+              child: Text(
+                guide.equipmentLabel,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.primary,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 11,
+                  letterSpacing: .45,
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+          ],
           ClipRRect(
             borderRadius: BorderRadius.circular(16),
             child: _GuideBand(guide: guide),
@@ -367,19 +685,57 @@ class _GuideBand extends StatelessWidget {
     final alignment = guide.bandCount == 1
         ? 0.0
         : -1 + (2 * guide.bandIndex / (guide.bandCount - 1));
-    return ClipRect(
-      child: Align(
-        alignment: Alignment(0, alignment),
-        heightFactor: 1 / guide.bandCount,
-        child: Image.asset(
-          guide.assetPath,
-          width: double.infinity,
-          fit: BoxFit.fitWidth,
-          filterQuality: FilterQuality.medium,
+    return Stack(
+      children: [
+        ClipRect(
+          child: Align(
+            alignment: Alignment(0, alignment),
+            heightFactor: 1 / guide.bandCount,
+            child: Image.asset(
+              guide.assetPath,
+              width: double.infinity,
+              fit: BoxFit.fitWidth,
+              filterQuality: FilterQuality.medium,
+            ),
+          ),
         ),
-      ),
+        const Positioned(
+          left: 10,
+          top: 10,
+          child: _GuidePositionLabel(label: 'ΑΡΧΗ'),
+        ),
+        const Positioned(
+          right: 10,
+          top: 10,
+          child: _GuidePositionLabel(label: 'ΤΕΛΟΣ'),
+        ),
+      ],
     );
   }
+}
+
+class _GuidePositionLabel extends StatelessWidget {
+  const _GuidePositionLabel({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+    decoration: BoxDecoration(
+      color: Colors.black.withValues(alpha: .64),
+      borderRadius: BorderRadius.circular(999),
+    ),
+    child: Text(
+      label,
+      style: const TextStyle(
+        color: Colors.white,
+        fontSize: 10,
+        fontWeight: FontWeight.w900,
+        letterSpacing: .65,
+      ),
+    ),
+  );
 }
 
 class _GuideCue extends StatelessWidget {

@@ -7,6 +7,7 @@ import 'exercise_substitution_engine.dart';
 import 'exercise_guide.dart';
 import 'deterministic_coach_engine.dart';
 import 'models/fitness_models.dart';
+import 'phoenix_l10n.dart';
 import 'recovery_widgets.dart';
 import 'session_preparation_engine.dart';
 import 'state/fitness_store.dart';
@@ -146,10 +147,18 @@ class _ActiveWorkoutPageState extends State<ActiveWorkoutPage> {
         if (workout == null) {
           return const Scaffold(body: SizedBox.shrink());
         }
-        final preparation = SessionPreparationEngine.forWorkout(workout);
+        final isHome = widget.store.profile?.trainingPlace == 'Σπίτι';
+        final preparation = SessionPreparationEngine.forWorkout(
+          workout,
+          profile: widget.store.profile,
+        );
         return Scaffold(
           appBar: AppBar(
-            title: const Text('IRON SESSION'),
+            title: Text(
+              isHome
+                  ? context.l10n.text('ΠΡΟΠΟΝΗΣΗ ΣΤΟ ΣΠΙΤΙ', 'HOME WORKOUT')
+                  : 'IRON SESSION',
+            ),
             actions: [
               IconButton(
                 tooltip: 'Ακύρωση προπόνησης',
@@ -172,9 +181,15 @@ class _ActiveWorkoutPageState extends State<ActiveWorkoutPage> {
               PeriodizationCard(store: widget.store),
               const SizedBox(height: 12),
               _ProtocolChecklistCard(
-                title: 'WARM-UP PROTOCOL',
-                subtitle:
-                    '${preparation.warmupMinutes}′ πριν από τα working sets',
+                title: isHome
+                    ? context.l10n.text('ΑΠΛΗ ΠΡΟΘΕΡΜΑΝΣΗ', 'SIMPLE WARM-UP')
+                    : 'WARM-UP PROTOCOL',
+                subtitle: isHome
+                    ? context.l10n.text(
+                        '${preparation.warmupMinutes}′ πριν ξεκινήσεις',
+                        '${preparation.warmupMinutes} min before you start',
+                      )
+                    : '${preparation.warmupMinutes}′ πριν από τα working sets',
                 icon: Icons.whatshot_outlined,
                 steps: preparation.warmup,
                 completed: _completedWarmupSteps,
@@ -214,6 +229,7 @@ class _ActiveWorkoutPageState extends State<ActiveWorkoutPage> {
                       .toList(),
                   suggestion: widget.store.progressionFor(exercise),
                   videoUrl: widget.store.exerciseVideoFor(exercise),
+                  atHome: isHome,
                   onAdd: () => _addSet(exercise),
                   onReplace:
                       widget.store.activeSets.any(
@@ -646,6 +662,7 @@ class _ExerciseCard extends StatelessWidget {
     required this.sets,
     required this.suggestion,
     required this.videoUrl,
+    required this.atHome,
     required this.onAdd,
     required this.onReplace,
     required this.onRemove,
@@ -657,13 +674,14 @@ class _ExerciseCard extends StatelessWidget {
   final List<ExerciseSetLog> sets;
   final ProgressionSuggestion suggestion;
   final String videoUrl;
+  final bool atHome;
   final VoidCallback onAdd;
   final VoidCallback? onReplace;
   final ValueChanged<ExerciseSetLog> onRemove;
 
   @override
   Widget build(BuildContext context) {
-    final guide = ExerciseGuideCatalog.forExercise(exercise);
+    final guide = ExerciseGuideCatalog.forExercise(exercise, atHome: atHome);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -719,6 +737,52 @@ class _ExerciseCard extends StatelessWidget {
                 ),
               ],
             ),
+            if (guide != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: Semantics(
+                  button: true,
+                  label: 'Δες πώς γίνεται η άσκηση $exercise',
+                  child: InkWell(
+                    key: ValueKey('active-exercise-guide-$exercise'),
+                    borderRadius: BorderRadius.circular(14),
+                    onTap: () => showExerciseGuide(context, exercise, guide),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        ExerciseGuidePreview(
+                          guide: guide,
+                          semanticLabel:
+                              'Αρχική και τελική θέση για την άσκηση $exercise',
+                        ),
+                        const Padding(
+                          padding: EdgeInsets.fromLTRB(2, 8, 2, 0),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.touch_app_outlined,
+                                size: 17,
+                                color: Color(0xFFFF9E80),
+                              ),
+                              SizedBox(width: 7),
+                              Expanded(
+                                child: Text(
+                                  'Δες πώς γίνεται  •  αρχική → τελική θέση',
+                                  style: TextStyle(
+                                    color: Color(0xFFFF9E80),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             Container(
               width: double.infinity,
               margin: const EdgeInsets.only(top: 10),
@@ -768,15 +832,6 @@ class _ExerciseCard extends StatelessWidget {
                 ],
               ),
             ),
-            if (guide != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: TextButton.icon(
-                  onPressed: () => showExerciseGuide(context, exercise, guide),
-                  icon: const Icon(Icons.photo_library_outlined, size: 18),
-                  label: const Text('Οδηγός άσκησης'),
-                ),
-              ),
             Container(
               margin: const EdgeInsets.only(top: 10),
               padding: const EdgeInsets.all(10),

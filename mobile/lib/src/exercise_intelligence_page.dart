@@ -167,7 +167,10 @@ class _ExerciseIntelligencePageState extends State<ExerciseIntelligencePage> {
   }
 
   Future<void> _showProfile(ExerciseIntelligenceProfile profile) async {
-    final guide = ExerciseGuideCatalog.forExercise(profile.name);
+    final guide = ExerciseGuideCatalog.forExercise(
+      profile.name,
+      atHome: store.profile?.trainingPlace == 'Σπίτι',
+    );
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,

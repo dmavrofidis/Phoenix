@@ -40,6 +40,7 @@ import 'package:phoenix/src/data_validation_engine.dart';
 import 'package:phoenix/src/data_validation_page.dart';
 import 'package:phoenix/src/deterministic_coach_engine.dart';
 import 'package:phoenix/src/equipment_presets.dart';
+import 'package:phoenix/src/equipment_availability.dart';
 import 'package:phoenix/src/education_library.dart';
 import 'package:phoenix/src/encrypted_sync_engine.dart';
 import 'package:phoenix/src/exercise_guide.dart';
@@ -66,6 +67,7 @@ import 'package:phoenix/src/mobility_intelligence_engine.dart';
 import 'package:phoenix/src/mobility_intelligence_page.dart';
 import 'package:phoenix/src/models/fitness_models.dart';
 import 'package:phoenix/src/mobility_page.dart';
+import 'package:phoenix/src/music_link.dart';
 import 'package:phoenix/src/nutrition_analytics_engine.dart';
 import 'package:phoenix/src/nutrition_goal_engine.dart';
 import 'package:phoenix/src/nutrition_page.dart';
@@ -101,6 +103,7 @@ import 'package:phoenix/src/sleep_stress_engine.dart';
 import 'package:phoenix/src/sleep_stress_page.dart';
 import 'package:phoenix/src/session_preparation_engine.dart';
 import 'package:phoenix/src/state/fitness_store.dart';
+import 'package:phoenix/src/spotify_card.dart';
 import 'package:phoenix/src/strength_test_page.dart';
 import 'package:phoenix/src/strength_lab_engine.dart';
 import 'package:phoenix/src/strength_lab_page.dart';
@@ -120,6 +123,18 @@ class MemoryRepository implements FitnessRepository {
   @override
   Future<void> save(FitnessData data) async => value = data;
 }
+
+const _coreWorkoutIds = {
+  'full-body-a',
+  'full-body-b',
+  'iron-upper',
+  'iron-lower',
+  'iron-hybrid',
+  'calisthenics-strength',
+  'calisthenics-skills',
+  'iron-engine',
+  'weighted-calisthenics',
+};
 
 void main() {
   test('ολοκλήρωση προπόνησης δημιουργεί μία καταχώρηση', () async {
@@ -273,6 +288,65 @@ void main() {
       );
     },
   );
+
+  test(
+    'Apple Music σύνδεσμος αποθηκεύεται τοπικά και χωρίς tracking',
+    () async {
+      final store = FitnessStore(MemoryRepository());
+
+      await store.setMusicUrl(
+        'https://music.apple.com/gr/playlist/phoenix/pl.u-abc123?ls=1',
+      );
+
+      expect(
+        store.musicUrl,
+        'https://music.apple.com/gr/playlist/phoenix/pl.u-abc123',
+      );
+      expect(MusicLink.serviceFor(store.musicUrl), MusicService.appleMusic);
+      await expectLater(
+        store.setMusicUrl('https://example.com/not-music'),
+        throwsFormatException,
+      );
+    },
+  );
+
+  testWidgets('η μουσική συνδέεται στο κινητό με επικόλληση Apple Music', (
+    tester,
+  ) async {
+    final store = FitnessStore(MemoryRepository());
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+      if (call.method == 'Clipboard.getData') {
+        return <String, dynamic>{
+          'text':
+              'https://music.apple.com/gr/playlist/phoenix/pl.u-mobile123?ls=1',
+        };
+      }
+      return null;
+    });
+    addTearDown(
+      () => messenger.setMockMethodCallHandler(SystemChannels.platform, null),
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: SpotifyCard(store: store)),
+      ),
+    );
+
+    await tester.tap(find.byKey(const ValueKey('connect-apple-music')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('paste-music-link')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('save-music-link')));
+    await tester.pumpAndSettle();
+
+    expect(store.musicUrl, contains('music.apple.com'));
+    expect(store.musicUrl, isNot(contains('ls=1')));
+    expect(find.textContaining('Apple Music CONNECTED'), findsOneWidget);
+  });
 
   test('μη έγκυρο βάρος απορρίπτεται πριν την αποθήκευση', () async {
     final store = FitnessStore(MemoryRepository());
@@ -480,16 +554,397 @@ void main() {
       ),
     );
 
-    final exercises = [
+    final gymExercises = [
       for (final template in gymStore.data.templates) ...template.exercises,
+    ];
+    final homeExercises = [
       for (final template in homeStore.data.templates) ...template.exercises,
     ];
-    final missing = exercises
+    final missingGym = gymExercises
         .where((exercise) => ExerciseGuideCatalog.forExercise(exercise) == null)
         .toSet();
+    final missingHome = homeExercises
+        .where(
+          (exercise) =>
+              ExerciseGuideCatalog.forExercise(exercise, atHome: true) == null,
+        )
+        .toSet();
 
-    expect(missing, isEmpty);
+    expect(missingGym, isEmpty);
+    expect(missingHome, isEmpty);
   });
+
+  test(
+    'το σπίτι χωρίς εξοπλισμό δίνει μόνο οικιακό πρόγραμμα και εικόνες',
+    () async {
+      final store = FitnessStore(MemoryRepository());
+      await store.saveProfile(
+        const UserProfile(
+          goal: 'Γενική φυσική κατάσταση',
+          trainingPlace: 'Σπίτι',
+          equipment: 'Χωρίς εξοπλισμό',
+          daysPerWeek: 2,
+          heightCentimeters: 170,
+          weightKilograms: 70,
+          experienceLevel: 'Αρχάριος',
+          sessionMinutes: 20,
+        ),
+      );
+
+      final templates = store.data.templates;
+      final exercises = [
+        for (final template in templates) ...template.exercises,
+      ];
+      final text =
+          '${templates.map((item) => item.name).join(' ')} '
+                  '${exercises.join(' ')}'
+              .toLowerCase();
+
+      expect(text, isNot(contains('iron')));
+      expect(text, isNot(contains('λάστιχ')));
+      expect(text, isNot(contains('αλτήρ')));
+      expect(text, isNot(contains('σακίδ')));
+      expect(templates.first.name, 'ΗΠΙΑ ΑΡΧΗ ΣΤΟ ΣΠΙΤΙ — A');
+      expect(
+        templates.first.exercises,
+        containsAll([
+          'Κάθισμα και σήκωμα από καρέκλα',
+          'Κάμψεις στον τοίχο',
+          'Γέφυρα γλουτών στο πάτωμα',
+        ]),
+      );
+
+      final guides = exercises
+          .map(
+            (exercise) =>
+                ExerciseGuideCatalog.forExercise(exercise, atHome: true),
+          )
+          .toList();
+      expect(guides, everyElement(isNotNull));
+      expect(
+        guides.map((guide) => guide!.assetPath),
+        everyElement(contains('assets/exercise_guides/home-')),
+      );
+    },
+  );
+
+  test(
+    'κάθε επιλογή εξοπλισμού στο σπίτι κρατά αποκλειστικά home assets',
+    () async {
+      for (final equipment in const [
+        'Αλτήρες / βαράκια',
+        'Λάστιχα',
+        'Μονόζυγο',
+        'Απλός διάδρομος',
+      ]) {
+        final store = FitnessStore(MemoryRepository());
+        final profile = UserProfile(
+          goal: 'Γενική φυσική κατάσταση',
+          trainingPlace: 'Σπίτι',
+          equipment: equipment,
+          daysPerWeek: 4,
+          heightCentimeters: 170,
+          weightKilograms: 70,
+          experienceLevel: 'Αρχάριος',
+          sessionMinutes: 45,
+        );
+        await store.saveProfile(profile);
+
+        final exercises = [
+          for (final template in store.data.templates) ...template.exercises,
+        ];
+        final guides = exercises
+            .map(
+              (exercise) =>
+                  ExerciseGuideCatalog.forExercise(exercise, atHome: true),
+            )
+            .toList();
+
+        expect(guides, everyElement(isNotNull), reason: equipment);
+        expect(
+          guides.map((guide) => guide!.assetPath),
+          everyElement(contains('assets/exercise_guides/home-')),
+          reason: equipment,
+        );
+        expect(
+          exercises.every(
+            (exercise) =>
+                EquipmentAvailability.supportsExercise(exercise, profile),
+          ),
+          isTrue,
+          reason: equipment,
+        );
+      }
+    },
+  );
+
+  test('ο κοινός κανόνας εξοπλισμού εφαρμόζεται σε κάθε οικιακή άσκηση', () {
+    const profile = UserProfile(
+      goal: 'Γενική φυσική κατάσταση',
+      trainingPlace: 'Σπίτι',
+      equipment: 'Χωρίς εξοπλισμό',
+      daysPerWeek: 3,
+      heightCentimeters: 170,
+      weightKilograms: 70,
+    );
+
+    expect(EquipmentAvailability.supportsExercise('Bird dog', profile), isTrue);
+    expect(
+      EquipmentAvailability.supportsExercise(
+        'Πιέσεις ώμων με λάστιχο',
+        profile,
+      ),
+      isFalse,
+    );
+    expect(
+      EquipmentAvailability.supportsExercise('Goblet squat με αλτήρα', profile),
+      isFalse,
+    );
+    expect(
+      EquipmentAvailability.supportsExercise('Περπάτημα σε διάδρομο', profile),
+      isFalse,
+    );
+    expect(
+      EquipmentAvailability.supportsExercise('Αυστηρές έλξεις', profile),
+      isFalse,
+    );
+  });
+
+  test('οι εναλλακτικές χωρίς εξοπλισμό δεν προτείνουν λάστιχο ή μηχάνημα', () {
+    const profile = UserProfile(
+      goal: 'Γενική φυσική κατάσταση',
+      trainingPlace: 'Σπίτι',
+      equipment: 'Χωρίς εξοπλισμό',
+      daysPerWeek: 3,
+      heightCentimeters: 170,
+      weightKilograms: 70,
+    );
+    final alternatives = ExerciseSubstitutionEngine.alternativesFor(
+      exercise: 'Πιέσεις ώμων με λάστιχο',
+      profile: profile,
+      excludedExercises: const [],
+    );
+
+    expect(alternatives.map((item) => item.name), contains('Pike push-ups'));
+    expect(
+      alternatives.every(
+        (item) => EquipmentAvailability.supportsExercise(item.name, profile),
+      ),
+      isTrue,
+    );
+  });
+
+  test('η αναζήτηση κρύβει ασκήσεις που απαιτούν εξοπλισμό που λείπει', () {
+    const profile = UserProfile(
+      goal: 'Γενική φυσική κατάσταση',
+      trainingPlace: 'Σπίτι',
+      equipment: 'Χωρίς εξοπλισμό',
+      daysPerWeek: 3,
+      heightCentimeters: 170,
+      weightKilograms: 70,
+    );
+    final data = FitnessData.initial().copyWith(profile: profile);
+    final exercises = GlobalSearchEngine.search(
+      data,
+      'exercise',
+    ).where((item) => item.type == SearchResultType.exercise).toList();
+
+    expect(exercises, isNotEmpty);
+    expect(
+      exercises.every(
+        (item) => EquipmentAvailability.supportsExercise(item.title, profile),
+      ),
+      isTrue,
+    );
+  });
+
+  test('το μονόζυγο στο σπίτι έχει δικό του οδηγό χωρίς λάστιχο', () {
+    final guide = ExerciseGuideCatalog.forExercise(
+      'Αρνητικές έλξεις με στήριξη ποδιών',
+      atHome: true,
+    );
+
+    expect(guide, isNotNull);
+    expect(guide!.assetPath, contains('home-pullup-guide-v1.png'));
+    expect(guide.equipmentLabel, contains('ΧΩΡΙΣ ΛΑΣΤΙΧΟ'));
+  });
+
+  test('η προθέρμανση στο σπίτι σέβεται τον πραγματικό εξοπλισμό', () {
+    const profile = UserProfile(
+      goal: 'Γενική φυσική κατάσταση',
+      trainingPlace: 'Σπίτι',
+      equipment: 'Χωρίς εξοπλισμό',
+      daysPerWeek: 2,
+      heightCentimeters: 170,
+      weightKilograms: 70,
+    );
+    const workout = WorkoutTemplate(
+      id: 'home-test',
+      name: 'Σπίτι',
+      exercises: ['Κάθισμα και σήκωμα από καρέκλα', 'Κάμψεις στον τοίχο'],
+    );
+
+    final plan = SessionPreparationEngine.forWorkout(workout, profile: profile);
+    final cues = plan.warmup.map((step) => step.cue).join(' ').toLowerCase();
+
+    expect(cues, contains('σταθερή καρέκλα'));
+    expect(cues, contains('χωρίς εξοπλισμό'));
+    expect(cues, isNot(contains('band pull-apart')));
+    expect(cues, isNot(contains('rowing')));
+  });
+
+  test(
+    'παλιό αυτόματο home πρόγραμμα ανανεώνεται χωρίς απώλεια custom',
+    () async {
+      final repository = MemoryRepository();
+      repository.value = FitnessData.initial().copyWith(
+        profile: const UserProfile(
+          goal: 'Γενική φυσική κατάσταση',
+          trainingPlace: 'Σπίτι',
+          equipment: 'Χωρίς εξοπλισμό',
+          daysPerWeek: 2,
+          heightCentimeters: 170,
+          weightKilograms: 70,
+          experienceLevel: 'Αρχάριος',
+          sessionMinutes: 20,
+        ),
+        templates: const [
+          WorkoutTemplate(
+            id: 'full-body-a',
+            name: 'IRON FULL BODY — A',
+            exercises: ['Καθίσματα σε πάγκο με σακίδιο'],
+          ),
+          WorkoutTemplate(
+            id: 'custom-home-favorite',
+            name: 'Το δικό μου πρόγραμμα',
+            exercises: ['Η δική μου άσκηση'],
+          ),
+        ],
+      );
+
+      final store = FitnessStore(repository);
+      await store.load();
+
+      expect(
+        store.data.templates
+            .singleWhere((item) => item.id == 'full-body-a')
+            .name,
+        'ΗΠΙΑ ΑΡΧΗ ΣΤΟ ΣΠΙΤΙ — A',
+      );
+      expect(
+        store.data.templates
+            .singleWhere((item) => item.id == 'custom-home-favorite')
+            .exercises,
+        ['Η δική μου άσκηση'],
+      );
+    },
+  );
+
+  test(
+    'η αφαίρεση λάστιχου ανανεώνει αυτόματα μόνο τα βασικά προγράμματα',
+    () async {
+      final repository = MemoryRepository();
+      final store = FitnessStore(repository);
+      await store.saveProfile(
+        const UserProfile(
+          goal: 'Γενική φυσική κατάσταση',
+          trainingPlace: 'Σπίτι',
+          equipment: 'Λάστιχα',
+          daysPerWeek: 4,
+          heightCentimeters: 170,
+          weightKilograms: 70,
+          experienceLevel: 'Αρχάριος',
+          sessionMinutes: 45,
+        ),
+      );
+      final personal = store.createCustomWorkoutDraft().copyWith(
+        name: 'Το δικό μου πρόγραμμα',
+        exercises: const ['Η δική μου άσκηση'],
+      );
+      await store.updateWorkoutTemplate(personal);
+      expect(
+        store.data.templates
+            .where((item) => _coreWorkoutIds.contains(item.id))
+            .expand((item) => item.exercises)
+            .join(' ')
+            .toLowerCase(),
+        contains('λάστιχ'),
+      );
+
+      await store.updateProfile(
+        const UserProfile(
+          goal: 'Γενική φυσική κατάσταση',
+          trainingPlace: 'Σπίτι',
+          equipment: 'Χωρίς εξοπλισμό',
+          daysPerWeek: 4,
+          heightCentimeters: 170,
+          weightKilograms: 70,
+          experienceLevel: 'Αρχάριος',
+          sessionMinutes: 45,
+        ),
+      );
+
+      final coreText = store.data.templates
+          .where((item) => _coreWorkoutIds.contains(item.id))
+          .expand((item) => item.exercises)
+          .join(' ')
+          .toLowerCase();
+      expect(coreText, isNot(contains('λάστιχ')));
+      expect(coreText, isNot(contains('band')));
+      expect(
+        store.data.templates.singleWhere((item) => item.id == personal.id),
+        isNotNull,
+      );
+    },
+  );
+
+  test(
+    'η φόρτωση επισκευάζει αποθηκευμένο πρόγραμμα με λάστιχο που λείπει',
+    () async {
+      final repository = MemoryRepository();
+      repository.value = FitnessData.initial().copyWith(
+        profile: const UserProfile(
+          goal: 'Γενική φυσική κατάσταση',
+          trainingPlace: 'Σπίτι',
+          equipment: 'Χωρίς εξοπλισμό',
+          daysPerWeek: 4,
+          heightCentimeters: 170,
+          weightKilograms: 70,
+          experienceLevel: 'Αρχάριος',
+          sessionMinutes: 45,
+        ),
+        templates: const [
+          WorkoutTemplate(
+            id: 'iron-upper',
+            name: 'ΣΠΙΤΙ — Άνω σώμα',
+            exercises: ['Πιέσεις ώμων με λάστιχο'],
+          ),
+          WorkoutTemplate(
+            id: 'custom-home-favorite',
+            name: 'Το δικό μου πρόγραμμα',
+            exercises: ['Η δική μου άσκηση'],
+          ),
+        ],
+      );
+
+      final store = FitnessStore(repository);
+      await store.load();
+
+      final coreText = store.data.templates
+          .where((item) => _coreWorkoutIds.contains(item.id))
+          .expand((item) => item.exercises)
+          .join(' ')
+          .toLowerCase();
+      expect(coreText, isNot(contains('λάστιχ')));
+      expect(coreText, isNot(contains('band')));
+      expect(
+        store.data.templates
+            .singleWhere((item) => item.id == 'custom-home-favorite')
+            .exercises,
+        ['Η δική μου άσκηση'],
+      );
+    },
+  );
 
   test('η σημερινή αποστολή συνεχίζει στην επόμενη προπόνηση', () async {
     final store = FitnessStore(MemoryRepository());
@@ -1104,6 +1559,19 @@ void main() {
     expect(filtered, isNot(contains('Sled push')));
   });
 
+  test('το preset απλού διαδρόμου κρατά μόνο σχετικές κινήσεις', () {
+    final filtered = EquipmentPresetCatalog.filterExercises(const [
+      'Περπάτημα σε διάδρομο',
+      'Brisk walk',
+      'Sled push',
+      'Πιέσεις στήθους με αλτήρες',
+    ], 'treadmill-basic');
+
+    expect(filtered, containsAll(['Περπάτημα σε διάδρομο', 'Brisk walk']));
+    expect(filtered, isNot(contains('Sled push')));
+    expect(filtered, isNot(contains('Πιέσεις στήθους με αλτήρες')));
+  });
+
   test('rest-day builder δημιουργεί recovery circuit με ήπια ένταση', () {
     final store = FitnessStore(MemoryRepository());
 
@@ -1551,36 +2019,91 @@ void main() {
     expect(jsonDecode(json)['report'], 'Phoenix Advanced Analytics');
   });
 
-  testWidgets('η αρχική εμφανίζει τη σημερινή αποστολή', (tester) async {
+  testWidgets('η απλή αρχική δείχνει το επόμενο μικρό βήμα', (tester) async {
     final store = FitnessStore(MemoryRepository());
     store.previewWithoutProfile();
     await tester.pumpWidget(PhoenixApp(store: store));
 
-    expect(find.text('ΣΗΜΕΡΙΝΗ ΑΠΟΣΤΟΛΗ'), findsOneWidget);
-    expect(find.text('ΞΕΚΙΝΑ ΤΗ ΣΗΜΕΡΙΝΗ'), findsOneWidget);
-    expect(find.textContaining('0/3 αυτή την εβδομάδα'), findsOneWidget);
+    expect(find.text('Τι μπορείς να κάνεις σήμερα;'), findsOneWidget);
+    expect(find.text('ΤΟ ΕΠΟΜΕΝΟ ΜΙΚΡΟ ΒΗΜΑ'), findsOneWidget);
+    expect(find.text('Ξεκίνα όταν είσαι έτοιμος'), findsOneWidget);
+    expect(
+      find.textContaining('0 από 3 προπονήσεις αυτή την εβδομάδα'),
+      findsOneWidget,
+    );
     await tester.scrollUntilVisible(
-      find.text('ΟΙ ΣΗΜΕΡΙΝΕΣ ΑΣΚΗΣΕΙΣ'),
+      find.text('Οι σημερινές ασκήσεις'),
       400,
       scrollable: find.byType(Scrollable).first,
     );
-    expect(find.text('ΟΙ ΣΗΜΕΡΙΝΕΣ ΑΣΚΗΣΕΙΣ'), findsOneWidget);
+    expect(find.text('Οι σημερινές ασκήσεις'), findsOneWidget);
     expect(find.text('Farmer carry'), findsOneWidget);
+    expect(find.text('Δες πώς γίνεται'), findsWidgets);
+    expect(
+      find.byKey(const ValueKey('daily-exercise-guide-Farmer carry')),
+      findsOneWidget,
+    );
   });
 
-  testWidgets('το Phoenix Today ανοίγει οργανωμένη εργαλειοθήκη', (
+  testWidgets('η αρχική ανοίγει απλό δεκάλεπτο χωρίς επαγγελματικό lab', (
     tester,
   ) async {
     final store = FitnessStore(MemoryRepository());
     store.previewWithoutProfile();
     await tester.pumpWidget(PhoenixApp(store: store));
 
+    final movement = find.text('10 λεπτά κίνηση');
     await tester.scrollUntilVisible(
-      find.text('Όλα τα εργαλεία'),
+      movement,
       300,
       scrollable: find.byType(Scrollable).first,
     );
-    expect(find.text('ΣΗΜΕΡΙΝΕΣ ΕΝΕΡΓΕΙΕΣ'), findsOneWidget);
+    await tester.ensureVisible(movement);
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.ancestor(of: movement, matching: find.byType(InkWell)).first,
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('gentle-movement-timer')), findsOneWidget);
+    expect(find.text('10:00'), findsOneWidget);
+    expect(find.text('INTERVAL TIMER LAB'), findsNothing);
+    expect(find.byKey(const ValueKey('gentle-movement-start')), findsOneWidget);
+  });
+
+  testWidgets('η εικόνα τεχνικής ανοίγει από τη σημερινή άσκηση', (
+    tester,
+  ) async {
+    final store = FitnessStore(MemoryRepository());
+    store.previewWithoutProfile();
+    final exercise = store.recommendedWorkout.exercises.first;
+    final preview = find.byKey(ValueKey('daily-exercise-guide-$exercise'));
+    await tester.pumpWidget(PhoenixApp(store: store));
+
+    await tester.scrollUntilVisible(
+      preview,
+      400,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.ensureVisible(preview);
+    await tester.pumpAndSettle();
+    await tester.tap(preview);
+    await tester.pumpAndSettle();
+
+    expect(find.text('ΑΡΧΙΚΗ ΘΕΣΗ  →  ΤΕΛΙΚΗ ΘΕΣΗ'), findsOneWidget);
+    expect(find.text('ΕΚΤΕΛΕΣΗ'), findsOneWidget);
+    expect(find.text('ΑΠΟΦΥΓΕ'), findsOneWidget);
+  });
+
+  testWidgets('το Περισσότερα ανοίγει οργανωμένη εργαλειοθήκη', (tester) async {
+    final store = FitnessStore(MemoryRepository());
+    store.previewWithoutProfile();
+    await tester.pumpWidget(PhoenixApp(store: store));
+
+    await tester.tap(find.text('Περισσότερα'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Όλα τα εργαλεία'), findsOneWidget);
     expect(find.text('Cali Lab'), findsNothing);
 
     await tester.tap(find.text('Όλα τα εργαλεία'));
@@ -1650,6 +2173,7 @@ void main() {
       await tester.pumpAndSettle();
     }
     expect(find.byIcon(Icons.swap_horiz), findsWidgets);
+    expect(find.textContaining('Δες πώς γίνεται'), findsWidgets);
     await tester.ensureVisible(find.byIcon(Icons.swap_horiz).first);
     await tester.pumpAndSettle();
     await tester.tap(find.byIcon(Icons.swap_horiz).first);
@@ -1662,6 +2186,49 @@ void main() {
 
     expect(store.activeWorkout!.exercises, contains('Goblet squat σε πάγκο'));
     expect(find.text('Goblet squat σε πάγκο'), findsOneWidget);
+  });
+
+  testWidgets('η ενεργή προπόνηση στο σπίτι δεν εμφανίζει gym εμπειρία', (
+    tester,
+  ) async {
+    final store = FitnessStore(MemoryRepository());
+    await store.saveProfile(
+      const UserProfile(
+        goal: 'Γενική φυσική κατάσταση',
+        trainingPlace: 'Σπίτι',
+        equipment: 'Χωρίς εξοπλισμό',
+        daysPerWeek: 2,
+        heightCentimeters: 170,
+        weightKilograms: 70,
+        experienceLevel: 'Αρχάριος',
+        sessionMinutes: 20,
+      ),
+    );
+    store.startWorkout(store.data.templates.first);
+
+    await tester.pumpWidget(MaterialApp(home: ActiveWorkoutPage(store: store)));
+
+    expect(find.text('HOME WORKOUT'), findsOneWidget);
+    expect(find.text('SIMPLE WARM-UP'), findsOneWidget);
+    expect(find.text('IRON SESSION'), findsNothing);
+    expect(find.text('WARM-UP PROTOCOL'), findsNothing);
+
+    await tester.scrollUntilVisible(
+      find.text('Κάθισμα και σήκωμα από καρέκλα'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is Image &&
+            widget.image is AssetImage &&
+            (widget.image as AssetImage).assetName.contains(
+              'home-no-equipment-guide-v1.jpg',
+            ),
+      ),
+      findsWidgets,
+    );
   });
 
   testWidgets('η διατροφή εμφανίζει εξατομικευμένο ημερήσιο στόχο', (
@@ -1797,6 +2364,11 @@ void main() {
     store.previewWithoutProfile();
     await tester.pumpWidget(PhoenixApp(store: store));
 
+    await tester.scrollUntilVisible(
+      find.text('READINESS CHECK-IN'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.tap(find.text('READINESS CHECK-IN'));
     await tester.pumpAndSettle();
     expect(find.text('Readiness check-in'), findsOneWidget);
@@ -1930,17 +2502,121 @@ void main() {
     await tester.pumpWidget(PhoenixApp(store: store));
 
     expect(find.text('PHOENIX'), findsOneWidget);
-    expect(find.textContaining('Ας ξεκινήσουμε'), findsOneWidget);
-    expect(find.byIcon(Icons.local_fire_department), findsOneWidget);
-    await tester.drag(
-      find.byKey(const ValueKey('onboarding-scroll')),
-      const Offset(0, -1200),
-    );
-    await tester.pumpAndSettle();
     expect(
-      find.text('Όλα τα δεδομένα αποθηκεύονται μόνο στη συσκευή σου.'),
+      find.textContaining('Δεν χρειάζεται να τα έχεις όλα'),
       findsOneWidget,
     );
+    expect(find.textContaining('ΝΕΑ ΑΠΛΗ ΕΜΠΕΙΡΙΑ'), findsOneWidget);
+    expect(find.byIcon(Icons.local_fire_department), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('gentle-start-illustration')),
+      findsOneWidget,
+    );
+    expect(find.text('Συνέχεια'), findsOneWidget);
+  });
+
+  testWidgets('το onboarding προσφέρει απλό διάδρομο μαζί με αλτήρες', (
+    tester,
+  ) async {
+    final store = FitnessStore(MemoryRepository());
+    await store.load();
+    await tester.pumpWidget(PhoenixApp(store: store));
+
+    await tester.tap(find.text('Συνέχεια'));
+    await tester.pumpAndSettle();
+    final treadmill = find.byKey(const ValueKey('equipment-treadmill'));
+    await tester.ensureVisible(treadmill);
+    await tester.pumpAndSettle();
+    await tester.tap(treadmill);
+    await tester.pumpAndSettle();
+    final dumbbells = find.byKey(const ValueKey('equipment-dumbbells'));
+    await tester.ensureVisible(dumbbells);
+    await tester.pumpAndSettle();
+    await tester.tap(dumbbells);
+    await tester.pumpAndSettle();
+
+    final field = tester.widget<TextFormField>(
+      find.byKey(const ValueKey('equipment-input')),
+    );
+    expect(field.controller?.text, contains('Απλός διάδρομος'));
+    expect(field.controller?.text, contains('Αλτήρες'));
+  });
+
+  testWidgets('το απλό onboarding ολοκληρώνεται σε τρία καθαρά βήματα', (
+    tester,
+  ) async {
+    final store = FitnessStore(MemoryRepository());
+    await store.load();
+    await tester.pumpWidget(PhoenixApp(store: store));
+
+    expect(find.textContaining('ΒΗΜΑ 1 ΑΠΟ 3'), findsOneWidget);
+    await tester.tap(find.text('Συνέχεια'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('ΒΗΜΑ 2 ΑΠΟ 3'), findsOneWidget);
+    await tester.ensureVisible(find.byKey(const ValueKey('equipment-none')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('equipment-none')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Συνέχεια'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('ΒΗΜΑ 3 ΑΠΟ 3'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('height-input')),
+      350,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.enterText(find.byKey(const ValueKey('height-input')), '180');
+    await tester.enterText(find.byKey(const ValueKey('weight-input')), '80');
+    await tester.scrollUntilVisible(
+      find.text('Φτιάξε το πρώτο μου πρόγραμμα'),
+      350,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('Φτιάξε το πρώτο μου πρόγραμμα'));
+    await tester.pumpAndSettle();
+
+    expect(store.profile, isNotNull);
+    expect(find.byType(PhoenixShell), findsOneWidget);
+  });
+
+  testWidgets('η επιλογή βοήθειας ετοιμάζει πραγματικό ήπιο ξεκίνημα', (
+    tester,
+  ) async {
+    final store = FitnessStore(MemoryRepository());
+    await store.load();
+    await tester.pumpWidget(PhoenixApp(store: store));
+
+    final guided = find.byKey(const ValueKey('guided-start-choice'));
+    await tester.scrollUntilVisible(
+      guided,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(guided);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Συνέχεια'));
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.byKey(const ValueKey('equipment-none')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('equipment-none')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Συνέχεια'));
+    await tester.pumpAndSettle();
+
+    final preview = find.byKey(const ValueKey('starter-plan-preview'));
+    await tester.scrollUntilVisible(
+      preview,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Το ήπιο ξεκίνημά σου'), findsOneWidget);
+    expect(find.text('2 ημέρες'), findsWidgets);
+    expect(find.text('20 λεπτά'), findsWidgets);
+    expect(find.textContaining('4 απλές ασκήσεις'), findsOneWidget);
+    expect(find.textContaining('Χωρίς εξοπλισμό'), findsWidgets);
   });
 
   test(
@@ -2117,6 +2793,11 @@ void main() {
     );
 
     expect(find.text('PHOENIX EXPERIENCE'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('High contrast'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('High contrast'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('Global search'),
@@ -2181,6 +2862,62 @@ void main() {
     );
   });
 
+  testWidgets('η αρχική ανοίγει άμεσα τις επιλογές χρώματος', (tester) async {
+    final store = FitnessStore(MemoryRepository());
+    store.previewWithoutProfile();
+    await tester.pumpWidget(PhoenixApp(store: store));
+
+    await tester.tap(find.byKey(const ValueKey('quick-theme-settings')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('ΧΡΩΜΑΤΑ & ΘΕΜΑ'), findsWidgets);
+    expect(find.text('Sage'), findsOneWidget);
+    expect(find.text('Sky'), findsOneWidget);
+    expect(find.text('Sand'), findsOneWidget);
+    expect(find.text('Phoenix'), findsOneWidget);
+    expect(find.text('Violet'), findsOneWidget);
+    expect(find.text('Gold'), findsOneWidget);
+  });
+
+  testWidgets('το Sage θέμα είναι ήρεμο, εφαρμόζεται και μένει στη συσκευή', (
+    tester,
+  ) async {
+    final repository = MemoryRepository();
+    final store = FitnessStore(repository);
+    await store.load();
+    await tester.pumpWidget(PhoenixApp(store: store));
+
+    await store.updatePreferences(themePreset: 'sage', hapticFeedback: false);
+    await tester.pumpAndSettle();
+    final context = tester.element(find.byType(OnboardingPage));
+    final theme = Theme.of(context);
+    final reloaded = FitnessStore(repository);
+    await reloaded.load();
+
+    expect(theme.colorScheme.primary, const Color(0xFF9CB9A5));
+    expect(theme.scaffoldBackgroundColor, const Color(0xFF0D1411));
+    expect(reloaded.preferences.themePreset, 'sage');
+  });
+
+  testWidgets('το Violet θέμα εφαρμόζεται και αποθηκεύεται τοπικά', (
+    tester,
+  ) async {
+    final repository = MemoryRepository();
+    final store = FitnessStore(repository);
+    await store.load();
+    await tester.pumpWidget(PhoenixApp(store: store));
+
+    await store.updatePreferences(themePreset: 'violet', hapticFeedback: false);
+    await tester.pumpAndSettle();
+    final context = tester.element(find.byType(OnboardingPage));
+    final primary = Theme.of(context).colorScheme.primary;
+    final reloaded = FitnessStore(repository);
+    await reloaded.load();
+
+    expect(primary.b, greaterThan(primary.r));
+    expect(reloaded.preferences.themePreset, 'violet');
+  });
+
   testWidgets('η πρώτη εκκίνηση αλλάζει άμεσα σε πλήρες English locale', (
     tester,
   ) async {
@@ -2193,14 +2930,27 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(store.preferences.languageCode, 'en');
-    expect(find.textContaining('Let’s start'), findsOneWidget);
-    expect(find.text('Primary goal'), findsOneWidget);
+    expect(
+      find.textContaining('You do not need to have everything'),
+      findsOneWidget,
+    );
     await tester.scrollUntilVisible(
-      find.text('Create starter program'),
-      500,
+      find.text('I am not sure — help me get started'),
+      300,
       scrollable: find.byType(Scrollable).first,
     );
-    expect(find.text('Create starter program'), findsOneWidget);
+    expect(find.text('I am not sure — help me get started'), findsOneWidget);
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+    expect(find.text('What can you start with?'), findsOneWidget);
+    await tester.ensureVisible(find.byKey(const ValueKey('equipment-none')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('equipment-none')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+    expect(find.text('What fits into your life?'), findsOneWidget);
+    expect(find.text('Create my first program'), findsOneWidget);
   });
 
   test('ο daily coach παράγει ιεραρχημένο action plan', () {
@@ -2886,6 +3636,30 @@ void main() {
     );
     expect(store.workoutPlaylistFor(second.id), contains('/album/phoenix-two'));
   });
+
+  test(
+    'workout playlist δέχεται Apple Music και περνά integrity audit',
+    () async {
+      final store = FitnessStore(MemoryRepository());
+      await store.load();
+      final template = store.data.templates.first;
+
+      await store.setWorkoutPlaylist(
+        template.id,
+        'https://music.apple.com/gr/playlist/workout/pl.u-workout123',
+      );
+      final report = DataValidationEngine.audit(store.data);
+
+      expect(
+        store.workoutPlaylistFor(template.id),
+        contains('music.apple.com'),
+      );
+      expect(
+        report.issues.where((item) => item.code == 'invalid-workout-playlist'),
+        isEmpty,
+      );
+    },
+  );
 
   test('exercise video-link library δέχεται μόνο ασφαλές HTTPS URL', () async {
     final store = FitnessStore(MemoryRepository());
@@ -4922,6 +5696,34 @@ void main() {
     expect(modalities, isNot(contains('Brisk walk')));
     expect(modalities, contains('Stationary bike'));
     expect(modalities, contains('Row ergometer'));
+  });
+
+  test('ο κεκλιμένος διάδρομος προτείνεται μόνο όταν είναι διαθέσιμος', () {
+    const dumbbellsOnly = UserProfile(
+      goal: 'General fitness',
+      trainingPlace: 'Home',
+      equipment: 'Dumbbells',
+      daysPerWeek: 3,
+      heightCentimeters: 180,
+      weightKilograms: 80,
+    );
+    const withTreadmill = UserProfile(
+      goal: 'General fitness',
+      trainingPlace: 'Home',
+      equipment: 'Αλτήρες, Απλός διάδρομος',
+      daysPerWeek: 3,
+      heightCentimeters: 180,
+      weightKilograms: 80,
+    );
+
+    expect(
+      ConditioningEngine.modalitySelector(profile: dumbbellsOnly),
+      isNot(contains('Incline treadmill')),
+    );
+    expect(
+      ConditioningEngine.modalitySelector(profile: withTreadmill),
+      contains('Incline treadmill'),
+    );
   });
 
   test('RPE-based cardio logging persists session load', () async {
@@ -9470,10 +10272,40 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.bySemanticsLabel('Search'), findsOneWidget);
-    expect(find.bySemanticsLabel('Control Center'), findsOneWidget);
-    expect(find.text('Home'), findsWidgets);
+    expect(find.bySemanticsLabel('Change colors and theme'), findsOneWidget);
+    expect(find.text('Today'), findsWidgets);
     expect(find.text('Training'), findsWidgets);
+    expect(find.text('More'), findsWidgets);
     semantics.dispose();
+  });
+
+  testWidgets('the simple shell keeps advanced features under More', (
+    tester,
+  ) async {
+    final repository = MemoryRepository()
+      ..value = FitnessData.initial().copyWith(
+        profile: const UserProfile(
+          goal: 'Strength',
+          trainingPlace: 'Home',
+          equipment: 'Bodyweight',
+          daysPerWeek: 3,
+          heightCentimeters: 180,
+          weightKilograms: 80,
+        ),
+      );
+    final store = FitnessStore(repository);
+    await store.load();
+    await tester.pumpWidget(MaterialApp(home: PhoenixShell(store: store)));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('More'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('My progress'), findsOneWidget);
+    expect(find.text('Music & photos'), findsOneWidget);
+    expect(find.text('Colors & appearance'), findsOneWidget);
+    expect(find.text('All tools'), findsOneWidget);
+    expect(find.text('Profile, data & settings'), findsOneWidget);
   });
 
   test('every historical storage version reaches the current schema', () {

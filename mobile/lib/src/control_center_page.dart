@@ -177,15 +177,15 @@ class ControlCenterPage extends StatelessWidget {
                   ),
                   title: Text(
                     context.l10n.text(
-                      'Εμπειρία & προσβασιμότητα',
-                      'Experience & accessibility',
+                      'Χρώματα, θέμα & προσβασιμότητα',
+                      'Colors, theme & accessibility',
                     ),
                     style: const TextStyle(fontWeight: FontWeight.w900),
                   ),
                   subtitle: Text(
                     context.l10n.text(
-                      'Γλώσσα, θέμα, feedback, αναζήτηση και ασφάλεια',
-                      'Language, theme, feedback, search and security',
+                      'Άλλαξε εύκολα την εμφάνιση και τις ρυθμίσεις χρήσης',
+                      'Quickly change appearance and experience settings',
                     ),
                   ),
                   trailing: const Icon(Icons.chevron_right),

@@ -8,9 +8,14 @@ import 'state/fitness_store.dart';
 import 'vault_security_page.dart';
 
 class ExperienceSettingsPage extends StatelessWidget {
-  const ExperienceSettingsPage({super.key, required this.store});
+  const ExperienceSettingsPage({
+    super.key,
+    required this.store,
+    this.focusTheme = false,
+  });
 
   final FitnessStore store;
+  final bool focusTheme;
 
   Future<void> _push(BuildContext context, Widget page) =>
       Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => page));
@@ -24,7 +29,11 @@ class ExperienceSettingsPage extends StatelessWidget {
         final preferences = store.preferences;
         return Scaffold(
           appBar: AppBar(
-            title: Text(l.text('ΕΜΠΕΙΡΙΑ PHOENIX', 'PHOENIX EXPERIENCE')),
+            title: Text(
+              focusTheme
+                  ? l.text('ΧΡΩΜΑΤΑ & ΘΕΜΑ', 'COLORS & THEME')
+                  : l.text('ΕΜΠΕΙΡΙΑ PHOENIX', 'PHOENIX EXPERIENCE'),
+            ),
           ),
           body: ListView(
             padding: const EdgeInsets.fromLTRB(18, 8, 18, 32),
@@ -46,6 +55,7 @@ class ExperienceSettingsPage extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 20),
+              if (focusTheme) ..._themeSection(context),
               _SectionTitle(label: l.text('ΓΛΩΣΣΑ', 'LANGUAGE')),
               const SizedBox(height: 8),
               SegmentedButton<String>(
@@ -59,51 +69,10 @@ class ExperienceSettingsPage extends StatelessWidget {
                 onSelectionChanged: (value) =>
                     store.updatePreferences(languageCode: value.first),
               ),
-              const SizedBox(height: 22),
-              _SectionTitle(label: l.text('ΘΕΜΑ', 'THEME')),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 9,
-                runSpacing: 9,
-                children: [
-                  _ThemeChoice(
-                    label: l.text('Iron', 'Iron'),
-                    value: 'iron',
-                    selected: preferences.themePreset,
-                    color: const Color(0xFFFF3D00),
-                    onTap: () => store.updatePreferences(themePreset: 'iron'),
-                  ),
-                  _ThemeChoice(
-                    label: l.text('Ocean', 'Ocean'),
-                    value: 'ocean',
-                    selected: preferences.themePreset,
-                    color: const Color(0xFF29B6F6),
-                    onTap: () => store.updatePreferences(themePreset: 'ocean'),
-                  ),
-                  _ThemeChoice(
-                    label: l.text('Forest', 'Forest'),
-                    value: 'forest',
-                    selected: preferences.themePreset,
-                    color: const Color(0xFF66BB6A),
-                    onTap: () => store.updatePreferences(themePreset: 'forest'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              SwitchListTile(
-                value: preferences.highContrast,
-                contentPadding: EdgeInsets.zero,
-                onChanged: (value) =>
-                    store.updatePreferences(highContrast: value),
-                secondary: const Icon(Icons.contrast),
-                title: Text(l.text('Υψηλή αντίθεση', 'High contrast')),
-                subtitle: Text(
-                  l.text(
-                    'Καθαρότερο μαύρο, φωτεινότερο κείμενο και έντονα περιγράμματα.',
-                    'Deeper black, brighter text and stronger outlines.',
-                  ),
-                ),
-              ),
+              if (!focusTheme) ...[
+                const SizedBox(height: 22),
+                ..._themeSection(context),
+              ],
               const Divider(height: 26),
               _SectionTitle(label: l.text('ΠΡΟΣΒΑΣΙΜΟΤΗΤΑ+', 'ACCESSIBILITY+')),
               const SizedBox(height: 8),
@@ -310,6 +279,121 @@ class ExperienceSettingsPage extends StatelessWidget {
       },
     );
   }
+
+  List<Widget> _themeSection(BuildContext context) {
+    final l = context.l10n;
+    final preferences = store.preferences;
+    const choices = [
+      ('sage', 'Sage', 'Ήρεμο πράσινο', 'Soft green', Color(0xFF9CB9A5), true),
+      ('sky', 'Sky', 'Απαλό γαλάζιο', 'Soft blue', Color(0xFF8DB7C8), true),
+      ('sand', 'Sand', 'Ζεστό μπεζ', 'Warm beige', Color(0xFFD2B08A), true),
+      (
+        'iron',
+        'Phoenix',
+        'Απαλό κοραλί',
+        'Soft coral',
+        Color(0xFFE4937F),
+        false,
+      ),
+      ('ocean', 'Ocean', 'Ήρεμο μπλε', 'Calm blue', Color(0xFF5CA9C9), false),
+      (
+        'forest',
+        'Forest',
+        'Βαθύ πράσινο',
+        'Deep green',
+        Color(0xFF73A97A),
+        false,
+      ),
+      (
+        'violet',
+        'Violet',
+        'Απαλό μωβ',
+        'Soft purple',
+        Color(0xFFA995D2),
+        false,
+      ),
+      ('rose', 'Rose', 'Ήρεμο ροζ', 'Muted pink', Color(0xFFD98FAE), false),
+      ('gold', 'Gold', 'Απαλό χρυσό', 'Soft gold', Color(0xFFC9A45C), false),
+    ];
+    return [
+      _SectionTitle(label: l.text('ΧΡΩΜΑΤΑ & ΘΕΜΑ', 'COLORS & THEME')),
+      const SizedBox(height: 8),
+      _LiveThemePreview(
+        title: l.text('Έτσι θα φαίνεται', 'Live preview'),
+        detail: l.text(
+          'Η αλλαγή εφαρμόζεται αμέσως και αποθηκεύεται μόνο σε αυτή τη συσκευή.',
+          'Changes apply immediately and stay only on this device.',
+        ),
+      ),
+      const SizedBox(height: 10),
+      Text(
+        l.text(
+          'Οι τρεις πρώτες επιλογές είναι σχεδιασμένες για πιο ήρεμη καθημερινή εμπειρία.',
+          'The first three options are designed for a calmer everyday experience.',
+        ),
+        style: TextStyle(
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+          fontSize: 12,
+        ),
+      ),
+      const SizedBox(height: 12),
+      LayoutBuilder(
+        builder: (context, constraints) {
+          final itemWidth = constraints.maxWidth >= 620
+              ? (constraints.maxWidth - 20) / 3
+              : (constraints.maxWidth - 10) / 2;
+          return Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              for (final choice in choices)
+                SizedBox(
+                  width: itemWidth,
+                  child: _ThemeChoice(
+                    label: choice.$2,
+                    detail: l.text(choice.$3, choice.$4),
+                    value: choice.$1,
+                    selected: preferences.themePreset,
+                    color: choice.$5,
+                    calm: choice.$6,
+                    onTap: () =>
+                        store.updatePreferences(themePreset: choice.$1),
+                  ),
+                ),
+            ],
+          );
+        },
+      ),
+      if (preferences.colorVisionMode != 'standard') ...[
+        const SizedBox(height: 10),
+        Text(
+          l.text(
+            'Η παλέτα χρωματικής όρασης παραμένει ενεργή και έχει προτεραιότητα για ασφαλή αντίθεση.',
+            'Your color-vision palette remains active and takes priority for safe contrast.',
+          ),
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+            fontSize: 12,
+          ),
+        ),
+      ],
+      const SizedBox(height: 10),
+      SwitchListTile(
+        value: preferences.highContrast,
+        contentPadding: EdgeInsets.zero,
+        onChanged: (value) => store.updatePreferences(highContrast: value),
+        secondary: const Icon(Icons.contrast),
+        title: Text(l.text('Υψηλή αντίθεση', 'High contrast')),
+        subtitle: Text(
+          l.text(
+            'Καθαρότερο μαύρο, φωτεινότερο κείμενο και έντονα περιγράμματα.',
+            'Deeper black, brighter text and stronger outlines.',
+          ),
+        ),
+      ),
+      const SizedBox(height: 22),
+    ];
+  }
 }
 
 class _SectionTitle extends StatelessWidget {
@@ -332,49 +416,166 @@ class _SectionTitle extends StatelessWidget {
 class _ThemeChoice extends StatelessWidget {
   const _ThemeChoice({
     required this.label,
+    required this.detail,
     required this.value,
     required this.selected,
     required this.color,
+    required this.calm,
     required this.onTap,
   });
 
   final String label;
+  final String detail;
   final String value;
   final String selected;
   final Color color;
+  final bool calm;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final active = value == selected;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-        decoration: BoxDecoration(
-          color: active
-              ? color.withValues(alpha: .18)
-              : Colors.white.withValues(alpha: .04),
-          border: Border.all(
-            color: active ? color : Colors.white12,
-            width: active ? 2 : 1,
+    return Semantics(
+      button: true,
+      selected: active,
+      label: 'Theme $label',
+      child: InkWell(
+        key: ValueKey('theme-choice-$value'),
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          constraints: const BoxConstraints(minHeight: 94),
+          padding: const EdgeInsets.all(13),
+          decoration: BoxDecoration(
+            color: active
+                ? color.withValues(alpha: .16)
+                : Theme.of(context).colorScheme.surfaceContainer,
+            border: Border.all(
+              color: active
+                  ? color
+                  : Theme.of(context).colorScheme.outlineVariant,
+              width: active ? 2 : 1,
+            ),
+            borderRadius: BorderRadius.circular(16),
           ),
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircleAvatar(radius: 7, backgroundColor: color),
-            const SizedBox(width: 8),
-            Text(label, style: const TextStyle(fontWeight: FontWeight.w800)),
-            if (active) ...[
-              const SizedBox(width: 7),
-              Icon(Icons.check, size: 17, color: color),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: color,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: color.withValues(alpha: .3),
+                          blurRadius: 10,
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (calm) ...[
+                    const SizedBox(width: 7),
+                    Expanded(
+                      child: Text(
+                        context.l10n.text('ΗΡΕΜΟ', 'CALM'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: color,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: .7,
+                        ),
+                      ),
+                    ),
+                  ] else
+                    const Spacer(),
+                  Icon(
+                    active ? Icons.check_circle : Icons.circle_outlined,
+                    size: 21,
+                    color: active
+                        ? color
+                        : Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 9),
+              Text(label, style: const TextStyle(fontWeight: FontWeight.w900)),
+              Text(
+                detail,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontSize: 11,
+                ),
+              ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LiveThemePreview extends StatelessWidget {
+  const _LiveThemePreview({required this.title, required this.detail});
+
+  final String title;
+  final String detail;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            colors.primary.withValues(alpha: .2),
+            colors.surfaceContainer,
           ],
         ),
+        border: Border.all(color: colors.primary.withValues(alpha: .45)),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: colors.primary,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(Icons.palette_outlined, color: colors.onPrimary),
+          ),
+          const SizedBox(width: 13),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  detail,
+                  style: TextStyle(
+                    color: colors.onSurfaceVariant,
+                    fontSize: 12,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

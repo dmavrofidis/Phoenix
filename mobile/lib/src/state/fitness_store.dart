@@ -8,7 +8,9 @@ import '../data/local_fitness_repository.dart';
 import '../data/drift_fitness_repository.dart';
 import '../data_validation_engine.dart';
 import '../exercise_substitution_engine.dart';
+import '../equipment_availability.dart';
 import '../models/fitness_models.dart';
+import '../music_link.dart';
 import '../nutrition_goal_engine.dart';
 import '../operational_readiness_engine.dart';
 import '../nutrition_analytics_engine.dart';
@@ -23,6 +25,18 @@ import '../training_schedule.dart';
 
 class FitnessStore extends ChangeNotifier {
   FitnessStore(this._repository);
+
+  static const _coreTemplateIds = {
+    'full-body-a',
+    'full-body-b',
+    'iron-upper',
+    'iron-lower',
+    'iron-hybrid',
+    'calisthenics-strength',
+    'calisthenics-skills',
+    'iron-engine',
+    'weighted-calisthenics',
+  };
 
   final FitnessRepository _repository;
   FitnessData _data = FitnessData.initial();
@@ -54,6 +68,8 @@ class FitnessStore extends ChangeNotifier {
   List<ExerciseSetLog> get activeSets => List.unmodifiable(_activeSets);
   String get spotifyUrl => _data.spotifyUrl;
   bool get hasSpotifyLink => _data.spotifyUrl.isNotEmpty;
+  String get musicUrl => _data.spotifyUrl;
+  bool get hasMusicLink => _data.spotifyUrl.isNotEmpty;
   SpotifyAuthConfig get spotifyAuth => _data.spotifyAuth;
   List<ProgressPhoto> get progressPhotos =>
       List.unmodifiable(_data.progressPhotos);
@@ -499,10 +515,35 @@ class FitnessStore extends ChangeNotifier {
 
     var templates = enrichedTemplates;
     if (currentProfile != null) {
+      final recommended = _recommendedTemplates(currentProfile);
+      final coreTemplates = templates
+          .where((template) => _coreTemplateIds.contains(template.id))
+          .toList();
+      final hasLegacyHomeCore =
+          currentProfile.trainingPlace == 'Σπίτι' &&
+          coreTemplates.any(
+            (template) =>
+                template.name.startsWith('IRON') ||
+                template.name.startsWith('CALISTHENICS') ||
+                template.name.startsWith('WEIGHTED CALISTHENICS'),
+          );
+      final hasUnavailableEquipment = coreTemplates.any(
+        (template) => _templateUsesUnavailableEquipment(
+          template,
+          profile: currentProfile,
+        ),
+      );
+      if (hasLegacyHomeCore || hasUnavailableEquipment) {
+        final personalTemplates = templates
+            .where((template) => !_coreTemplateIds.contains(template.id))
+            .toList();
+        templates = [...recommended, ...personalTemplates];
+        changed = true;
+      }
       final existingIds = templates.map((item) => item.id).toSet();
-      final missingTemplates = _recommendedTemplates(
-        currentProfile,
-      ).where((item) => !existingIds.contains(item.id)).toList();
+      final missingTemplates = recommended
+          .where((item) => !existingIds.contains(item.id))
+          .toList();
       if (missingTemplates.isNotEmpty) {
         templates = [...templates, ...missingTemplates];
         changed = true;
@@ -546,7 +587,17 @@ class FitnessStore extends ChangeNotifier {
         : 'el';
     final theme = themePreset == null
         ? preferences.themePreset
-        : const {'iron', 'ocean', 'forest'}.contains(themePreset)
+        : const {
+            'iron',
+            'ocean',
+            'forest',
+            'violet',
+            'rose',
+            'gold',
+            'sage',
+            'sky',
+            'sand',
+          }.contains(themePreset)
         ? themePreset
         : 'iron';
     final cueStyle = audioCueStyle == null
@@ -1131,6 +1182,13 @@ class FitnessStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> setMusicUrl(String input) async {
+    final normalized = MusicLink.normalize(input);
+    _data = _data.copyWith(spotifyUrl: normalized);
+    await _repository.save(_data);
+    notifyListeners();
+  }
+
   Future<void> clearSpotifyUrl() async {
     _data = _data.copyWith(spotifyUrl: '');
     await _repository.save(_data);
@@ -1138,13 +1196,13 @@ class FitnessStore extends ChangeNotifier {
   }
 
   String workoutPlaylistFor(String templateId) =>
-      _data.workoutPlaylists[templateId] ?? spotifyUrl;
+      _data.workoutPlaylists[templateId] ?? musicUrl;
 
   Future<void> setWorkoutPlaylist(String templateId, String input) async {
     if (!_data.templates.any((item) => item.id == templateId)) {
       throw const FormatException('Το πρόγραμμα δεν υπάρχει.');
     }
-    final normalized = _normalizeSpotifyUrl(input);
+    final normalized = MusicLink.normalize(input);
     final updated = Map<String, String>.from(_data.workoutPlaylists)
       ..[templateId] = normalized;
     _data = _data.copyWith(workoutPlaylists: updated);
@@ -3397,11 +3455,21 @@ class FitnessStore extends ChangeNotifier {
   }) async {
     _validateProfile(profile);
     var templates = _data.templates;
-    if (refreshCorePrograms) {
-      final customTemplates = templates
-          .where((template) => template.id.startsWith('custom-'))
+    final previousProfile = _data.profile;
+    final programContextChanged =
+        previousProfile == null ||
+        previousProfile.goal != profile.goal ||
+        previousProfile.trainingPlace != profile.trainingPlace ||
+        previousProfile.equipment.trim().toLowerCase() !=
+            profile.equipment.trim().toLowerCase() ||
+        previousProfile.daysPerWeek != profile.daysPerWeek ||
+        previousProfile.experienceLevel != profile.experienceLevel ||
+        previousProfile.sessionMinutes != profile.sessionMinutes;
+    if (refreshCorePrograms || programContextChanged) {
+      final personalTemplates = templates
+          .where((template) => !_coreTemplateIds.contains(template.id))
           .toList();
-      templates = [..._recommendedTemplates(profile), ...customTemplates];
+      templates = [..._recommendedTemplates(profile), ...personalTemplates];
     }
     _data = _data.copyWith(profile: profile, templates: templates);
     await _repository.save(_data);
@@ -3429,21 +3497,32 @@ class FitnessStore extends ChangeNotifier {
     }
   }
 
+  bool _templateUsesUnavailableEquipment(
+    WorkoutTemplate template, {
+    required UserProfile profile,
+  }) => template.exercises.any(
+    (exercise) => !EquipmentAvailability.supportsExercise(exercise, profile),
+  );
+
   List<WorkoutTemplate> _recommendedTemplates(UserProfile profile) {
     final isHome = profile.trainingPlace == 'Σπίτι';
     final isBeginner = profile.experienceLevel == 'Αρχάριος';
     final isStrengthGoal = profile.goal == 'Δύναμη';
     final equipment = profile.equipment.toLowerCase();
+    final hasBands = equipment.contains('λάστιχ') || equipment.contains('band');
+    final hasDumbbells =
+        equipment.contains('αλτήρ') ||
+        equipment.contains('βαράκ') ||
+        equipment.contains('dumbbell') ||
+        equipment.contains('kettlebell');
+    final hasTreadmill =
+        equipment.contains('διάδρομ') || equipment.contains('treadmill');
     final hasPullUpBar =
         !isHome ||
         equipment.contains('μονόζυγ') ||
         equipment.contains('pull-up') ||
         equipment.contains('μπάρα');
-    final hasExternalLoad =
-        !isHome ||
-        equipment.contains('αλτήρ') ||
-        equipment.contains('βάρη') ||
-        equipment.contains('kettlebell');
+    final hasExternalLoad = !isHome || hasDumbbells;
     final workPrescription = isStrengthGoal
         ? '3 σετ × 5–8 • RIR 1–2 • 2′–3′ διάλειμμα'
         : '3–4 σετ × 6–12 • RIR 1–2 • 90″–2′ διάλειμμα';
@@ -3491,16 +3570,28 @@ class FitnessStore extends ChangeNotifier {
                 ? 'Κάμψεις σε υπερυψωμένη επιφάνεια'
                 : 'Κάμψεις με παύση 1″',
             hasPullUpBar
-                ? (isBeginner ? 'Υποβοηθούμενες έλξεις' : 'Αυστηρές έλξεις')
-                : 'Κωπηλατική με λάστιχο — αργό tempo',
-            isBeginner ? 'Πιέσεις ώμων με λάστιχο' : 'Pike push-ups',
-            hasExternalLoad
+                ? (isBeginner
+                      ? 'Αρνητικές έλξεις με στήριξη ποδιών'
+                      : 'Αυστηρές έλξεις')
+                : hasBands
+                ? 'Κωπηλατική με λάστιχο — αργό tempo'
+                : 'Bird dog',
+            hasBands
+                ? (isBeginner ? 'Πιέσεις ώμων με λάστιχο' : 'Pike push-ups')
+                : hasDumbbells
+                ? 'Πιέσεις ώμων με αλτήρες'
+                : 'Κάμψεις στον τοίχο',
+            hasDumbbells
                 ? 'Μονόχειρη κωπηλατική με αλτήρα'
-                : 'Μονόχειρη κωπηλατική με σακίδιο',
-            'Band face pulls',
-            hasExternalLoad
+                : hasBands
+                ? 'Bird dog'
+                : 'Hip hinge χωρίς βάρος',
+            hasBands ? 'Band face pulls' : 'Γέφυρα γλουτών στο πάτωμα',
+            isHome
+                ? 'Dead bug'
+                : hasExternalLoad
                 ? 'Suitcase carry με αλτήρα'
-                : 'Suitcase carry με σακίδιο',
+                : 'Dead bug',
           ]
         : [
             'Πιέσεις στήθους με αλτήρες',
@@ -3513,16 +3604,18 @@ class FitnessStore extends ChangeNotifier {
     final lowerExercises = isHome
         ? [
             isBeginner
-                ? 'Καθίσματα σε πάγκο με σακίδιο'
-                : 'Goblet squat με tempo 3″',
+                ? 'Κάθισμα και σήκωμα από καρέκλα'
+                : hasDumbbells
+                ? 'Goblet squat με αλτήρα και tempo 3″'
+                : 'Καθίσματα σε καρέκλα με tempo 3″',
             hasExternalLoad
                 ? 'Ρουμανικές άρσεις με αλτήρες'
-                : 'Ρουμανικές άρσεις με σακίδιο',
+                : 'Hip hinge χωρίς βάρος',
             isBeginner
-                ? 'Ανάστροφες προβολές με στήριξη'
+                ? 'Ανάστροφες προβολές με στήριξη σε καρέκλα'
                 : 'Bulgarian split squat',
-            'Hip thrust με παύση',
-            'Μονόποδες άρσεις γάμπας',
+            'Γέφυρα γλουτών στο πάτωμα',
+            'Bird dog',
             'Dead bug',
           ]
         : [
@@ -3554,10 +3647,27 @@ class FitnessStore extends ChangeNotifier {
             'Farmer carry',
             'Hollow body hold',
           ];
-    final calisthenicsExercises = isBeginner
+    final calisthenicsExercises = isHome
+        ? [
+            isBeginner
+                ? 'Κάμψεις σε υπερυψωμένη επιφάνεια'
+                : 'Κάμψεις με παύση 1″',
+            hasPullUpBar
+                ? (isBeginner
+                      ? 'Αρνητικές έλξεις με στήριξη ποδιών'
+                      : 'Αυστηρές έλξεις')
+                : hasBands
+                ? 'Κωπηλατική με λάστιχο — αργό tempo'
+                : 'Bird dog',
+            'Κάμψεις στον τοίχο',
+            'Ανάστροφες προβολές με στήριξη σε καρέκλα',
+            'Dead bug',
+            'Γέφυρα γλουτών στο πάτωμα',
+          ]
+        : isBeginner
         ? [
             'Κάμψεις σε υπερυψωμένη επιφάνεια',
-            hasPullUpBar ? 'Υποβοηθούμενες έλξεις' : 'Κωπηλατική με λάστιχο',
+            'Υποβοηθούμενες έλξεις',
             'Κάμψεις κλειστής λαβής',
             'Bulgarian split squat με στήριξη',
             'Dead bug',
@@ -3565,9 +3675,7 @@ class FitnessStore extends ChangeNotifier {
           ]
         : [
             'Κάμψεις με παύση 1″',
-            hasPullUpBar
-                ? 'Αυστηρές έλξεις'
-                : 'Κωπηλατική με λάστιχο — tempo 3″',
+            'Αυστηρές έλξεις',
             'Pike push-ups',
             'Pistol squat σε κουτί',
             'Hanging knee raises',
@@ -3575,13 +3683,11 @@ class FitnessStore extends ChangeNotifier {
           ];
     final engineExercises = isHome
         ? [
-            'Step-ups σε σταθερό πάγκο',
-            hasExternalLoad
-                ? 'Farmer carry με αλτήρες'
-                : 'March με φορτωμένο σακίδιο',
+            if (hasTreadmill) 'Περπάτημα σε απλό διάδρομο',
+            'Ανέβασμα σε χαμηλό σταθερό σκαλοπάτι',
             'Bear crawl αργού ρυθμού',
             'Mountain climbers ελεγχόμενα',
-            'Pallof press με λάστιχο',
+            'Dead bug',
           ]
         : [
             'Sled push',
@@ -3593,22 +3699,24 @@ class FitnessStore extends ChangeNotifier {
 
     final upper = program(
       id: 'iron-upper',
-      name: 'IRON UPPER — Strength',
+      name: isHome ? 'ΣΠΙΤΙ — Άνω σώμα' : 'IRON UPPER — Strength',
       exercises: upperExercises,
     );
     final lower = program(
       id: 'iron-lower',
-      name: 'IRON LOWER — Strength',
+      name: isHome ? 'ΣΠΙΤΙ — Πόδια και ισορροπία' : 'IRON LOWER — Strength',
       exercises: lowerExercises,
     );
     final hybrid = program(
       id: 'iron-hybrid',
-      name: 'IRON HYBRID — Full Body',
+      name: isHome ? 'ΣΠΙΤΙ — Όλο το σώμα' : 'IRON HYBRID — Full Body',
       exercises: hybridExercises,
     );
     final calisthenicsStrength = program(
       id: 'calisthenics-strength',
-      name: 'CALISTHENICS — Strict Strength',
+      name: isHome
+          ? 'ΣΠΙΤΙ — Δύναμη με το σώμα μου'
+          : 'CALISTHENICS — Strict Strength',
       exercises: calisthenicsExercises,
       prescription: isBeginner
           ? '3 σετ × 6–10 • RIR 2 • 90″ διάλειμμα'
@@ -3618,23 +3726,40 @@ class FitnessStore extends ChangeNotifier {
     );
     final calisthenicsSkill = program(
       id: 'calisthenics-skills',
-      name: 'CALISTHENICS — Skill Lab',
-      exercises: [
-        'Handstand στον τοίχο',
-        'Scapular pull-ups',
-        'Tuck L-sit',
-        'Arch body hold',
-      ],
-      prescription: '4–6 ποιοτικές προσπάθειες • ποτέ μέχρι αποτυχία',
-      coachingCue: 'Σταμάτα πριν τρέμει η τεχνική· ποιότητα πάνω από χρόνο.',
+      name: isHome
+          ? 'ΣΠΙΤΙ — Σταθερότητα και κορμός'
+          : 'CALISTHENICS — Skill Lab',
+      exercises: isHome
+          ? [
+              'Κάμψεις στον τοίχο',
+              'Bird dog',
+              'Dead bug',
+              'Γέφυρα γλουτών στο πάτωμα',
+            ]
+          : [
+              'Handstand στον τοίχο',
+              'Scapular pull-ups',
+              'Tuck L-sit',
+              'Arch body hold',
+            ],
+      prescription: isHome
+          ? '2–3 ήρεμα σετ • άνετος ρυθμός • ποτέ μέχρι εξάντληση'
+          : '4–6 ποιοτικές προσπάθειες • ποτέ μέχρι αποτυχία',
+      coachingCue: isHome
+          ? 'Κινήσου αργά και σταμάτα πριν χαλάσει η άνετη τεχνική.'
+          : 'Σταμάτα πριν τρέμει η τεχνική· ποιότητα πάνω από χρόνο.',
       restSeconds: 90,
     );
     final ironEngine = program(
       id: 'iron-engine',
-      name: 'IRON ENGINE — Conditioning',
+      name: isHome ? 'ΣΠΙΤΙ — Ήπια αντοχή' : 'IRON ENGINE — Conditioning',
       exercises: engineExercises,
-      prescription: '4 γύροι • 40″ δουλειά / 20″ αλλαγή • RPE 7–8',
-      coachingCue: 'Σταθερός ρυθμός και καθαρές κινήσεις· κανένα άλμα.',
+      prescription: isHome
+          ? '3 ήρεμοι γύροι • 30″ δουλειά / 30″ ανάσα • RPE 5–6'
+          : '4 γύροι • 40″ δουλειά / 20″ αλλαγή • RPE 7–8',
+      coachingCue: isHome
+          ? 'Άφησε χώρο γύρω σου και κράτησε ρυθμό που σου επιτρέπει να μιλάς.'
+          : 'Σταθερός ρυθμός και καθαρές κινήσεις· κανένα άλμα.',
       restSeconds: 60,
     );
     final weightedCalisthenics = program(
@@ -3654,6 +3779,53 @@ class FitnessStore extends ChangeNotifier {
     );
 
     if (profile.daysPerWeek <= 2) {
+      if (isHome) {
+        final homeA = hasDumbbells
+            ? [
+                'Goblet squat με αλτήρα',
+                'Ρουμανικές άρσεις με αλτήρες',
+                'Μονόχειρη κωπηλατική με αλτήρα',
+                'Πιέσεις ώμων με αλτήρες',
+              ]
+            : [
+                'Κάθισμα και σήκωμα από καρέκλα',
+                'Κάμψεις στον τοίχο',
+                hasBands ? 'Κωπηλατική με λάστιχο' : 'Bird dog',
+                'Γέφυρα γλουτών στο πάτωμα',
+              ];
+        final homeB = [
+          'Hip hinge χωρίς βάρος',
+          'Κάμψεις σε σταθερό τραπέζι',
+          if (hasPullUpBar)
+            isBeginner
+                ? 'Αρνητικές έλξεις με στήριξη ποδιών'
+                : 'Αυστηρές έλξεις'
+          else if (hasBands)
+            'Band face pulls'
+          else
+            'Bird dog',
+          'Dead bug',
+        ];
+        return [
+          program(
+            id: 'full-body-a',
+            name: 'ΗΠΙΑ ΑΡΧΗ ΣΤΟ ΣΠΙΤΙ — A',
+            exercises: homeA,
+            coachingCue:
+                'Άνετη κίνηση, σταθερή αναπνοή και καμία πίεση για τελειότητα.',
+            restSeconds: 75,
+          ),
+          program(
+            id: 'full-body-b',
+            name: 'ΗΠΙΑ ΑΡΧΗ ΣΤΟ ΣΠΙΤΙ — B',
+            exercises: homeB,
+            coachingCue:
+                'Χρησιμοποίησε μόνο σταθερά έπιπλα και σταμάτα αν εμφανιστεί πόνος.',
+            restSeconds: 75,
+          ),
+          if (hasTreadmill) ironEngine else calisthenicsSkill,
+        ];
+      }
       return [
         program(
           id: 'full-body-a',
@@ -3689,38 +3861,11 @@ class FitnessStore extends ChangeNotifier {
       calisthenicsStrength,
       calisthenicsSkill,
       ironEngine,
-      if (!isBeginner && hasPullUpBar) weightedCalisthenics,
+      if (!isHome && !isBeginner && hasPullUpBar) weightedCalisthenics,
     ];
   }
 
   String _normalizeSpotifyUrl(String input) {
-    final value = input.trim();
-    if (value.startsWith('spotify:')) {
-      final parts = value.split(':');
-      if (parts.length == 3 &&
-          const {'playlist', 'album', 'track'}.contains(parts[1]) &&
-          parts[2].isNotEmpty) {
-        return 'https://open.spotify.com/${parts[1]}/${parts[2]}';
-      }
-    }
-    final uri = Uri.tryParse(value);
-    if (uri == null ||
-        uri.scheme != 'https' ||
-        uri.host != 'open.spotify.com' ||
-        uri.pathSegments.length < 2 ||
-        !const {
-          'playlist',
-          'album',
-          'track',
-        }.contains(uri.pathSegments.first)) {
-      throw const FormatException(
-        'Χρησιμοποίησε σύνδεσμο Spotify playlist, album ή track.',
-      );
-    }
-    return Uri(
-      scheme: 'https',
-      host: 'open.spotify.com',
-      pathSegments: uri.pathSegments.take(2),
-    ).toString();
+    return MusicLink.normalize(input, expectedService: MusicService.spotify);
   }
 }
