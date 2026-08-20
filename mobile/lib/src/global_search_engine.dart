@@ -154,6 +154,14 @@ class GlobalSearchEngine {
       ),
       const PhoenixSearchResult(
         type: SearchResultType.tool,
+        title: 'Recommended Meal Plan',
+        subtitle: 'Simple weekly meals adapted to your goal and preferences',
+        keywords:
+            'recommended meal plan weekly food diet nutrition grocery simple personalized διατροφή πρόγραμμα φαγητό φαγητού εβδομάδα εβδομαδιαίο',
+        route: 'recommended-nutrition',
+      ),
+      const PhoenixSearchResult(
+        type: SearchResultType.tool,
         title: 'Nutrition Planner',
         subtitle:
             'Goal phases, weekly calories, macro timing and diet transitions',

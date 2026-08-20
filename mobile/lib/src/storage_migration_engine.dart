@@ -17,7 +17,7 @@ class StorageMigrationResult {
 class StorageMigrationEngine {
   const StorageMigrationEngine._();
 
-  static const currentVersion = 19;
+  static const currentVersion = 20;
 
   static StorageMigrationResult migrate(
     Map<String, dynamic> source, {
@@ -120,6 +120,17 @@ class StorageMigrationEngine {
       );
       json.putIfAbsent('analyticsAnnotations', () => <dynamic>[]);
       steps.add('v18→v19 analytics studio fields');
+    }
+    if (fromVersion < 20) {
+      final preferences = Map<String, dynamic>.from(
+        json['preferences'] as Map<String, dynamic>? ?? const {},
+      );
+      preferences.putIfAbsent('nutritionDietStyle', () => 'balanced');
+      preferences.putIfAbsent('nutritionMealsPerDay', () => 4);
+      preferences.putIfAbsent('nutritionBudgetMode', () => 'standard');
+      preferences.putIfAbsent('nutritionQuickPrep', () => true);
+      json['preferences'] = preferences;
+      steps.add('v19→v20 recommended nutrition preferences');
     }
     return StorageMigrationResult(
       json: json,

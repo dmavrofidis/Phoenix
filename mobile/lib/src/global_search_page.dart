@@ -20,6 +20,7 @@ import 'mobility_intelligence_page.dart';
 import 'mobility_page.dart';
 import 'nutrition_page.dart';
 import 'nutrition_planner_page.dart';
+import 'recommended_nutrition_page.dart';
 import 'phoenix_l10n.dart';
 import 'program_editor_page.dart';
 import 'program_architecture_page.dart';
@@ -113,6 +114,8 @@ class _GlobalSearchPageState extends State<GlobalSearchPage> {
         'Recovery trends, sleep debt, RHR alerts and interventions',
       'nutrition-planner' =>
         'Goal phases, weekly calories, macro timing and diet transitions',
+      'recommended-nutrition' =>
+        'Simple weekly meals adapted to your goal and preferences',
       'meal-intelligence' =>
         'Ingredient builder, pantry, expiry, budget and batch cooking',
       'body-composition' =>
@@ -162,6 +165,9 @@ class _GlobalSearchPageState extends State<GlobalSearchPage> {
           store: widget.store,
         ),
         'nutrition-planner' => NutritionPlannerPage(store: widget.store),
+        'recommended-nutrition' => RecommendedNutritionPage(
+          store: widget.store,
+        ),
         'meal-intelligence' => MealIntelligencePage(store: widget.store),
         'body-composition' => BodyCompositionPage(store: widget.store),
         'habit-builder' => HabitBuilderPage(store: widget.store),

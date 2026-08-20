@@ -30,6 +30,7 @@ import 'mobility_intelligence_page.dart';
 import 'mobility_page.dart';
 import 'nutrition_page.dart';
 import 'nutrition_planner_page.dart';
+import 'recommended_nutrition_page.dart';
 import 'onboarding_page.dart';
 import 'phoenix_l10n.dart';
 import 'phoenix_toolbox_page.dart';
@@ -132,6 +133,7 @@ class _PhoenixAppState extends State<PhoenixApp> with WidgetsBindingObserver {
           'recovery' => RecoveryLabPage(store: store),
           'recovery-intelligence' => RecoveryIntelligencePage(store: store),
           'nutrition-planner' => NutritionPlannerPage(store: store),
+          'recommended-nutrition' => RecommendedNutritionPage(store: store),
           'meal-intelligence' => MealIntelligencePage(store: store),
           'body-composition' => BodyCompositionPage(store: store),
           'habit-builder' => HabitBuilderPage(store: store),

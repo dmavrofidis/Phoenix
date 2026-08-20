@@ -8,6 +8,7 @@ import 'nutrition_pro_widgets.dart';
 import 'nutrition_planner_page.dart';
 import 'photo_meal_scan_page.dart';
 import 'phoenix_l10n.dart';
+import 'recommended_nutrition_page.dart';
 import 'state/fitness_store.dart';
 
 class NutritionPage extends StatelessWidget {
@@ -113,6 +114,8 @@ class NutritionPage extends StatelessWidget {
         const SizedBox(height: 22),
         _DailyNutritionCard(store: store),
         const SizedBox(height: 12),
+        _RecommendedPlanCard(store: store),
+        const SizedBox(height: 12),
         HydrationCard(store: store),
         const SizedBox(height: 12),
         MealPresetsCard(store: store),
@@ -210,6 +213,79 @@ class NutritionPage extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _RecommendedPlanCard extends StatelessWidget {
+  const _RecommendedPlanCard({required this.store});
+
+  final FitnessStore store;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final preferences = store.preferences;
+    final style = switch (preferences.nutritionDietStyle) {
+      'mediterranean' => l.text('Μεσογειακή', 'Mediterranean'),
+      'vegetarian' => l.text('Χορτοφαγική', 'Vegetarian'),
+      'vegan' => 'Vegan',
+      _ => l.text('Ισορροπημένη', 'Balanced'),
+    };
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => RecommendedNutritionPage(store: store),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.primary.withValues(alpha: .12),
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: Icon(
+                  Icons.restaurant_menu,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l.text(
+                        'Πρόγραμμα φαγητού για σένα',
+                        'Your recommended meal plan',
+                      ),
+                      style: const TextStyle(fontWeight: FontWeight.w900),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      l.text(
+                        '$style • ${preferences.nutritionMealsPerDay} γεύματα • λίστα αγορών',
+                        '$style • ${preferences.nutritionMealsPerDay} meals • grocery list',
+                      ),
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

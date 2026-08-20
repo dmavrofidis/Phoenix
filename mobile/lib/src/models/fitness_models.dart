@@ -1099,6 +1099,10 @@ class AppPreferences {
     this.oneHandMode = false,
     this.touchTargetScale = 1,
     this.voiceLabels = true,
+    this.nutritionDietStyle = 'balanced',
+    this.nutritionMealsPerDay = 4,
+    this.nutritionBudgetMode = 'standard',
+    this.nutritionQuickPrep = true,
   });
 
   final String languageCode;
@@ -1117,6 +1121,10 @@ class AppPreferences {
   final bool oneHandMode;
   final double touchTargetScale;
   final bool voiceLabels;
+  final String nutritionDietStyle;
+  final int nutritionMealsPerDay;
+  final String nutritionBudgetMode;
+  final bool nutritionQuickPrep;
 
   bool get hasVaultPin => vaultPinHash.isNotEmpty;
 
@@ -1137,6 +1145,10 @@ class AppPreferences {
     bool? oneHandMode,
     double? touchTargetScale,
     bool? voiceLabels,
+    String? nutritionDietStyle,
+    int? nutritionMealsPerDay,
+    String? nutritionBudgetMode,
+    bool? nutritionQuickPrep,
   }) => AppPreferences(
     languageCode: languageCode ?? this.languageCode,
     highContrast: highContrast ?? this.highContrast,
@@ -1154,6 +1166,10 @@ class AppPreferences {
     oneHandMode: oneHandMode ?? this.oneHandMode,
     touchTargetScale: touchTargetScale ?? this.touchTargetScale,
     voiceLabels: voiceLabels ?? this.voiceLabels,
+    nutritionDietStyle: nutritionDietStyle ?? this.nutritionDietStyle,
+    nutritionMealsPerDay: nutritionMealsPerDay ?? this.nutritionMealsPerDay,
+    nutritionBudgetMode: nutritionBudgetMode ?? this.nutritionBudgetMode,
+    nutritionQuickPrep: nutritionQuickPrep ?? this.nutritionQuickPrep,
   );
 
   Map<String, Object> toJson() => {
@@ -1173,6 +1189,10 @@ class AppPreferences {
     'oneHandMode': oneHandMode,
     'touchTargetScale': touchTargetScale,
     'voiceLabels': voiceLabels,
+    'nutritionDietStyle': nutritionDietStyle,
+    'nutritionMealsPerDay': nutritionMealsPerDay,
+    'nutritionBudgetMode': nutritionBudgetMode,
+    'nutritionQuickPrep': nutritionQuickPrep,
   };
 
   factory AppPreferences.fromJson(Map<String, dynamic> json) => AppPreferences(
@@ -1195,6 +1215,20 @@ class AppPreferences {
       1.5,
     ),
     voiceLabels: json['voiceLabels'] as bool? ?? true,
+    nutritionDietStyle: switch (json['nutritionDietStyle']) {
+      'mediterranean' ||
+      'vegetarian' ||
+      'vegan' => json['nutritionDietStyle'] as String,
+      _ => 'balanced',
+    },
+    nutritionMealsPerDay: (json['nutritionMealsPerDay'] as int? ?? 4).clamp(
+      3,
+      5,
+    ),
+    nutritionBudgetMode: json['nutritionBudgetMode'] == 'economy'
+        ? 'economy'
+        : 'standard',
+    nutritionQuickPrep: json['nutritionQuickPrep'] as bool? ?? true,
   );
 }
 

@@ -644,6 +644,42 @@ class FitnessStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> updateNutritionPlanPreferences({
+    String? dietStyle,
+    int? mealsPerDay,
+    String? budgetMode,
+    bool? quickPrep,
+  }) async {
+    const supportedStyles = {
+      'balanced',
+      'mediterranean',
+      'vegetarian',
+      'vegan',
+    };
+    const supportedBudgets = {'standard', 'economy'};
+    final style = dietStyle == null
+        ? preferences.nutritionDietStyle
+        : supportedStyles.contains(dietStyle)
+        ? dietStyle
+        : 'balanced';
+    final budget = budgetMode == null
+        ? preferences.nutritionBudgetMode
+        : supportedBudgets.contains(budgetMode)
+        ? budgetMode
+        : 'standard';
+    _data = _data.copyWith(
+      preferences: preferences.copyWith(
+        nutritionDietStyle: style,
+        nutritionMealsPerDay: mealsPerDay?.clamp(3, 5),
+        nutritionBudgetMode: budget,
+        nutritionQuickPrep: quickPrep,
+      ),
+    );
+    await _repository.save(_data);
+    await feedback(success: true);
+    notifyListeners();
+  }
+
   Future<void> feedback({bool success = false}) async {
     if (preferences.hapticFeedback) {
       if (success) {

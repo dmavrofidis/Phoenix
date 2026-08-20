@@ -73,6 +73,8 @@ import 'package:phoenix/src/nutrition_goal_engine.dart';
 import 'package:phoenix/src/nutrition_page.dart';
 import 'package:phoenix/src/nutrition_planner_engine.dart';
 import 'package:phoenix/src/nutrition_planner_page.dart';
+import 'package:phoenix/src/recommended_nutrition_engine.dart';
+import 'package:phoenix/src/recommended_nutrition_page.dart';
 import 'package:phoenix/src/onboarding_page.dart';
 import 'package:phoenix/src/operational_readiness_engine.dart';
 import 'package:phoenix/src/operations_studio_page.dart';
@@ -2249,6 +2251,28 @@ void main() {
     expect(find.text('Ξεκίνα με την πρωτεΐνη'), findsOneWidget);
   });
 
+  testWidgets('το απλό διατροφικό πλάνο είναι άμεσα ορατό', (tester) async {
+    final store = FitnessStore(MemoryRepository());
+    store.previewWithoutProfile();
+    await tester.pumpWidget(PhoenixApp(store: store));
+
+    await tester.tap(find.byIcon(Icons.restaurant_outlined));
+    await tester.pumpAndSettle();
+    expect(find.text('Πρόγραμμα φαγητού για σένα'), findsOneWidget);
+
+    await tester.tap(find.text('Πρόγραμμα φαγητού για σένα'));
+    await tester.pumpAndSettle();
+    expect(find.byType(RecommendedNutritionPage), findsOneWidget);
+    expect(find.text('ΕΤΟΙΜΟ ΓΙΑ ΣΕΝΑ'), findsOneWidget);
+    expect(find.text('ΟΙ ΕΠΙΛΟΓΕΣ ΜΟΥ'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Η ΕΒΔΟΜΑΔΑ ΜΟΥ'),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Η ΕΒΔΟΜΑΔΑ ΜΟΥ'), findsOneWidget);
+  });
+
   testWidgets('το Nutrition Pro καταγράφει νερό και meal preset', (
     tester,
   ) async {
@@ -4301,7 +4325,7 @@ void main() {
     },
   );
 
-  test('versioned storage migration upgrades v1 data through schema v19', () {
+  test('versioned storage migration upgrades v1 data through schema v20', () {
     final source = FitnessData.initial().toJson()
       ..remove('preferences')
       ..remove('workoutReminders')
@@ -4310,7 +4334,7 @@ void main() {
     final result = StorageMigrationEngine.migrate(source, fromVersion: 1);
 
     expect(result.toVersion, StorageMigrationEngine.currentVersion);
-    expect(result.appliedSteps, hasLength(18));
+    expect(result.appliedSteps, hasLength(19));
     expect(result.json['preferences'], isA<Map<String, dynamic>>());
     expect(result.json['workoutReminders'], isEmpty);
     expect(result.json['progressPhotos'], isEmpty);
@@ -4337,6 +4361,16 @@ void main() {
     expect(result.json['coachRecommendationFeedback'], isEmpty);
     expect(result.json['analyticsDashboardMetrics'], isNotEmpty);
     expect(result.json['analyticsAnnotations'], isEmpty);
+    expect(
+      (result.json['preferences']
+          as Map<String, dynamic>)['nutritionDietStyle'],
+      'balanced',
+    );
+    expect(
+      (result.json['preferences']
+          as Map<String, dynamic>)['nutritionMealsPerDay'],
+      4,
+    );
     expect(FitnessData.fromJson(result.json), isA<FitnessData>());
   });
 
@@ -7265,6 +7299,75 @@ void main() {
     expect(find.text('RETURN-TO-BASELINE FORECAST'), findsOneWidget);
   });
 
+  test('recommended nutrition builds a complete vegan week', () {
+    const targets = NutritionTargets(
+      calories: 2200,
+      proteinGrams: 140,
+      carbohydrateGrams: 260,
+      fatGrams: 65,
+      fiberGrams: 30,
+      sodiumLimitMilligrams: 2300,
+      goalLabel: 'Maintenance',
+      isTrainingDay: true,
+    );
+    final week = RecommendedNutritionEngine.buildWeek(
+      startDate: DateTime(2026, 8, 17),
+      targetsForDate: (_) => targets,
+      dietStyle: 'vegan',
+      mealsPerDay: 4,
+      budgetMode: 'economy',
+      quickPrep: true,
+    );
+
+    expect(week.days, hasLength(7));
+    expect(week.days.every((day) => day.meals.length == 4), isTrue);
+    expect(
+      week.days.expand((day) => day.meals).expand((meal) => meal.ingredients),
+      everyElement(
+        isNot(isIn(const {'chicken', 'tuna', 'eggs', 'greek-yogurt'})),
+      ),
+    );
+    expect(
+      week.days.every(
+        (day) =>
+            (day.estimatedCalories - targets.calories).abs() <
+            targets.calories * .18,
+      ),
+      isTrue,
+    );
+    expect(week.groceryItems, isNotEmpty);
+  });
+
+  test(
+    'nutrition plan choices persist locally and reject unsafe values',
+    () async {
+      final repository = MemoryRepository();
+      final store = FitnessStore(repository);
+      await store.load();
+      await store.updateNutritionPlanPreferences(
+        dietStyle: 'vegan',
+        mealsPerDay: 5,
+        budgetMode: 'economy',
+        quickPrep: false,
+      );
+      final restored = FitnessData.fromJson(repository.value.toJson());
+
+      expect(restored.preferences.nutritionDietStyle, 'vegan');
+      expect(restored.preferences.nutritionMealsPerDay, 5);
+      expect(restored.preferences.nutritionBudgetMode, 'economy');
+      expect(restored.preferences.nutritionQuickPrep, isFalse);
+
+      await store.updateNutritionPlanPreferences(
+        dietStyle: 'medical-crash-diet',
+        mealsPerDay: 99,
+        budgetMode: 'unknown',
+      );
+      expect(store.preferences.nutritionDietStyle, 'balanced');
+      expect(store.preferences.nutritionMealsPerDay, 5);
+      expect(store.preferences.nutritionBudgetMode, 'standard');
+    },
+  );
+
   test('goal-phase calorie planner orders deficit maintenance and surplus', () {
     final loss = NutritionPlannerEngine.phasePlan(
       weightKilograms: 80,
@@ -7488,6 +7591,18 @@ void main() {
     );
 
     expect(results.single.route, 'nutrition-planner');
+  });
+
+  test('global search discovers the simple recommended meal plan', () {
+    final results = GlobalSearchEngine.search(
+      FitnessData.initial(),
+      'εβδομαδιαίο πρόγραμμα φαγητού',
+    );
+
+    expect(
+      results.any((result) => result.route == 'recommended-nutrition'),
+      isTrue,
+    );
   });
 
   testWidgets('Nutrition Planner exposes all four planning zones', (
