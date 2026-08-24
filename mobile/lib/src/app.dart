@@ -3027,8 +3027,8 @@ class _DailyExercisesCard extends StatelessWidget {
             const SizedBox(height: 6),
             Text(
               context.l10n.text(
-                'Πάτησε σε άσκηση για εικόνα και οδηγίες τεχνικής.',
-                'Tap an exercise for a visual and technique guide.',
+                'Πάτησε σε άσκηση μόνο όταν θέλεις οδηγίες τεχνικής.',
+                'Tap an exercise only when you want technique guidance.',
               ),
               style: TextStyle(
                 color: Colors.white.withValues(alpha: .48),
@@ -3070,6 +3070,7 @@ class _DailyExerciseRow extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     final guide = ExerciseGuideCatalog.forExercise(exercise, atHome: atHome);
     return InkWell(
+      key: ValueKey('daily-exercise-row-$exercise'),
       borderRadius: BorderRadius.circular(12),
       onTap: guide == null
           ? null
@@ -3095,18 +3096,6 @@ class _DailyExerciseRow extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 12),
-            if (guide != null) ...[
-              ExerciseGuidePreview(
-                key: ValueKey('daily-exercise-guide-$exercise'),
-                guide: guide,
-                semanticLabel:
-                    'Αρχική και τελική θέση για την άσκηση $exercise',
-                width: 88,
-                height: 62,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              const SizedBox(width: 10),
-            ],
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

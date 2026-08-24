@@ -2043,7 +2043,7 @@ void main() {
     expect(find.text('Δες πώς γίνεται'), findsWidgets);
     expect(
       find.byKey(const ValueKey('daily-exercise-guide-Farmer carry')),
-      findsOneWidget,
+      findsNothing,
     );
   });
 
@@ -2077,17 +2077,17 @@ void main() {
     final store = FitnessStore(MemoryRepository());
     store.previewWithoutProfile();
     final exercise = store.recommendedWorkout.exercises.first;
-    final preview = find.byKey(ValueKey('daily-exercise-guide-$exercise'));
+    final exerciseRow = find.byKey(ValueKey('daily-exercise-row-$exercise'));
     await tester.pumpWidget(PhoenixApp(store: store));
 
     await tester.scrollUntilVisible(
-      preview,
+      exerciseRow,
       400,
       scrollable: find.byType(Scrollable).first,
     );
-    await tester.ensureVisible(preview);
+    await tester.ensureVisible(exerciseRow);
     await tester.pumpAndSettle();
-    await tester.tap(preview);
+    await tester.tap(exerciseRow);
     await tester.pumpAndSettle();
 
     expect(find.text('ΑΡΧΙΚΗ ΘΕΣΗ  →  ΤΕΛΙΚΗ ΘΕΣΗ'), findsOneWidget);
