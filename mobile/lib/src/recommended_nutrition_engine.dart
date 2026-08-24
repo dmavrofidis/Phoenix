@@ -102,6 +102,7 @@ class RecommendedNutritionEngine {
     required int mealsPerDay,
     required String budgetMode,
     required bool quickPrep,
+    bool noCooking = false,
   }) {
     final start = DateTime(startDate.year, startDate.month, startDate.day);
     final style = supportedDietStyles.contains(dietStyle)
@@ -124,6 +125,7 @@ class RecommendedNutritionEngine {
           dietStyle: style,
           economy: economy,
           quickPrep: quickPrep,
+          noCooking: noCooking,
           rotation: dayIndex + slotIndex,
         );
         final meal = _scaledMeal(
@@ -165,6 +167,7 @@ class RecommendedNutritionEngine {
     required String dietStyle,
     required bool economy,
     required bool quickPrep,
+    required bool noCooking,
     required int rotation,
   }) {
     final styleMatches = _recipes
@@ -176,10 +179,12 @@ class RecommendedNutritionEngine {
     var candidates = styleMatches
         .where((recipe) => !economy || recipe.economy)
         .where((recipe) => !quickPrep || recipe.prepMinutes <= 15)
+        .where((recipe) => !noCooking || recipe.prepMinutes <= 5)
         .toList();
     if (candidates.isEmpty) {
       candidates = styleMatches
           .where((recipe) => !economy || recipe.economy)
+          .where((recipe) => !noCooking || recipe.prepMinutes <= 5)
           .toList();
     }
     if (candidates.isEmpty) candidates = styleMatches;
@@ -444,7 +449,7 @@ class RecommendedNutritionEngine {
       greekTitle: 'Σαλάτα φασολιών με ψωμί',
       englishTitle: 'Bean salad with wholegrain bread',
       dietStyles: {'balanced', 'mediterranean', 'vegetarian', 'vegan'},
-      prepMinutes: 10,
+      prepMinutes: 5,
       economy: true,
       ingredients: [
         _RecipeIngredient(foodId: 'beans', grams: 280),

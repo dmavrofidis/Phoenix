@@ -348,7 +348,7 @@ class WeeklyNutritionCard extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  '${(store.weeklyMacroAdherence * 100).round()}% adherence',
+                  '${(store.weeklyMacroAdherence * 100).round()}% συνέπεια',
                   style: const TextStyle(
                     color: Color(0xFFFF9E80),
                     fontWeight: FontWeight.w900,
@@ -359,7 +359,7 @@ class WeeklyNutritionCard extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             Text(
-              '${store.nutritionConsistencyStreak} ημέρες consistency streak',
+              '${store.nutritionConsistencyStreak} συνεχόμενες ημέρες συνέπειας',
               style: TextStyle(
                 color: Colors.white.withValues(alpha: .58),
                 fontSize: 12,
@@ -524,7 +524,7 @@ class _GroceryListSheetState extends State<_GroceryListSheet> {
                       }),
                       title: Text(item.name),
                       subtitle: item.presetCount > 1
-                          ? Text('Σε ${item.presetCount} presets')
+                          ? Text('Σε ${item.presetCount} έτοιμα γεύματα')
                           : null,
                     ),
                 ],

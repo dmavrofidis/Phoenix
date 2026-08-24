@@ -712,6 +712,44 @@ void main() {
     );
   });
 
+  test(
+    'ο προγραμματισμός απορρίπτει πρόγραμμα με μη δηλωμένο εξοπλισμό',
+    () async {
+      final store = FitnessStore(MemoryRepository());
+      await store.saveProfile(
+        const UserProfile(
+          goal: 'Γενική φυσική κατάσταση',
+          trainingPlace: 'Σπίτι',
+          equipment: 'Χωρίς εξοπλισμό',
+          daysPerWeek: 3,
+          heightCentimeters: 170,
+          weightKilograms: 70,
+        ),
+      );
+      const incompatible = WorkoutTemplate(
+        id: 'custom-band-only',
+        name: 'Πρόγραμμα με λάστιχο',
+        exercises: ['Πιέσεις ώμων με λάστιχο'],
+      );
+      await store.updateWorkoutTemplate(incompatible);
+
+      expect(
+        () => store.assignTemplateToWeekday(2, incompatible.id),
+        throwsA(
+          isA<FormatException>().having(
+            (error) => error.message,
+            'message',
+            contains('εξοπλισμό'),
+          ),
+        ),
+      );
+      expect(
+        store.equipmentCompatibleTemplates.map((item) => item.id),
+        isNot(contains(incompatible.id)),
+      );
+    },
+  );
+
   test('οι εναλλακτικές χωρίς εξοπλισμό δεν προτείνουν λάστιχο ή μηχάνημα', () {
     const profile = UserProfile(
       goal: 'Γενική φυσική κατάσταση',
@@ -2021,14 +2059,16 @@ void main() {
     expect(jsonDecode(json)['report'], 'Phoenix Advanced Analytics');
   });
 
-  testWidgets('η απλή αρχική δείχνει το επόμενο μικρό βήμα', (tester) async {
+  testWidgets('η απλή αρχική δείχνει τρεις καθαρές επιλογές', (tester) async {
     final store = FitnessStore(MemoryRepository());
     store.previewWithoutProfile();
     await tester.pumpWidget(PhoenixApp(store: store));
 
     expect(find.text('Τι θέλεις να κάνεις σήμερα;'), findsOneWidget);
-    expect(find.text('ΤΟ ΣΗΜΕΡΙΝΟ ΣΟΥ ΒΗΜΑ'), findsOneWidget);
-    expect(find.text('Ξεκίνα όταν είσαι έτοιμος'), findsOneWidget);
+    expect(find.text('Τι ταιριάζει στη μέρα σου;'), findsOneWidget);
+    expect(find.text('Έχω μόνο 10 λεπτά'), findsOneWidget);
+    expect(find.text('Θέλω κανονική προπόνηση'), findsOneWidget);
+    expect(find.text('Σήμερα χρειάζομαι κάτι ήπιο'), findsOneWidget);
     expect(
       find.textContaining('0 από 3 προπονήσεις αυτή την εβδομάδα'),
       findsOneWidget,
@@ -2094,8 +2134,31 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('ΑΡΧΙΚΗ ΘΕΣΗ  →  ΤΕΛΙΚΗ ΘΕΣΗ'), findsOneWidget);
-    expect(find.text('ΕΚΤΕΛΕΣΗ'), findsOneWidget);
-    expect(find.text('ΑΠΟΦΥΓΕ'), findsOneWidget);
+    expect(find.text('3 απλά βήματα'), findsOneWidget);
+    expect(find.text('ΣΥΝΗΘΙΣΜΕΝΟ ΛΑΘΟΣ'), findsOneWidget);
+    expect(find.text('ΑΣΦΑΛΕΣΤΕΡΗ ΕΠΙΛΟΓΗ'), findsOneWidget);
+  });
+
+  testWidgets('η ήπια επιλογή ξεκινά πραγματικό πρόγραμμα αποκατάστασης', (
+    tester,
+  ) async {
+    final store = FitnessStore(MemoryRepository());
+    store.previewWithoutProfile();
+    await tester.pumpWidget(PhoenixApp(store: store));
+
+    final recovery = find.byKey(const ValueKey('recovery-workout-action'));
+    await tester.scrollUntilVisible(
+      recovery,
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.ensureVisible(recovery);
+    await tester.pumpAndSettle();
+    await tester.tap(recovery);
+    await tester.pumpAndSettle();
+
+    expect(store.activeWorkout?.sessionType, 'recovery');
+    expect(find.byType(ActiveWorkoutPage), findsOneWidget);
   });
 
   testWidgets('το Περισσότερα ανοίγει οργανωμένη εργαλειοθήκη', (tester) async {
@@ -2109,6 +2172,13 @@ void main() {
     expect(find.text('Όλα τα εργαλεία'), findsOneWidget);
     expect(find.text('Cali Lab'), findsNothing);
 
+    await tester.scrollUntilVisible(
+      find.text('Όλα τα εργαλεία'),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.ensureVisible(find.text('Όλα τα εργαλεία'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Όλα τα εργαλεία'));
     await tester.pumpAndSettle();
 
@@ -4276,30 +4346,30 @@ void main() {
         MaterialApp(home: MediaPortabilityPage(store: store)),
       );
 
-      expect(find.text('MEDIA & PORTABILITY'), findsOneWidget);
+      expect(find.text('Αρχεία, μουσική & μεταφορά'), findsOneWidget);
       expect(find.text('LOCAL WORKOUT SHARE CARD'), findsOneWidget);
 
-      await tester.tap(find.text('VAULT'));
+      await tester.tap(find.text('ΦΩΤΟΓΡΑΦΙΕΣ'));
       await tester.pumpAndSettle();
       expect(find.text('PRIVATE PROGRESS-PHOTO VAULT'), findsOneWidget);
 
-      await tester.tap(find.text('MEDIA'));
+      await tester.tap(find.text('ΜΟΥΣΙΚΗ'));
       await tester.pumpAndSettle();
       expect(find.text('CONFIGURABLE AUDIO CUES'), findsOneWidget);
 
-      await tester.tap(find.text('TRANSFER'));
+      await tester.tap(find.text('ΜΕΤΑΦΟΡΑ'));
       await tester.pumpAndSettle();
-      expect(find.text('BACKUP FILE TRANSFER'), findsOneWidget);
-      expect(find.text('EXPORT BACKUP FILE'), findsOneWidget);
-      expect(find.text('IMPORT BACKUP FILE'), findsOneWidget);
-      expect(find.text('QR BACKUP TRANSFER'), findsOneWidget);
+      expect(find.text('Μεταφορά με αρχείο'), findsOneWidget);
+      expect(find.text('Αποθήκευση αντιγράφου ασφαλείας'), findsOneWidget);
+      expect(find.text('Επαναφορά από αρχείο'), findsOneWidget);
+      expect(find.text('Μεταφορά με QR'), findsOneWidget);
       await tester.drag(
         find.byKey(const ValueKey('media-transfer-scroll')),
         const Offset(0, -900),
       );
       await tester.pumpAndSettle();
-      expect(find.text('EXPORT ENCRYPTED SYNC'), findsOneWidget);
-      expect(find.text('IMPORT & REVIEW SYNC'), findsOneWidget);
+      expect(find.text('Δημιουργία αρχείου μεταφοράς'), findsOneWidget);
+      expect(find.text('Άνοιγμα και έλεγχος αρχείου'), findsOneWidget);
     },
   );
 
@@ -7346,6 +7416,33 @@ void main() {
     expect(week.groceryItems, isNotEmpty);
   });
 
+  test('πλάνο χωρίς μαγείρεμα κρατά όλα τα γεύματα έως πέντε λεπτά', () {
+    const targets = NutritionTargets(
+      calories: 2100,
+      proteinGrams: 135,
+      carbohydrateGrams: 240,
+      fatGrams: 65,
+      fiberGrams: 30,
+      sodiumLimitMilligrams: 2300,
+      goalLabel: 'Maintenance',
+      isTrainingDay: true,
+    );
+    final week = RecommendedNutritionEngine.buildWeek(
+      startDate: DateTime(2026, 8, 17),
+      targetsForDate: (_) => targets,
+      dietStyle: 'vegan',
+      mealsPerDay: 5,
+      budgetMode: 'economy',
+      quickPrep: true,
+      noCooking: true,
+    );
+
+    expect(
+      week.days.expand((day) => day.meals).map((meal) => meal.prepMinutes),
+      everyElement(lessThanOrEqualTo(5)),
+    );
+  });
+
   test(
     'nutrition plan choices persist locally and reject unsafe values',
     () async {
@@ -7357,6 +7454,7 @@ void main() {
         mealsPerDay: 5,
         budgetMode: 'economy',
         quickPrep: false,
+        noCooking: true,
       );
       final restored = FitnessData.fromJson(repository.value.toJson());
 
@@ -7364,6 +7462,7 @@ void main() {
       expect(restored.preferences.nutritionMealsPerDay, 5);
       expect(restored.preferences.nutritionBudgetMode, 'economy');
       expect(restored.preferences.nutritionQuickPrep, isFalse);
+      expect(restored.preferences.nutritionNoCooking, isTrue);
 
       await store.updateNutritionPlanPreferences(
         dietStyle: 'medical-crash-diet',
@@ -7375,6 +7474,21 @@ void main() {
       expect(store.preferences.nutritionBudgetMode, 'standard');
     },
   );
+
+  test('παλιές προτιμήσεις διατροφής μεταφέρονται με ασφαλή προεπιλογή', () {
+    final restored = AppPreferences.fromJson({
+      'nutritionDietStyle': 'balanced',
+      'nutritionMealsPerDay': 4,
+      'nutritionBudgetMode': 'standard',
+      'nutritionQuickPrep': true,
+    });
+    final roundTrip = AppPreferences.fromJson(
+      restored.copyWith(nutritionNoCooking: true).toJson(),
+    );
+
+    expect(restored.nutritionNoCooking, isFalse);
+    expect(roundTrip.nutritionNoCooking, isTrue);
+  });
 
   test('goal-phase calorie planner orders deficit maintenance and surplus', () {
     final loss = NutritionPlannerEngine.phasePlan(

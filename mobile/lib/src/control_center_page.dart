@@ -234,7 +234,7 @@ class ControlCenterPage extends StatelessWidget {
                         Text(
                           'Δεν υπάρχει λογαριασμός ή cloud. Το backup περιέχει '
                           'προφίλ, προγράμματα, προπονήσεις, βάρος, διατροφή, '
-                          'Spotify και recovery check-ins.',
+                          'Spotify και τις καθημερινές καταγραφές ευεξίας.',
                           style: TextStyle(
                             color: Colors.white.withValues(alpha: .55),
                             fontSize: 12,
@@ -396,7 +396,7 @@ class _DataVaultCard extends StatelessWidget {
               '${store.data.logs.length} προπονήσεις • '
               '${store.data.weights.length} βάρη • '
               '${store.data.meals.length} γεύματα • '
-              '${store.data.recoveryChecks.length} check-ins',
+              '${store.data.recoveryChecks.length} καταγραφές ευεξίας',
               style: TextStyle(
                 color: Colors.white.withValues(alpha: .55),
                 fontSize: 12,

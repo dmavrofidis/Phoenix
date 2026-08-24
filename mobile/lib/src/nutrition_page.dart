@@ -285,6 +285,36 @@ class _RecommendedPlanCard extends StatelessWidget {
                       ),
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 7,
+                      runSpacing: 7,
+                      children: [
+                        ActionChip(
+                          avatar: const Icon(Icons.savings_outlined, size: 16),
+                          label: Text(l.text('Οικονομικό', 'Economy')),
+                          onPressed: () => store.updateNutritionPlanPreferences(
+                            budgetMode: 'economy',
+                          ),
+                        ),
+                        ActionChip(
+                          avatar: const Icon(Icons.timer_outlined, size: 16),
+                          label: Text(l.text('Γρήγορο', 'Quick')),
+                          onPressed: () => store.updateNutritionPlanPreferences(
+                            quickPrep: true,
+                            noCooking: false,
+                          ),
+                        ),
+                        ActionChip(
+                          avatar: const Icon(Icons.no_food_outlined, size: 16),
+                          label: Text(l.text('Χωρίς μαγείρεμα', 'No cooking')),
+                          onPressed: () => store.updateNutritionPlanPreferences(
+                            quickPrep: true,
+                            noCooking: true,
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),

@@ -41,6 +41,7 @@ class _RecommendedNutritionPageState extends State<RecommendedNutritionPage> {
       mealsPerDay: preferences.nutritionMealsPerDay,
       budgetMode: preferences.nutritionBudgetMode,
       quickPrep: preferences.nutritionQuickPrep,
+      noCooking: preferences.nutritionNoCooking,
     );
   }
 
@@ -49,12 +50,14 @@ class _RecommendedNutritionPageState extends State<RecommendedNutritionPage> {
     int? mealsPerDay,
     String? budgetMode,
     bool? quickPrep,
+    bool? noCooking,
   }) async {
     await store.updateNutritionPlanPreferences(
       dietStyle: dietStyle,
       mealsPerDay: mealsPerDay,
       budgetMode: budgetMode,
       quickPrep: quickPrep,
+      noCooking: noCooking,
     );
     if (mounted) setState(() {});
   }
@@ -263,6 +266,22 @@ class _RecommendedNutritionPageState extends State<RecommendedNutritionPage> {
                           l.text(
                             'Προτίμηση σε γεύματα έως 15 λεπτά.',
                             'Prefer meals that take up to 15 minutes.',
+                          ),
+                        ),
+                      ),
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        value: preferences.nutritionNoCooking,
+                        onChanged: (value) => _update(
+                          noCooking: value,
+                          quickPrep: value ? true : null,
+                        ),
+                        secondary: const Icon(Icons.no_food_outlined),
+                        title: Text(l.text('Χωρίς μαγείρεμα', 'No cooking')),
+                        subtitle: Text(
+                          l.text(
+                            'Έτοιμα υλικά και γεύματα που στήνονται σε έως 5 λεπτά.',
+                            'Ready ingredients and meals assembled in up to 5 minutes.',
                           ),
                         ),
                       ),

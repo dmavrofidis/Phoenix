@@ -1103,6 +1103,7 @@ class AppPreferences {
     this.nutritionMealsPerDay = 4,
     this.nutritionBudgetMode = 'standard',
     this.nutritionQuickPrep = true,
+    this.nutritionNoCooking = false,
   });
 
   final String languageCode;
@@ -1125,6 +1126,7 @@ class AppPreferences {
   final int nutritionMealsPerDay;
   final String nutritionBudgetMode;
   final bool nutritionQuickPrep;
+  final bool nutritionNoCooking;
 
   bool get hasVaultPin => vaultPinHash.isNotEmpty;
 
@@ -1149,6 +1151,7 @@ class AppPreferences {
     int? nutritionMealsPerDay,
     String? nutritionBudgetMode,
     bool? nutritionQuickPrep,
+    bool? nutritionNoCooking,
   }) => AppPreferences(
     languageCode: languageCode ?? this.languageCode,
     highContrast: highContrast ?? this.highContrast,
@@ -1170,6 +1173,7 @@ class AppPreferences {
     nutritionMealsPerDay: nutritionMealsPerDay ?? this.nutritionMealsPerDay,
     nutritionBudgetMode: nutritionBudgetMode ?? this.nutritionBudgetMode,
     nutritionQuickPrep: nutritionQuickPrep ?? this.nutritionQuickPrep,
+    nutritionNoCooking: nutritionNoCooking ?? this.nutritionNoCooking,
   );
 
   Map<String, Object> toJson() => {
@@ -1193,6 +1197,7 @@ class AppPreferences {
     'nutritionMealsPerDay': nutritionMealsPerDay,
     'nutritionBudgetMode': nutritionBudgetMode,
     'nutritionQuickPrep': nutritionQuickPrep,
+    'nutritionNoCooking': nutritionNoCooking,
   };
 
   factory AppPreferences.fromJson(Map<String, dynamic> json) => AppPreferences(
@@ -1229,6 +1234,7 @@ class AppPreferences {
         ? 'economy'
         : 'standard',
     nutritionQuickPrep: json['nutritionQuickPrep'] as bool? ?? true,
+    nutritionNoCooking: json['nutritionNoCooking'] as bool? ?? false,
   );
 }
 

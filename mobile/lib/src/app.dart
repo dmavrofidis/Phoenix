@@ -17,6 +17,7 @@ import 'coach_hub_page.dart';
 import 'calisthenics_lab_page.dart';
 import 'data_validation_page.dart';
 import 'exercise_guide.dart';
+import 'equipment_availability.dart';
 import 'exercise_intelligence_page.dart';
 import 'experience_settings_page.dart';
 import 'fitness_charts.dart';
@@ -1251,12 +1252,10 @@ class DashboardPage extends StatelessWidget {
           children: [
             _DashboardHeader(store: store),
             const SizedBox(height: 20),
-            _DailyMissionCard(
+            _TodayChoicePanel(
               store: store,
               template: store.recommendedWorkout,
               active: store.hasActiveWorkout,
-              onStart: () =>
-                  _openWorkout(context, store, store.recommendedWorkout),
             ),
             if (store.hasActiveWorkout) ...[
               const SizedBox(height: 12),
@@ -1291,7 +1290,7 @@ class DashboardPage extends StatelessWidget {
             const SizedBox(height: 20),
             _DailyExercisesCard(
               template: store.recommendedWorkout,
-              atHome: store.profile?.trainingPlace == 'Σπίτι',
+              profile: store.profile,
             ),
             const SizedBox(height: 20),
             _GentleProgressCard(store: store),
@@ -1346,7 +1345,7 @@ class _TodayActionsCard extends StatelessWidget {
             const SizedBox(height: 14),
             LayoutBuilder(
               builder: (context, constraints) {
-                final columns = constraints.maxWidth >= 620 ? 4 : 2;
+                final columns = constraints.maxWidth >= 620 ? 2 : 2;
                 final width =
                     (constraints.maxWidth - (columns - 1) * 10) / columns;
                 return Wrap(
@@ -1373,17 +1372,6 @@ class _TodayActionsCard extends StatelessWidget {
                       label: l.text('Κατάγραψε νερό', 'Log water'),
                       color: const Color(0xFF65B9D8),
                       onTap: addWater,
-                    ),
-                    _QuickAction(
-                      actionKey: const ValueKey('gentle-movement-action'),
-                      width: width,
-                      icon: Icons.directions_walk_rounded,
-                      label: l.text(
-                        'Κινήσου για 10 λεπτά',
-                        'Move for 10 minutes',
-                      ),
-                      color: const Color(0xFF8FC5A8),
-                      onTap: () => _showGentleMovementPlan(context, store),
                     ),
                   ],
                 );
@@ -1438,7 +1426,6 @@ class _DueReminderCard extends StatelessWidget {
 
 class _QuickAction extends StatelessWidget {
   const _QuickAction({
-    this.actionKey,
     required this.width,
     required this.icon,
     required this.label,
@@ -1447,7 +1434,6 @@ class _QuickAction extends StatelessWidget {
   });
 
   final double width;
-  final Key? actionKey;
   final IconData icon;
   final String label;
   final Color color;
@@ -1466,7 +1452,6 @@ class _QuickAction extends StatelessWidget {
         ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
-          key: actionKey,
           onTap: onTap,
           child: Padding(
             padding: const EdgeInsets.all(13),
@@ -2509,6 +2494,22 @@ class _MorePage extends StatelessWidget {
                   ),
                   const Divider(height: 1),
                   _MoreDestination(
+                    icon: Icons.phonelink_outlined,
+                    title: context.l10n.text(
+                      'Μεταφορά σε άλλη συσκευή',
+                      'Move to another device',
+                    ),
+                    subtitle: context.l10n.text(
+                      'Κρυπτογραφημένο αρχείο — χωρίς λογαριασμό ή cloud',
+                      'Encrypted file — no account or cloud required',
+                    ),
+                    onTap: () => _open(
+                      context,
+                      MediaPortabilityPage(store: store, initialTab: 3),
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  _MoreDestination(
                     icon: Icons.headphones_outlined,
                     title: context.l10n.text(
                       'Μουσική & φωτογραφίες',
@@ -2754,6 +2755,23 @@ class _GentleProgressCard extends StatelessWidget {
                       ),
                     ),
                   ),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => WeeklyPlannerPage(store: store),
+                      ),
+                    ),
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.zero,
+                      minimumSize: const Size(0, 36),
+                    ),
+                    child: Text(
+                      context.l10n.text(
+                        'Άλλαξε τις ημέρες σου',
+                        'Change my workout days',
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -2929,18 +2947,16 @@ class _ProgressPageState extends State<ProgressPage> {
   }
 }
 
-class _DailyMissionCard extends StatelessWidget {
-  const _DailyMissionCard({
+class _TodayChoicePanel extends StatelessWidget {
+  const _TodayChoicePanel({
     required this.store,
     required this.template,
     required this.active,
-    required this.onStart,
   });
 
   final FitnessStore store;
   final WorkoutTemplate template;
   final bool active;
-  final VoidCallback onStart;
 
   @override
   Widget build(BuildContext context) {
@@ -2976,60 +2992,79 @@ class _DailyMissionCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: colors.primary.withValues(alpha: .14),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: colors.primary.withValues(alpha: .2),
-                  ),
-                ),
-                child: Icon(
-                  Icons.directions_walk_rounded,
-                  color: colors.primary,
-                  size: 19,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  context.l10n.text(
-                    'ΤΟ ΣΗΜΕΡΙΝΟ ΣΟΥ ΒΗΜΑ',
-                    'YOUR NEXT SMALL STEP',
-                  ),
-                  style: TextStyle(
-                    color: colors.primary,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 1.2,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 18),
           Text(
-            PhoenixCopy.workoutName(context.l10n, template, short: true),
+            context.l10n.text(
+              'Τι ταιριάζει στη μέρα σου;',
+              'What fits your day?',
+            ),
             style: Theme.of(
               context,
             ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
             context.l10n.text(
-              '${PhoenixCopy.exerciseCount(context.l10n, template.exercises.length)} • περίπου ${PhoenixCopy.minuteCount(context.l10n, store.profile?.sessionMinutes ?? 45)}',
-              '${template.exercises.length} simple exercises • about ${store.profile?.sessionMinutes ?? 45} minutes',
+              'Διάλεξε αυτό που μπορείς να κάνεις σήμερα. Δεν υπάρχει λάθος επιλογή.',
+              'Choose what you can do today. There is no wrong choice.',
             ),
             style: TextStyle(
               color: Colors.white.withValues(alpha: .65),
               height: 1.45,
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
+          _TodayChoice(
+            actionKey: const ValueKey('gentle-movement-action'),
+            icon: Icons.timer_outlined,
+            title: context.l10n.text(
+              'Έχω μόνο 10 λεπτά',
+              'I only have 10 minutes',
+            ),
+            subtitle: context.l10n.text(
+              'Ήπια κίνηση με χρονόμετρο και χωρίς εξοπλισμό',
+              'Gentle timed movement with no equipment',
+            ),
+            color: const Color(0xFF8FC5A8),
+            onTap: () => _showGentleMovementPlan(context, store),
+          ),
+          const SizedBox(height: 10),
+          _TodayChoice(
+            actionKey: const ValueKey('recommended-workout-action'),
+            icon: active ? Icons.play_arrow_rounded : Icons.fitness_center,
+            title: active
+                ? context.l10n.text(
+                    'Συνέχισε την προπόνησή σου',
+                    'Continue your workout',
+                  )
+                : context.l10n.text(
+                    'Θέλω κανονική προπόνηση',
+                    'I want a full workout',
+                  ),
+            subtitle: context.l10n.text(
+              '${PhoenixCopy.workoutName(context.l10n, template, short: true)} • ${PhoenixCopy.exerciseCount(context.l10n, template.exercises.length)} • περίπου ${PhoenixCopy.minuteCount(context.l10n, store.profile?.sessionMinutes ?? 45)}',
+              '${template.name} • ${template.exercises.length} exercises • about ${store.profile?.sessionMinutes ?? 45} minutes',
+            ),
+            color: colors.primary,
+            emphasized: true,
+            onTap: () => _openWorkout(context, store, template),
+          ),
+          const SizedBox(height: 10),
+          _TodayChoice(
+            actionKey: const ValueKey('recovery-workout-action'),
+            icon: Icons.self_improvement_outlined,
+            title: context.l10n.text(
+              'Σήμερα χρειάζομαι κάτι ήπιο',
+              'I need something gentle today',
+            ),
+            subtitle: context.l10n.text(
+              'Αναπνοές και απλές κινήσεις αποκατάστασης',
+              'Breathing and simple recovery movements',
+            ),
+            color: const Color(0xFF9DA7C8),
+            onTap: () =>
+                _openWorkout(context, store, store.createRestDayDraft()),
+          ),
+          const SizedBox(height: 18),
           ClipRRect(
             borderRadius: BorderRadius.circular(20),
             child: LinearProgressIndicator(
@@ -3054,40 +3089,82 @@ class _DailyMissionCard extends StatelessWidget {
               fontSize: 12,
             ),
           ),
-          const SizedBox(height: 18),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: onStart,
-              icon: Icon(active ? Icons.play_arrow_rounded : Icons.favorite),
-              label: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                child: Text(
-                  active
-                      ? context.l10n.text(
-                          'Συνέχισε την προπόνησή σου',
-                          'Continue your workout',
-                        )
-                      : context.l10n.text(
-                          'Ξεκίνα όταν είσαι έτοιμος',
-                          'Start when you are ready',
-                        ),
-                  style: const TextStyle(fontWeight: FontWeight.w900),
-                ),
-              ),
-            ),
-          ),
         ],
       ),
     );
   }
 }
 
+class _TodayChoice extends StatelessWidget {
+  const _TodayChoice({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.color,
+    required this.onTap,
+    this.actionKey,
+    this.emphasized = false,
+  });
+
+  final Key? actionKey;
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Color color;
+  final VoidCallback onTap;
+  final bool emphasized;
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: color.withValues(alpha: emphasized ? .15 : .075),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(18),
+      side: BorderSide(color: color.withValues(alpha: emphasized ? .5 : .24)),
+    ),
+    clipBehavior: Clip.antiAlias,
+    child: InkWell(
+      key: actionKey,
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          children: [
+            Icon(icon, color: color, size: 27),
+            const SizedBox(width: 13),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontSize: 12,
+                      height: 1.25,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(Icons.chevron_right_rounded),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
 class _DailyExercisesCard extends StatelessWidget {
-  const _DailyExercisesCard({required this.template, required this.atHome});
+  const _DailyExercisesCard({required this.template, required this.profile});
 
   final WorkoutTemplate template;
-  final bool atHome;
+  final UserProfile? profile;
 
   @override
   Widget build(BuildContext context) {
@@ -3138,12 +3215,28 @@ class _DailyExercisesCard extends StatelessWidget {
                 fontSize: 12,
               ),
             ),
+            if (profile != null) ...[
+              const SizedBox(height: 10),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Chip(
+                  avatar: const Icon(Icons.verified_outlined, size: 17),
+                  label: Text(
+                    context.l10n.text(
+                      'Ταιριάζει στον εξοπλισμό σου',
+                      'Matches your equipment',
+                    ),
+                  ),
+                  visualDensity: VisualDensity.compact,
+                ),
+              ),
+            ],
             const SizedBox(height: 12),
             for (var index = 0; index < template.exercises.length; index++)
               _DailyExerciseRow(
                 index: index + 1,
                 exercise: template.exercises[index],
-                atHome: atHome,
+                atHome: EquipmentAvailability.isHome(profile),
                 prescription: template.prescriptionFor(
                   template.exercises[index],
                 ),

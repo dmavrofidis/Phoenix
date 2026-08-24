@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'exercise_substitution_engine.dart';
+import 'equipment_availability.dart';
 import 'exercise_guide.dart';
 import 'deterministic_coach_engine.dart';
 import 'models/fitness_models.dart';
@@ -156,7 +157,7 @@ class _ActiveWorkoutPageState extends State<ActiveWorkoutPage> {
         if (workout == null) {
           return const Scaffold(body: SizedBox.shrink());
         }
-        final isHome = widget.store.profile?.trainingPlace == 'Σπίτι';
+        final isHome = EquipmentAvailability.isHome(widget.store.profile);
         final preparation = SessionPreparationEngine.forWorkout(
           workout,
           profile: widget.store.profile,
@@ -405,14 +406,14 @@ class _SessionReviewSheetState extends State<_SessionReviewSheet> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Session review',
+              'Πώς πήγε η προπόνηση;',
               style: Theme.of(
                 context,
               ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
             ),
             const SizedBox(height: 5),
             Text(
-              'Η αναφορά αυτή τροφοδοτεί το deload και το εβδομαδιαίο report.',
+              'Η απάντησή σου βοηθά το Phoenix να προσαρμόζει το επόμενο πρόγραμμά σου.',
               style: TextStyle(color: Colors.white.withValues(alpha: .5)),
             ),
             const SizedBox(height: 20),
@@ -420,7 +421,7 @@ class _SessionReviewSheetState extends State<_SessionReviewSheet> {
               children: [
                 const Expanded(
                   child: Text(
-                    'Session RPE',
+                    'Πόσο δύσκολη ήταν συνολικά;',
                     style: TextStyle(fontWeight: FontWeight.w900),
                   ),
                 ),
@@ -1063,10 +1064,10 @@ class _SetRow extends StatelessWidget {
       if (set.reps > 0) '${set.reps} επαν.',
       if (set.weightKilograms > 0) '$weight kg',
       if (set.holdSeconds > 0) '${set.holdSeconds}s hold',
-      'RIR ${set.rir}',
-      if (set.setRpe > 0) 'RPE ${set.setRpe}',
+      '${set.rir} ακόμη σωστές επαναλήψεις',
+      if (set.setRpe > 0) 'δυσκολία ${set.setRpe}/10',
       if (set.velocityNote.isNotEmpty) set.velocityNote.toUpperCase(),
-      if (set.isAmrap) 'AMRAP',
+      if (set.isAmrap) 'μέχρι το τεχνικό όριο',
     ].join('  •  ');
     return Container(
       margin: const EdgeInsets.only(top: 10),
@@ -1315,7 +1316,7 @@ class _SetEntrySheetState extends State<_SetEntrySheet> {
                 ],
               ),
               const SizedBox(height: 18),
-              Text('RIR — επαναλήψεις σε απόθεμα: $_rir'),
+              Text('Πόσες σωστές επαναλήψεις μπορούσες ακόμη: $_rir'),
               Slider(
                 value: _rir.toDouble(),
                 min: 0,
@@ -1326,7 +1327,7 @@ class _SetEntrySheetState extends State<_SetEntrySheet> {
               ),
               Text(
                 context.l10n.text(
-                  'Δυσκολία σετ (RPE): $_setRpe',
+                  'Δυσκολία του σετ: $_setRpe/10',
                   'SET RPE: $_setRpe',
                 ),
               ),
@@ -1408,7 +1409,7 @@ class _SetEntrySheetState extends State<_SetEntrySheet> {
                   ),
                 ),
                 subtitle: const Text(
-                  'Τεχνικό stop — όχι αποτυχία, όχι forced reps.',
+                  'Σταμάτα όταν χαλάσει η τεχνική σου — όχι όταν αποτύχεις.',
                 ),
                 onChanged: (value) => setState(() {
                   _isAmrap = value;

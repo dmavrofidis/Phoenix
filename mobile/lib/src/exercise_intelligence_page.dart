@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'exercise_guide.dart';
+import 'equipment_availability.dart';
 import 'exercise_intelligence_engine.dart';
 import 'models/fitness_models.dart';
 import 'state/fitness_store.dart';
@@ -169,7 +170,7 @@ class _ExerciseIntelligencePageState extends State<ExerciseIntelligencePage> {
   Future<void> _showProfile(ExerciseIntelligenceProfile profile) async {
     final guide = ExerciseGuideCatalog.forExercise(
       profile.name,
-      atHome: store.profile?.trainingPlace == 'Σπίτι',
+      atHome: EquipmentAvailability.isHome(store.profile),
     );
     await showModalBottomSheet<void>(
       context: context,

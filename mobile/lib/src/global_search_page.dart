@@ -10,6 +10,7 @@ import 'conditioning_lab_page.dart';
 import 'cycling_rowing_lab_page.dart';
 import 'calisthenics_lab_page.dart';
 import 'exercise_guide.dart';
+import 'equipment_availability.dart';
 import 'exercise_intelligence_page.dart';
 import 'global_search_engine.dart';
 import 'habit_builder_page.dart';
@@ -326,7 +327,7 @@ class _GlobalSearchPageState extends State<GlobalSearchPage> {
     if (result.type == SearchResultType.exercise) {
       final guide = ExerciseGuideCatalog.forExercise(
         result.title,
-        atHome: widget.store.profile?.trainingPlace == 'Σπίτι',
+        atHome: EquipmentAvailability.isHome(widget.store.profile),
       );
       if (guide != null) {
         await showExerciseGuide(context, result.title, guide);

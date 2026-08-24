@@ -74,8 +74,49 @@ class ExperienceSettingsPage extends StatelessWidget {
                 ..._themeSection(context),
               ],
               const Divider(height: 26),
-              _SectionTitle(label: l.text('ΠΡΟΣΒΑΣΙΜΟΤΗΤΑ+', 'ACCESSIBILITY+')),
+              _SectionTitle(label: l.text('ΕΥΚΟΛΟΤΕΡΗ ΧΡΗΣΗ', 'EASIER TO USE')),
               const SizedBox(height: 8),
+              Text(
+                l.text('Γρήγορες επιλογές', 'Quick accessibility choices'),
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  ActionChip(
+                    avatar: const Icon(Icons.text_increase, size: 18),
+                    label: Text(l.text('Μεγαλύτερα γράμματα', 'Larger text')),
+                    onPressed: () => store.updatePreferences(textScale: 1.4),
+                  ),
+                  ActionChip(
+                    avatar: const Icon(Icons.spa_outlined, size: 18),
+                    label: Text(l.text('Ήρεμη προβολή', 'Calm view')),
+                    onPressed: () {
+                      store.updatePreferences(
+                        themePreset: 'sage',
+                        reducedMotion: true,
+                      );
+                    },
+                  ),
+                  ActionChip(
+                    avatar: const Icon(Icons.contrast, size: 18),
+                    label: Text(l.text('Υψηλή αντίθεση', 'High contrast')),
+                    onPressed: () =>
+                        store.updatePreferences(highContrast: true),
+                  ),
+                  ActionChip(
+                    avatar: const Icon(Icons.touch_app_outlined, size: 18),
+                    label: Text(
+                      l.text('Μεγαλύτερα κουμπιά', 'Larger controls'),
+                    ),
+                    onPressed: () =>
+                        store.updatePreferences(touchTargetScale: 1.5),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
               Text(
                 '${l.text('Κλίμακα κειμένου', 'Text scale')} ${(preferences.textScale * 100).round()}%',
                 style: const TextStyle(fontWeight: FontWeight.w800),
@@ -97,7 +138,7 @@ class ExperienceSettingsPage extends StatelessWidget {
                 title: Text(l.text('Μειωμένη κίνηση', 'Reduced motion')),
                 subtitle: Text(
                   l.text(
-                    'Αφαιρεί τις μεταβάσεις σελίδων και δηλώνει disableAnimations.',
+                    'Περιορίζει τις κινήσεις και τις αλλαγές οθόνης που μπορεί να κουράζουν.',
                     'Removes page transitions and exposes disableAnimations.',
                   ),
                 ),
@@ -112,9 +153,9 @@ class ExperienceSettingsPage extends StatelessWidget {
                 runSpacing: 7,
                 children: [
                   for (final mode in const [
-                    ('standard', 'STANDARD'),
-                    ('deuteranopia', 'DEUTERANOPIA'),
-                    ('tritanopia', 'TRITANOPIA'),
+                    ('standard', 'Κανονική'),
+                    ('deuteranopia', 'Δυσκολία σε κόκκινο–πράσινο'),
+                    ('tritanopia', 'Δυσκολία σε μπλε–κίτρινο'),
                   ])
                     ChoiceChip(
                       label: Text(mode.$2),
@@ -131,11 +172,11 @@ class ExperienceSettingsPage extends StatelessWidget {
                     store.updatePreferences(readabilityFont: value),
                 secondary: const Icon(Icons.text_fields),
                 title: Text(
-                  l.text('Readability typography', 'Readability typography'),
+                  l.text('Πιο ευανάγνωστα γράμματα', 'Readability typography'),
                 ),
                 subtitle: Text(
                   l.text(
-                    'Χρησιμοποιεί ευανάγνωστα system-font fallbacks.',
+                    'Χρησιμοποιεί απλή γραμματοσειρά για πιο ξεκούραστη ανάγνωση.',
                     'Uses readable system-font fallbacks.',
                   ),
                 ),
@@ -149,7 +190,7 @@ class ExperienceSettingsPage extends StatelessWidget {
                 title: Text(l.text('Λειτουργία ενός χεριού', 'One-hand mode')),
                 subtitle: Text(
                   l.text(
-                    'Κρατά τις κύριες workout ενέργειες χαμηλά στην οθόνη.',
+                    'Κρατά τις βασικές ενέργειες της προπόνησης χαμηλά στην οθόνη.',
                     'Keeps primary workout actions low on the screen.',
                   ),
                 ),
@@ -161,17 +202,20 @@ class ExperienceSettingsPage extends StatelessWidget {
                     store.updatePreferences(voiceLabels: value),
                 secondary: const Icon(Icons.record_voice_over_outlined),
                 title: Text(
-                  l.text('Voice-friendly labels', 'Voice-friendly labels'),
+                  l.text(
+                    'Καθαρά ονόματα για φωνητικό έλεγχο',
+                    'Voice-friendly labels',
+                  ),
                 ),
                 subtitle: Text(
                   l.text(
-                    'Διατηρεί σαφή ονόματα ενεργειών για voice control και readers.',
+                    'Βοηθά τον φωνητικό έλεγχο και την ανάγνωση της οθόνης.',
                     'Keeps action names explicit for voice control and readers.',
                   ),
                 ),
               ),
               Text(
-                '${l.text('Μέγεθος touch targets', 'Touch-target size')} ${(preferences.touchTargetScale * 100).round()}%',
+                '${l.text('Μέγεθος κουμπιών', 'Control size')} ${(preferences.touchTargetScale * 100).round()}%',
                 style: const TextStyle(fontWeight: FontWeight.w800),
               ),
               Slider(
@@ -183,15 +227,21 @@ class ExperienceSettingsPage extends StatelessWidget {
                 onChanged: (value) =>
                     store.updatePreferences(touchTargetScale: value),
               ),
-              const Card(
+              Card(
                 child: ListTile(
-                  leading: Icon(Icons.accessibility_new),
+                  leading: const Icon(Icons.accessibility_new),
                   title: Text(
-                    'ACCESSIBILITY SELF-CHECK • 10/10 AVAILABLE',
-                    style: TextStyle(fontWeight: FontWeight.w900),
+                    l.text(
+                      'Όλες οι βοήθειες είναι διαθέσιμες',
+                      'All accessibility aids are available',
+                    ),
+                    style: const TextStyle(fontWeight: FontWeight.w900),
                   ),
                   subtitle: Text(
-                    'Large text, landmarks, keyboard traversal, reduced motion, safe palettes, readable type, one-hand controls, voice labels, touch targets and this self-check.',
+                    l.text(
+                      'Μεγάλα γράμματα και κουμπιά, λιγότερη κίνηση, ασφαλή χρώματα και υποστήριξη ανάγνωσης οθόνης.',
+                      'Large text and controls, reduced motion, safer colors and screen-reader support.',
+                    ),
                   ),
                 ),
               ),
@@ -248,7 +298,7 @@ class ExperienceSettingsPage extends StatelessWidget {
                   'Data validation center',
                 ),
                 subtitle: l.text(
-                  'Integrity score και ασφαλής επιδιόρθωση',
+                  'Έλεγχος και ασφαλής διόρθωση των τοπικών δεδομένων',
                   'Integrity score and safe repair',
                 ),
                 onTap: () => _push(context, DataValidationPage(store: store)),
@@ -257,7 +307,10 @@ class ExperienceSettingsPage extends StatelessWidget {
                 icon: store.vaultUnlocked
                     ? Icons.lock_open_outlined
                     : Icons.lock_outline,
-                title: l.text('Ασφάλεια Data Vault', 'Data Vault security'),
+                title: l.text(
+                  'Ασφάλεια ιδιωτικών δεδομένων',
+                  'Data Vault security',
+                ),
                 subtitle: store.hasVaultPin
                     ? l.text('Προστασία PIN ενεργή', 'PIN protection enabled')
                     : l.text('Πρόσθεσε τοπικό PIN', 'Add a local PIN'),

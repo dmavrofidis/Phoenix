@@ -1,14 +1,17 @@
+import Image from "next/image";
+
 export default function Home() {
   return (
     <main className="installer-shell">
       <section className="installer-card" aria-labelledby="phoenix-title">
         <div className="brand-row">
-          <img
+          <Image
             className="app-icon"
             src="/app/icons/Icon-192.png"
             alt="Εικονίδιο Phoenix"
-            width="88"
-            height="88"
+            width={88}
+            height={88}
+            unoptimized
           />
           <div>
             <p className="eyebrow">PHOENIX · LOCAL-FIRST</p>

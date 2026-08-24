@@ -1,4 +1,5 @@
 import 'models/fitness_models.dart';
+import 'equipment_availability.dart';
 
 class ProtocolStep {
   const ProtocolStep({
@@ -55,7 +56,7 @@ class SessionPreparationEngine {
     UserProfile? profile,
   }) {
     final names = workout.exercises.join(' ').toLowerCase();
-    final isHome = profile?.trainingPlace == 'Σπίτι';
+    final isHome = EquipmentAvailability.isHome(profile);
     final equipment = profile?.equipment.toLowerCase() ?? '';
     final hasBands = equipment.contains('λάστιχ') || equipment.contains('band');
     final hasTreadmill =

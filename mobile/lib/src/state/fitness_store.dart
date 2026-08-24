@@ -267,11 +267,26 @@ class FitnessStore extends ChangeNotifier {
   double get weeklyWorkoutProgress =>
       (workoutsInCurrentWeek / weeklyWorkoutTarget).clamp(0, 1).toDouble();
 
+  List<WorkoutTemplate> get equipmentCompatibleTemplates {
+    if (!EquipmentAvailability.isHome(profile)) {
+      return List.unmodifiable(_data.templates);
+    }
+    return List.unmodifiable(
+      _data.templates.where(
+        (template) => template.exercises.every(
+          (exercise) =>
+              EquipmentAvailability.supportsExercise(exercise, profile),
+        ),
+      ),
+    );
+  }
+
   List<WorkoutTemplate> get workoutRotation {
-    if (profile == null) return List.unmodifiable(_data.templates);
+    final compatible = equipmentCompatibleTemplates;
+    if (profile == null) return compatible;
 
     WorkoutTemplate? byId(String id) {
-      for (final template in _data.templates) {
+      for (final template in compatible) {
         if (template.id == id) return template;
       }
       return null;
@@ -296,7 +311,7 @@ class FitnessStore extends ChangeNotifier {
       final template = byId(id);
       if (template != null) rotation.add(template);
     }
-    return rotation.isEmpty ? List.unmodifiable(_data.templates) : rotation;
+    return rotation.isEmpty ? compatible : rotation;
   }
 
   TrainingSchedule get weeklySchedule => TrainingScheduleEngine.build(
@@ -306,7 +321,7 @@ class FitnessStore extends ChangeNotifier {
     logs: _data.logs,
     assignments: _data.weeklyAssignments,
     dateAssignments: _data.dateAssignments,
-    catalog: _data.templates,
+    catalog: equipmentCompatibleTemplates,
   );
 
   WorkoutTemplate get recommendedWorkout {
@@ -520,7 +535,7 @@ class FitnessStore extends ChangeNotifier {
           .where((template) => _coreTemplateIds.contains(template.id))
           .toList();
       final hasLegacyHomeCore =
-          currentProfile.trainingPlace == 'Σπίτι' &&
+          EquipmentAvailability.isHome(currentProfile) &&
           coreTemplates.any(
             (template) =>
                 template.name.startsWith('IRON') ||
@@ -582,7 +597,7 @@ class FitnessStore extends ChangeNotifier {
   }) async {
     final language = languageCode == null
         ? preferences.languageCode
-        : const {'el', 'en'}.contains(languageCode)
+        : const {'el', 'en', 'de', 'es'}.contains(languageCode)
         ? languageCode
         : 'el';
     final theme = themePreset == null
@@ -649,6 +664,7 @@ class FitnessStore extends ChangeNotifier {
     int? mealsPerDay,
     String? budgetMode,
     bool? quickPrep,
+    bool? noCooking,
   }) async {
     const supportedStyles = {
       'balanced',
@@ -673,6 +689,7 @@ class FitnessStore extends ChangeNotifier {
         nutritionMealsPerDay: mealsPerDay?.clamp(3, 5),
         nutritionBudgetMode: budget,
         nutritionQuickPrep: quickPrep,
+        nutritionNoCooking: noCooking,
       ),
     );
     await _repository.save(_data);
@@ -2034,6 +2051,17 @@ class FitnessStore extends ChangeNotifier {
         !_data.templates.any((template) => template.id == templateId)) {
       throw const FormatException('Το πρόγραμμα δεν υπάρχει.');
     }
+    if (templateId != null) {
+      final template = _data.templates.firstWhere(
+        (item) => item.id == templateId,
+      );
+      if (profile != null &&
+          _templateUsesUnavailableEquipment(template, profile: profile!)) {
+        throw const FormatException(
+          'Αυτό το πρόγραμμα χρειάζεται εξοπλισμό που δεν έχεις δηλώσει.',
+        );
+      }
+    }
     final assignments = Map<String, String>.from(_data.weeklyAssignments);
     if (templateId == null) {
       assignments.remove('$weekday');
@@ -2060,6 +2088,12 @@ class FitnessStore extends ChangeNotifier {
     }
     if (!_data.templates.any((item) => item.id == template.id)) {
       throw const FormatException('Το πρόγραμμα δεν υπάρχει.');
+    }
+    if (profile != null &&
+        _templateUsesUnavailableEquipment(template, profile: profile!)) {
+      throw const FormatException(
+        'Αυτό το πρόγραμμα χρειάζεται εξοπλισμό που δεν έχεις δηλώσει.',
+      );
     }
     final key =
         '${date.year.toString().padLeft(4, '0')}-'
@@ -3541,7 +3575,7 @@ class FitnessStore extends ChangeNotifier {
   );
 
   List<WorkoutTemplate> _recommendedTemplates(UserProfile profile) {
-    final isHome = profile.trainingPlace == 'Σπίτι';
+    final isHome = EquipmentAvailability.isHome(profile);
     final isBeginner = profile.experienceLevel == 'Αρχάριος';
     final isStrengthGoal = profile.goal == 'Δύναμη';
     final equipment = profile.equipment.toLowerCase();

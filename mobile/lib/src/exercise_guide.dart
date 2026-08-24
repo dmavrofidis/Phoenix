@@ -649,18 +649,45 @@ Future<void> showExerciseGuide(
             child: _GuideBand(guide: guide),
           ),
           const SizedBox(height: 18),
+          Text(
+            '3 απλά βήματα',
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 10),
+          const _GuideStep(
+            number: 1,
+            detail: 'Στήσου σταθερά και βεβαιώσου ότι έχεις αρκετό χώρο.',
+          ),
+          const SizedBox(height: 8),
+          _GuideStep(number: 2, detail: guide.execution),
+          const SizedBox(height: 8),
+          const _GuideStep(
+            number: 3,
+            detail: 'Κινήσου αργά και σταμάτα πριν χάσεις τον έλεγχο.',
+          ),
+          const SizedBox(height: 16),
           _GuideCue(
             icon: Icons.check_circle_outline,
             color: const Color(0xFF61D095),
-            title: 'ΕΚΤΕΛΕΣΗ',
-            detail: guide.execution,
+            title: 'ΤΙ ΝΑ ΠΡΟΣΕΞΕΙΣ',
+            detail: 'Η κίνηση πρέπει να παραμένει άνετη και ελεγχόμενη.',
           ),
           const SizedBox(height: 12),
           _GuideCue(
             icon: Icons.warning_amber_rounded,
             color: const Color(0xFFFF9E80),
-            title: 'ΑΠΟΦΥΓΕ',
+            title: 'ΣΥΝΗΘΙΣΜΕΝΟ ΛΑΘΟΣ',
             detail: guide.avoid,
+          ),
+          const SizedBox(height: 12),
+          const _GuideCue(
+            icon: Icons.health_and_safety_outlined,
+            color: Color(0xFF8FC5A8),
+            title: 'ΑΣΦΑΛΕΣΤΕΡΗ ΕΠΙΛΟΓΗ',
+            detail:
+                'Μείωσε το βάρος ή το εύρος της κίνησης. Αν δεν νιώθεις ασφάλεια, διάλεξε ευκολότερη εκδοχή ή σταμάτα.',
           ),
           const SizedBox(height: 14),
           Text(
@@ -677,6 +704,38 @@ Future<void> showExerciseGuide(
     ),
   ),
 );
+
+class _GuideStep extends StatelessWidget {
+  const _GuideStep({required this.number, required this.detail});
+
+  final int number;
+  final String detail;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Container(
+        width: 28,
+        height: 28,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.primary.withValues(alpha: .12),
+          borderRadius: BorderRadius.circular(9),
+        ),
+        child: Text(
+          '$number',
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.primary,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ),
+      const SizedBox(width: 10),
+      Expanded(child: Text(detail, style: const TextStyle(height: 1.4))),
+    ],
+  );
+}
 
 class _GuideBand extends StatelessWidget {
   const _GuideBand({required this.guide});
