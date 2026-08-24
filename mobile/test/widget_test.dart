@@ -2054,7 +2054,7 @@ void main() {
     store.previewWithoutProfile();
     await tester.pumpWidget(PhoenixApp(store: store));
 
-    final movement = find.text('10 λεπτά κίνηση');
+    final movement = find.byKey(const ValueKey('gentle-movement-action'));
     await tester.scrollUntilVisible(
       movement,
       300,
@@ -2062,9 +2062,7 @@ void main() {
     );
     await tester.ensureVisible(movement);
     await tester.pumpAndSettle();
-    await tester.tap(
-      find.ancestor(of: movement, matching: find.byType(InkWell)).first,
-    );
+    await tester.tap(movement);
     await tester.pumpAndSettle();
 
     expect(find.byKey(const ValueKey('gentle-movement-timer')), findsOneWidget);
@@ -2150,6 +2148,16 @@ void main() {
     expect(store.hasActiveWorkout, isTrue);
     Navigator.of(tester.element(find.text('IRON SESSION'))).pop();
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Ειδικά εργαλεία'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Ειδικά εργαλεία'), findsOneWidget);
+    expect(find.text('Program Architecture'), findsNothing);
+    await tester.tap(find.text('Ειδικά εργαλεία'));
+    await tester.pumpAndSettle();
+    expect(find.text('Program Architecture'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('ΟΛΑ ΤΑ ΠΡΟΓΡΑΜΜΑΤΑ'),
       400,

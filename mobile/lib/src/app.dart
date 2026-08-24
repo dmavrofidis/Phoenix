@@ -250,10 +250,52 @@ ThemeData _phoenixTheme(AppPreferences preferences) {
     outline: highContrast ? Colors.white70 : palette.outline,
     outlineVariant: highContrast ? Colors.white38 : palette.outlineVariant,
   );
+  final baseTextTheme = Typography.material2021().white;
   return ThemeData(
     useMaterial3: true,
     brightness: Brightness.dark,
     colorScheme: scheme,
+    textTheme: baseTextTheme.copyWith(
+      headlineLarge: baseTextTheme.headlineLarge?.copyWith(
+        color: scheme.onSurface,
+        fontWeight: FontWeight.w800,
+        letterSpacing: -.8,
+        height: 1.08,
+      ),
+      headlineMedium: baseTextTheme.headlineMedium?.copyWith(
+        color: scheme.onSurface,
+        fontWeight: FontWeight.w800,
+        letterSpacing: -.5,
+        height: 1.12,
+      ),
+      headlineSmall: baseTextTheme.headlineSmall?.copyWith(
+        color: scheme.onSurface,
+        fontWeight: FontWeight.w800,
+        letterSpacing: -.25,
+        height: 1.18,
+      ),
+      titleLarge: baseTextTheme.titleLarge?.copyWith(
+        color: scheme.onSurface,
+        fontWeight: FontWeight.w800,
+        letterSpacing: -.2,
+      ),
+      titleMedium: baseTextTheme.titleMedium?.copyWith(
+        color: scheme.onSurface,
+        fontWeight: FontWeight.w700,
+      ),
+      bodyLarge: baseTextTheme.bodyLarge?.copyWith(
+        color: scheme.onSurface,
+        height: 1.45,
+      ),
+      bodyMedium: baseTextTheme.bodyMedium?.copyWith(
+        color: scheme.onSurface,
+        height: 1.42,
+      ),
+      bodySmall: baseTextTheme.bodySmall?.copyWith(
+        color: scheme.onSurfaceVariant,
+        height: 1.35,
+      ),
+    ),
     fontFamilyFallback: preferences.readabilityFont
         ? const ['Verdana', 'Arial', 'sans-serif']
         : null,
@@ -299,7 +341,7 @@ ThemeData _phoenixTheme(AppPreferences preferences) {
           color: highContrast ? Colors.white54 : scheme.outlineVariant,
           width: highContrast ? 1.4 : 1,
         ),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
       ),
     ),
     navigationBarTheme: NavigationBarThemeData(
@@ -346,7 +388,8 @@ ThemeData _phoenixTheme(AppPreferences preferences) {
       style: FilledButton.styleFrom(
         backgroundColor: seed,
         foregroundColor: Colors.black,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        minimumSize: const Size(48, 48),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         textStyle: const TextStyle(
           fontWeight: FontWeight.w900,
           letterSpacing: .15,
@@ -374,14 +417,50 @@ ThemeData _phoenixTheme(AppPreferences preferences) {
       space: 1,
     ),
     inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: highContrast ? Colors.black : palette.surfaceLow,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
       enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
         borderSide: BorderSide(
-          color: highContrast ? Colors.white70 : Colors.white24,
+          color: highContrast ? Colors.white70 : scheme.outlineVariant,
         ),
       ),
       focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
         borderSide: BorderSide(color: seed, width: 2),
       ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: scheme.error),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: scheme.error, width: 2),
+      ),
+    ),
+    snackBarTheme: SnackBarThemeData(
+      behavior: SnackBarBehavior.floating,
+      backgroundColor: highContrast ? Colors.black : palette.surfaceHigh,
+      contentTextStyle: TextStyle(
+        color: scheme.onSurface,
+        fontWeight: FontWeight.w700,
+      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    ),
+    bottomSheetTheme: BottomSheetThemeData(
+      backgroundColor: highContrast ? Colors.black : palette.surface,
+      modalBackgroundColor: highContrast ? Colors.black : palette.surface,
+      surfaceTintColor: Colors.transparent,
+      showDragHandle: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+    ),
+    dialogTheme: DialogThemeData(
+      backgroundColor: highContrast ? Colors.black : palette.surface,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
     ),
   );
 }
@@ -816,12 +895,8 @@ class _PhoenixShellState extends State<PhoenixShell> {
               builder: (context, constraints) {
                 final desktop = constraints.maxWidth >= 900;
                 return Scaffold(
-                  body: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: widget.store.preferences.highContrast
-                          ? Colors.black
-                          : const Color(0xFF090D0F),
-                    ),
+                  body: _PhoenixShellBackground(
+                    highContrast: widget.store.preferences.highContrast,
                     child: SafeArea(
                       child: desktop
                           ? Row(
@@ -861,17 +936,44 @@ class _PhoenixShellState extends State<PhoenixShell> {
                   ),
                   bottomNavigationBar: desktop
                       ? null
-                      : NavigationBar(
-                          selectedIndex: _index,
-                          onDestinationSelected: (value) =>
-                              setState(() => _index = value),
-                          destinations: [
-                            for (var index = 0; index < labels.length; index++)
-                              NavigationDestination(
-                                icon: Icon(icons[index]),
-                                label: labels[index],
+                      : SafeArea(
+                          minimum: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(24),
+                              border: Border.all(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.outlineVariant,
                               ),
-                          ],
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: .32),
+                                  blurRadius: 26,
+                                  offset: const Offset(0, 12),
+                                ),
+                              ],
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(23),
+                              child: NavigationBar(
+                                selectedIndex: _index,
+                                onDestinationSelected: (value) =>
+                                    setState(() => _index = value),
+                                destinations: [
+                                  for (
+                                    var index = 0;
+                                    index < labels.length;
+                                    index++
+                                  )
+                                    NavigationDestination(
+                                      icon: Icon(icons[index]),
+                                      label: labels[index],
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
                         ),
                 );
               },
@@ -879,6 +981,44 @@ class _PhoenixShellState extends State<PhoenixShell> {
           ),
         );
       },
+    );
+  }
+}
+
+class _PhoenixShellBackground extends StatelessWidget {
+  const _PhoenixShellBackground({
+    required this.highContrast,
+    required this.child,
+  });
+
+  final bool highContrast;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (highContrast) {
+      return ColoredBox(color: Colors.black, child: child);
+    }
+    final theme = Theme.of(context);
+    final base = theme.scaffoldBackgroundColor;
+    final primaryGlow = Color.alphaBlend(
+      theme.colorScheme.primary.withValues(alpha: .085),
+      base,
+    );
+    final secondaryGlow = Color.alphaBlend(
+      theme.colorScheme.secondary.withValues(alpha: .045),
+      base,
+    );
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [primaryGlow, base, base, secondaryGlow],
+          stops: const [0, .3, .72, 1],
+        ),
+      ),
+      child: child,
     );
   }
 }
@@ -930,6 +1070,160 @@ class _PhoenixMark extends StatelessWidget {
   }
 }
 
+class _DashboardHeader extends StatelessWidget {
+  const _DashboardHeader({required this.store});
+
+  final FitnessStore store;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final l = context.l10n;
+    final now = DateTime.now();
+    final wide = MediaQuery.sizeOf(context).width >= 430;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: colors.primary.withValues(alpha: .12),
+                borderRadius: BorderRadius.circular(13),
+                border: Border.all(color: colors.primary.withValues(alpha: .2)),
+              ),
+              child: Icon(
+                Icons.local_fire_department_rounded,
+                color: colors.primary,
+                size: 21,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'PHOENIX',
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: colors.primary,
+                  letterSpacing: 2.2,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+            if (wide) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 7,
+                ),
+                decoration: BoxDecoration(
+                  color: colors.surfaceContainerHigh.withValues(alpha: .72),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: colors.outlineVariant),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.lock_outline_rounded,
+                      size: 13,
+                      color: colors.primary,
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      'LOCAL',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: colors.onSurfaceVariant,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: .8,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+            ],
+            Semantics(
+              label: l.text('Αναζήτηση', 'Search'),
+              button: true,
+              child: ExcludeSemantics(
+                child: IconButton.filledTonal(
+                  tooltip: l.text('Αναζήτηση', 'Search'),
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (context) => GlobalSearchPage(store: store),
+                    ),
+                  ),
+                  icon: const Icon(Icons.search_rounded),
+                ),
+              ),
+            ),
+            const SizedBox(width: 7),
+            Semantics(
+              label: l.text(
+                'Αλλαγή χρωμάτων και θέματος',
+                'Change colors and theme',
+              ),
+              button: true,
+              child: ExcludeSemantics(
+                child: IconButton.filledTonal(
+                  key: const ValueKey('quick-theme-settings'),
+                  tooltip: l.text('Χρώματα & θέμα', 'Colors & theme'),
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (context) => ExperienceSettingsPage(
+                        store: store,
+                        focusTheme: true,
+                      ),
+                    ),
+                  ),
+                  icon: const Icon(Icons.palette_outlined),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+          decoration: BoxDecoration(
+            color: colors.primary.withValues(alpha: .1),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Text(
+            l.text(
+              'ΣΗΜΕΡΑ • ${now.day}/${now.month}',
+              'TODAY • ${now.day}/${now.month}',
+            ),
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: colors.primary,
+              fontWeight: FontWeight.w900,
+              letterSpacing: .9,
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          l.text('Τι μπορείς να κάνεις σήμερα;', 'What can you do today?'),
+          style: theme.textTheme.headlineLarge,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          l.text(
+            'Διάλεξε ένα μόνο πράγμα. Ό,τι κι αν επιλέξεις, μετράει.',
+            'Choose just one thing. Whatever you choose, it counts.',
+          ),
+          style: theme.textTheme.bodyLarge?.copyWith(
+            color: colors.onSurfaceVariant,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key, required this.store});
 
@@ -951,124 +1245,7 @@ class DashboardPage extends StatelessWidget {
             28,
           ),
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'PHOENIX',
-                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      color: Theme.of(context).colorScheme.primary,
-                      letterSpacing: 2.4,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ),
-                if (MediaQuery.sizeOf(context).width >= 500) ...[
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 9,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.primary.withValues(alpha: .08),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.primary.withValues(alpha: .18),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 6,
-                          height: 6,
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.primary,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        const Text(
-                          'LOCAL',
-                          style: TextStyle(
-                            fontSize: 9,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 1,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                ],
-                Semantics(
-                  label: context.l10n.text('Αναζήτηση', 'Search'),
-                  button: true,
-                  child: ExcludeSemantics(
-                    child: IconButton.filledTonal(
-                      tooltip: context.l10n.text('Αναζήτηση', 'Search'),
-                      onPressed: () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (context) => GlobalSearchPage(store: store),
-                        ),
-                      ),
-                      icon: const Icon(Icons.search),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 7),
-                Semantics(
-                  label: context.l10n.text(
-                    'Αλλαγή χρωμάτων και θέματος',
-                    'Change colors and theme',
-                  ),
-                  button: true,
-                  child: ExcludeSemantics(
-                    child: IconButton.filledTonal(
-                      key: const ValueKey('quick-theme-settings'),
-                      tooltip: context.l10n.text(
-                        'Χρώματα & θέμα',
-                        'Colors & theme',
-                      ),
-                      onPressed: () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (context) => ExperienceSettingsPage(
-                            store: store,
-                            focusTheme: true,
-                          ),
-                        ),
-                      ),
-                      icon: const Icon(Icons.palette_outlined),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            Text(
-              context.l10n.text(
-                'Τι μπορείς να κάνεις σήμερα;',
-                'What can you do today?',
-              ),
-              style: Theme.of(
-                context,
-              ).textTheme.headlineLarge?.copyWith(fontWeight: FontWeight.w900),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              context.l10n.text(
-                'Διάλεξε ένα μόνο πράγμα. Ό,τι κι αν επιλέξεις, μετράει.',
-                'Choose just one thing. Whatever you choose, it counts.',
-              ),
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: .64),
-                height: 1.4,
-              ),
-            ),
+            _DashboardHeader(store: store),
             const SizedBox(height: 20),
             _DailyMissionCard(
               store: store,
@@ -1191,6 +1368,7 @@ class _TodayActionsCard extends StatelessWidget {
                       onTap: addWater,
                     ),
                     _QuickAction(
+                      actionKey: const ValueKey('gentle-movement-action'),
                       width: width,
                       icon: Icons.directions_walk_rounded,
                       label: l.text('10 λεπτά κίνηση', '10-minute movement'),
@@ -1246,6 +1424,7 @@ class _DueReminderCard extends StatelessWidget {
 
 class _QuickAction extends StatelessWidget {
   const _QuickAction({
+    this.actionKey,
     required this.width,
     required this.icon,
     required this.label,
@@ -1254,6 +1433,7 @@ class _QuickAction extends StatelessWidget {
   });
 
   final double width;
+  final Key? actionKey;
   final IconData icon;
   final String label;
   final Color color;
@@ -1272,6 +1452,7 @@ class _QuickAction extends StatelessWidget {
         ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
+          key: actionKey,
           onTap: onTap,
           child: Padding(
             padding: const EdgeInsets.all(13),
@@ -1550,137 +1731,162 @@ class _WorkoutsPageState extends State<WorkoutsPage> {
           style: TextStyle(color: Colors.white.withValues(alpha: .6)),
         ),
         const SizedBox(height: 14),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: Wrap(
-            spacing: 8,
-            runSpacing: 8,
+        _WeeklyScheduleCard(store: store),
+        const SizedBox(height: 12),
+        Card(
+          child: ExpansionTile(
+            key: const ValueKey('advanced-training-tools'),
+            leading: const Icon(Icons.tune_rounded),
+            title: Text(
+              context.l10n.text('Ειδικά εργαλεία', 'Special tools'),
+              style: const TextStyle(fontWeight: FontWeight.w900),
+            ),
+            subtitle: Text(
+              context.l10n.text(
+                'Για όταν θέλεις περισσότερη λεπτομέρεια',
+                'For when you want more detail',
+              ),
+            ),
+            childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 16),
             children: [
-              FilledButton.tonalIcon(
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (context) => ProgramArchitecturePage(store: store),
-                  ),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    FilledButton.tonalIcon(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (context) =>
+                              ProgramArchitecturePage(store: store),
+                        ),
+                      ),
+                      icon: const Icon(Icons.architecture_outlined),
+                      label: const Text('Program Architecture'),
+                    ),
+                    FilledButton.tonalIcon(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (context) => StrengthLabPage(store: store),
+                        ),
+                      ),
+                      icon: const Icon(Icons.speed),
+                      label: const Text('Strength Lab'),
+                    ),
+                    FilledButton.tonalIcon(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (context) =>
+                              HypertrophyLabPage(store: store),
+                        ),
+                      ),
+                      icon: const Icon(Icons.equalizer),
+                      label: const Text('Hypertrophy Lab'),
+                    ),
+                    FilledButton.tonalIcon(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (context) =>
+                              ConditioningLabPage(store: store),
+                        ),
+                      ),
+                      icon: const Icon(Icons.favorite_outline),
+                      label: const Text('Conditioning Lab'),
+                    ),
+                    FilledButton.tonalIcon(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (context) => RunningLabPage(store: store),
+                        ),
+                      ),
+                      icon: const Icon(Icons.directions_run),
+                      label: const Text('Running Lab'),
+                    ),
+                    FilledButton.tonalIcon(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (context) =>
+                              CyclingRowingLabPage(store: store),
+                        ),
+                      ),
+                      icon: const Icon(Icons.pedal_bike),
+                      label: const Text('Cycling & Rowing Lab'),
+                    ),
+                    FilledButton.tonalIcon(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (context) =>
+                              ExerciseIntelligencePage(store: store),
+                        ),
+                      ),
+                      icon: const Icon(Icons.hub_outlined),
+                      label: const Text('Exercise Intelligence'),
+                    ),
+                    FilledButton.tonalIcon(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (context) => MobilityPage(store: store),
+                        ),
+                      ),
+                      icon: const Icon(Icons.self_improvement),
+                      label: const Text('Mobility Lab'),
+                    ),
+                    FilledButton.tonalIcon(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (context) =>
+                              MobilityIntelligencePage(store: store),
+                        ),
+                      ),
+                      icon: const Icon(Icons.accessibility_new),
+                      label: const Text('Mobility Intelligence'),
+                    ),
+                    FilledButton.tonalIcon(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (context) => WeeklyPlannerPage(store: store),
+                        ),
+                      ),
+                      icon: const Icon(Icons.edit_calendar_outlined),
+                      label: const Text('Weekly Planner'),
+                    ),
+                    FilledButton.tonalIcon(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (context) =>
+                              CalisthenicsLabPage(store: store),
+                        ),
+                      ),
+                      icon: const Icon(Icons.sports_gymnastics),
+                      label: const Text('Calisthenics Lab'),
+                    ),
+                    FilledButton.tonalIcon(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (context) =>
+                              AdvancedCalisthenicsPage(store: store),
+                        ),
+                      ),
+                      icon: const Icon(Icons.sports_martial_arts),
+                      label: const Text('Advanced Calisthenics'),
+                    ),
+                    FilledButton.tonalIcon(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (context) =>
+                              MediaPortabilityPage(store: store),
+                        ),
+                      ),
+                      icon: const Icon(Icons.ios_share),
+                      label: const Text('Media & Portability'),
+                    ),
+                  ],
                 ),
-                icon: const Icon(Icons.architecture_outlined),
-                label: const Text('Program Architecture'),
-              ),
-              FilledButton.tonalIcon(
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (context) => StrengthLabPage(store: store),
-                  ),
-                ),
-                icon: const Icon(Icons.speed),
-                label: const Text('Strength Lab'),
-              ),
-              FilledButton.tonalIcon(
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (context) => HypertrophyLabPage(store: store),
-                  ),
-                ),
-                icon: const Icon(Icons.equalizer),
-                label: const Text('Hypertrophy Lab'),
-              ),
-              FilledButton.tonalIcon(
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (context) => ConditioningLabPage(store: store),
-                  ),
-                ),
-                icon: const Icon(Icons.favorite_outline),
-                label: const Text('Conditioning Lab'),
-              ),
-              FilledButton.tonalIcon(
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (context) => RunningLabPage(store: store),
-                  ),
-                ),
-                icon: const Icon(Icons.directions_run),
-                label: const Text('Running Lab'),
-              ),
-              FilledButton.tonalIcon(
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (context) => CyclingRowingLabPage(store: store),
-                  ),
-                ),
-                icon: const Icon(Icons.pedal_bike),
-                label: const Text('Cycling & Rowing Lab'),
-              ),
-              FilledButton.tonalIcon(
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (context) =>
-                        ExerciseIntelligencePage(store: store),
-                  ),
-                ),
-                icon: const Icon(Icons.hub_outlined),
-                label: const Text('Exercise Intelligence'),
-              ),
-              FilledButton.tonalIcon(
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (context) => MobilityPage(store: store),
-                  ),
-                ),
-                icon: const Icon(Icons.self_improvement),
-                label: const Text('Mobility Lab'),
-              ),
-              FilledButton.tonalIcon(
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (context) =>
-                        MobilityIntelligencePage(store: store),
-                  ),
-                ),
-                icon: const Icon(Icons.accessibility_new),
-                label: const Text('Mobility Intelligence'),
-              ),
-              FilledButton.tonalIcon(
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (context) => WeeklyPlannerPage(store: store),
-                  ),
-                ),
-                icon: const Icon(Icons.edit_calendar_outlined),
-                label: const Text('Weekly Planner'),
-              ),
-              FilledButton.tonalIcon(
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (context) => CalisthenicsLabPage(store: store),
-                  ),
-                ),
-                icon: const Icon(Icons.sports_gymnastics),
-                label: const Text('Calisthenics Lab'),
-              ),
-              FilledButton.tonalIcon(
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (context) =>
-                        AdvancedCalisthenicsPage(store: store),
-                  ),
-                ),
-                icon: const Icon(Icons.sports_martial_arts),
-                label: const Text('Advanced Calisthenics'),
-              ),
-              FilledButton.tonalIcon(
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (context) => MediaPortabilityPage(store: store),
-                  ),
-                ),
-                icon: const Icon(Icons.ios_share),
-                label: const Text('Media & Portability'),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 18),
-        _WeeklyScheduleCard(store: store),
         const SizedBox(height: 28),
         Text(
           context.l10n.text('ΟΛΑ ΤΑ ΠΡΟΓΡΑΜΜΑΤΑ', 'ALL PROGRAMS'),

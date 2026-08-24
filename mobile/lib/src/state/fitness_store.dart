@@ -599,7 +599,7 @@ class FitnessStore extends ChangeNotifier {
             'sand',
           }.contains(themePreset)
         ? themePreset
-        : 'iron';
+        : 'sage';
     final cueStyle = audioCueStyle == null
         ? preferences.audioCueStyle
         : const {'minimal', 'coach', 'silent'}.contains(audioCueStyle)

@@ -1085,7 +1085,7 @@ class AppPreferences {
   const AppPreferences({
     this.languageCode = 'el',
     this.highContrast = false,
-    this.themePreset = 'iron',
+    this.themePreset = 'sage',
     this.hapticFeedback = true,
     this.audioCues = false,
     this.audioCueStyle = 'minimal',
@@ -1198,7 +1198,7 @@ class AppPreferences {
   factory AppPreferences.fromJson(Map<String, dynamic> json) => AppPreferences(
     languageCode: json['languageCode'] as String? ?? 'el',
     highContrast: json['highContrast'] as bool? ?? false,
-    themePreset: json['themePreset'] as String? ?? 'iron',
+    themePreset: json['themePreset'] as String? ?? 'sage',
     hapticFeedback: json['hapticFeedback'] as bool? ?? true,
     audioCues: json['audioCues'] as bool? ?? false,
     audioCueStyle: json['audioCueStyle'] as String? ?? 'minimal',

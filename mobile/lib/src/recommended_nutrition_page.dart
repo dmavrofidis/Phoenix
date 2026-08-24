@@ -103,27 +103,62 @@ class _RecommendedNutritionPageState extends State<RecommendedNutritionPage> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
         children: [
-          Card(
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Theme.of(context).colorScheme.primary.withValues(alpha: .15),
+                  Theme.of(context).colorScheme.surfaceContainer,
+                ],
+              ),
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(
+                color: Theme.of(
+                  context,
+                ).colorScheme.primary.withValues(alpha: .2),
+              ),
+            ),
             child: Padding(
-              padding: const EdgeInsets.all(18),
+              padding: const EdgeInsets.all(20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    l.text('ΕΤΟΙΜΟ ΓΙΑ ΣΕΝΑ', 'BUILT FOR YOU'),
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.primary,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 1.2,
-                    ),
+                  Row(
+                    children: [
+                      Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.primary.withValues(alpha: .14),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Icon(
+                          Icons.ramen_dining_rounded,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        l.text('ΕΤΟΙΜΟ ΓΙΑ ΣΕΝΑ', 'BUILT FOR YOU'),
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.primary,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 16),
                   Text(
                     l.text(
                       'Απλό εβδομαδιαίο πρόγραμμα για $profileGoal',
                       'A simple weekly plan for $profileGoal',
                     ),
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.w900,
                     ),
                   ),
@@ -143,89 +178,105 @@ class _RecommendedNutritionPageState extends State<RecommendedNutritionPage> {
           ),
           const SizedBox(height: 12),
           Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    l.text('ΟΙ ΕΠΙΛΟΓΕΣ ΜΟΥ', 'MY CHOICES'),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 1,
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  Text(l.text('Τρόπος διατροφής', 'Eating style')),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      for (final style
-                          in RecommendedNutritionEngine.supportedDietStyles)
-                        ChoiceChip(
-                          label: Text(_dietLabel(l, style)),
-                          selected: preferences.nutritionDietStyle == style,
-                          onSelected: (_) => _update(dietStyle: style),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Text(l.text('Γεύματα την ημέρα', 'Meals per day')),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    children: [
-                      for (final count in const [3, 4, 5])
-                        ChoiceChip(
-                          label: Text('$count'),
-                          selected: preferences.nutritionMealsPerDay == count,
-                          onSelected: (_) => _update(mealsPerDay: count),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Text(l.text('Κόστος', 'Budget')),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    children: [
-                      ChoiceChip(
-                        label: Text(l.text('Κανονικό', 'Standard')),
-                        selected: preferences.nutritionBudgetMode == 'standard',
-                        onSelected: (_) => _update(budgetMode: 'standard'),
-                      ),
-                      ChoiceChip(
-                        label: Text(l.text('Οικονομικό', 'Economy')),
-                        selected: preferences.nutritionBudgetMode == 'economy',
-                        onSelected: (_) => _update(budgetMode: 'economy'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    value: preferences.nutritionQuickPrep,
-                    onChanged: (value) => _update(quickPrep: value),
-                    secondary: const Icon(Icons.timer_outlined),
-                    title: Text(l.text('Γρήγορη προετοιμασία', 'Quick prep')),
-                    subtitle: Text(
-                      l.text(
-                        'Προτίμηση σε γεύματα έως 15 λεπτά.',
-                        'Prefer meals that take up to 15 minutes.',
-                      ),
-                    ),
-                  ),
-                  Text(
-                    l.text(
-                      'Οι επιλογές αποθηκεύονται μόνο σε αυτή τη συσκευή.',
-                      'Your choices stay only on this device.',
-                    ),
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ],
+            child: ExpansionTile(
+              key: const ValueKey('nutrition-plan-options'),
+              leading: const Icon(Icons.tune_rounded),
+              title: Text(
+                l.text('ΟΙ ΕΠΙΛΟΓΕΣ ΜΟΥ', 'MY CHOICES'),
+                style: const TextStyle(
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1,
+                ),
               ),
+              subtitle: Text(
+                l.text(
+                  '${_dietLabel(l, preferences.nutritionDietStyle)} • ${preferences.nutritionMealsPerDay} γεύματα',
+                  '${_dietLabel(l, preferences.nutritionDietStyle)} • ${preferences.nutritionMealsPerDay} meals',
+                ),
+              ),
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(l.text('Τρόπος διατροφής', 'Eating style')),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          for (final style
+                              in RecommendedNutritionEngine.supportedDietStyles)
+                            ChoiceChip(
+                              label: Text(_dietLabel(l, style)),
+                              selected: preferences.nutritionDietStyle == style,
+                              onSelected: (_) => _update(dietStyle: style),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Text(l.text('Γεύματα την ημέρα', 'Meals per day')),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        children: [
+                          for (final count in const [3, 4, 5])
+                            ChoiceChip(
+                              label: Text('$count'),
+                              selected:
+                                  preferences.nutritionMealsPerDay == count,
+                              onSelected: (_) => _update(mealsPerDay: count),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Text(l.text('Κόστος', 'Budget')),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        children: [
+                          ChoiceChip(
+                            label: Text(l.text('Κανονικό', 'Standard')),
+                            selected:
+                                preferences.nutritionBudgetMode == 'standard',
+                            onSelected: (_) => _update(budgetMode: 'standard'),
+                          ),
+                          ChoiceChip(
+                            label: Text(l.text('Οικονομικό', 'Economy')),
+                            selected:
+                                preferences.nutritionBudgetMode == 'economy',
+                            onSelected: (_) => _update(budgetMode: 'economy'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        value: preferences.nutritionQuickPrep,
+                        onChanged: (value) => _update(quickPrep: value),
+                        secondary: const Icon(Icons.timer_outlined),
+                        title: Text(
+                          l.text('Γρήγορη προετοιμασία', 'Quick prep'),
+                        ),
+                        subtitle: Text(
+                          l.text(
+                            'Προτίμηση σε γεύματα έως 15 λεπτά.',
+                            'Prefer meals that take up to 15 minutes.',
+                          ),
+                        ),
+                      ),
+                      Text(
+                        l.text(
+                          'Οι επιλογές αποθηκεύονται μόνο σε αυτή τη συσκευή.',
+                          'Your choices stay only on this device.',
+                        ),
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 18),
@@ -315,14 +366,14 @@ class _RecommendedNutritionPageState extends State<RecommendedNutritionPage> {
     );
   }
 
-  static String _dietLabel(dynamic l, String style) => switch (style) {
+  static String _dietLabel(PhoenixL10n l, String style) => switch (style) {
     'mediterranean' => l.text('Μεσογειακή', 'Mediterranean'),
     'vegetarian' => l.text('Χορτοφαγική', 'Vegetarian'),
     'vegan' => 'Vegan',
     _ => l.text('Ισορροπημένη', 'Balanced'),
   };
 
-  static String _dayLabel(dynamic l, DateTime date) {
+  static String _dayLabel(PhoenixL10n l, DateTime date) {
     const greek = ['ΔΕΥ', 'ΤΡΙ', 'ΤΕΤ', 'ΠΕΜ', 'ΠΑΡ', 'ΣΑΒ', 'ΚΥΡ'];
     const english = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
     final names = l.isEnglish ? english : greek;
