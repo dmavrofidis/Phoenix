@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import 'models/fitness_models.dart';
+import 'phoenix_copy.dart';
+import 'phoenix_l10n.dart';
 import 'state/fitness_store.dart';
 
 class WeeklyPlannerPage extends StatelessWidget {
@@ -21,7 +23,11 @@ class WeeklyPlannerPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('WEEKLY PLANNER')),
+      appBar: AppBar(
+        title: Text(
+          context.l10n.text('Εβδομαδιαίος προγραμματισμός', 'Weekly planner'),
+        ),
+      ),
       body: ListenableBuilder(
         listenable: store,
         builder: (context, _) => ListView(
@@ -35,7 +41,7 @@ class WeeklyPlannerPage extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              'Η χειροκίνητη επιλογή υπερισχύει του αυτόματου rotation μόνο '
+              'Η χειροκίνητη επιλογή υπερισχύει της αυτόματης εναλλαγής μόνο '
               'για τη συγκεκριμένη ημέρα.',
               style: TextStyle(
                 color: Colors.white.withValues(alpha: .58),
@@ -65,7 +71,7 @@ class WeeklyPlannerPage extends StatelessWidget {
                       }
                     },
               icon: const Icon(Icons.auto_awesome),
-              label: const Text('Επαναφορά αυτόματου rotation'),
+              label: const Text('Επαναφορά αυτόματης εναλλαγής'),
             ),
           ],
         ),
@@ -128,20 +134,20 @@ class _DayAssignmentCard extends StatelessWidget {
                   helperText: selected == null
                       ? 'Αυτόματο πλάνο'
                       : selected.isRecoveryDay
-                      ? 'Recovery / rest-day session'
+                      ? 'Ήπιο πρόγραμμα ημέρας ξεκούρασης'
                       : 'Χειροκίνητη ανάθεση',
                   border: const OutlineInputBorder(),
                 ),
                 items: [
                   const DropdownMenuItem<String>(
                     value: null,
-                    child: Text('Αυτόματο rotation'),
+                    child: Text('Αυτόματη εναλλαγή'),
                   ),
                   for (final template in templates)
                     DropdownMenuItem(
                       value: template.id,
                       child: Text(
-                        template.name,
+                        PhoenixCopy.workoutName(context.l10n, template),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),

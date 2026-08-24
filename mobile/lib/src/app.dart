@@ -32,6 +32,7 @@ import 'nutrition_page.dart';
 import 'nutrition_planner_page.dart';
 import 'recommended_nutrition_page.dart';
 import 'onboarding_page.dart';
+import 'phoenix_copy.dart';
 import 'phoenix_l10n.dart';
 import 'phoenix_toolbox_page.dart';
 import 'photo_meal_scan_page.dart';
@@ -1133,7 +1134,7 @@ class _DashboardHeader extends StatelessWidget {
                     ),
                     const SizedBox(width: 5),
                     Text(
-                      'LOCAL',
+                      context.l10n.text('ΣΤΗ ΣΥΣΚΕΥΗ', 'ON DEVICE'),
                       style: theme.textTheme.labelSmall?.copyWith(
                         color: colors.onSurfaceVariant,
                         fontWeight: FontWeight.w900,
@@ -1393,6 +1394,7 @@ class _DueReminderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     final reminders = store.dueWorkoutReminders(DateTime.now());
     final reminder = reminders.first;
     final template = reminder.templateId.isEmpty
@@ -1409,13 +1411,16 @@ class _DueReminderCard extends StatelessWidget {
           color: Theme.of(context).colorScheme.primary,
         ),
         title: Text(
-          'WORKOUT REMINDER • ${reminder.timeLabel}',
+          l.text(
+            'ΥΠΕΝΘΥΜΙΣΗ ΠΡΟΠΟΝΗΣΗΣ • ${reminder.timeLabel}',
+            'WORKOUT REMINDER • ${reminder.timeLabel}',
+          ),
           style: const TextStyle(fontWeight: FontWeight.w900),
         ),
-        subtitle: Text(template.name),
+        subtitle: Text(PhoenixCopy.workoutName(l, template)),
         trailing: FilledButton(
           onPressed: () => _openWorkout(context, store, template),
-          child: const Text('START'),
+          child: Text(l.text('ΕΝΑΡΞΗ', 'START')),
         ),
       ),
     );
@@ -1489,6 +1494,9 @@ class _PhoenixBriefCard extends StatelessWidget {
     final l = context.l10n;
     final now = DateTime.now();
     final next = store.weeklySchedule.nextEntry(now);
+    final nextName = next == null
+        ? ''
+        : PhoenixCopy.workoutName(l, next.template, short: true);
     final recovery = store.todaysRecoveryPlan;
     final nutrition = store.nutritionCoach;
     final trainingText = next == null
@@ -1498,13 +1506,13 @@ class _PhoenixBriefCard extends StatelessWidget {
           )
         : next.isOverdue(now)
         ? l.text(
-            '${next.template.name.split(' — ').first} παραμένει σε εκκρεμότητα.',
-            '${next.template.name.split(' — ').first} is still pending.',
+            'Το πρόγραμμα «$nextName» παραμένει σε εκκρεμότητα.',
+            '$nextName is still pending.',
           )
         : next.isToday(now)
         ? l.text(
-            '${next.template.name.split(' — ').first} είναι η σημερινή αποστολή.',
-            '${next.template.name.split(' — ').first} is today’s mission.',
+            'Το πρόγραμμα «$nextName» είναι το σημερινό σου βήμα.',
+            '$nextName is today’s next step.',
           )
         : l.text(
             'Επόμενη προπόνηση ${next.date.day}/${next.date.month}.',
@@ -1674,7 +1682,7 @@ class _WorkoutsPageState extends State<WorkoutsPage> {
       builder: (context) => AlertDialog(
         title: const Text('Διαγραφή προγράμματος;'),
         content: Text(
-          'Το “${template.name}” και το ιστορικό του θα αφαιρεθούν από τη '
+          'Το “${PhoenixCopy.workoutName(context.l10n, template)}” και το ιστορικό του θα αφαιρεθούν από τη '
           'συσκευή.',
         ),
         actions: [
@@ -1697,7 +1705,7 @@ class _WorkoutsPageState extends State<WorkoutsPage> {
         SnackBar(
           content: const Text('Το πρόγραμμα διαγράφηκε.'),
           action: SnackBarAction(
-            label: 'UNDO',
+            label: context.l10n.text('ΑΝΑΙΡΕΣΗ', 'UNDO'),
             onPressed: store.undoLastMutation,
           ),
         ),
@@ -1763,7 +1771,12 @@ class _WorkoutsPageState extends State<WorkoutsPage> {
                         ),
                       ),
                       icon: const Icon(Icons.architecture_outlined),
-                      label: const Text('Program Architecture'),
+                      label: Text(
+                        context.l10n.text(
+                          'Σχεδιασμός προγράμματος',
+                          'Program architecture',
+                        ),
+                      ),
                     ),
                     FilledButton.tonalIcon(
                       onPressed: () => Navigator.of(context).push(
@@ -1772,7 +1785,7 @@ class _WorkoutsPageState extends State<WorkoutsPage> {
                         ),
                       ),
                       icon: const Icon(Icons.speed),
-                      label: const Text('Strength Lab'),
+                      label: Text(context.l10n.text('Δύναμη', 'Strength lab')),
                     ),
                     FilledButton.tonalIcon(
                       onPressed: () => Navigator.of(context).push(
@@ -1782,7 +1795,9 @@ class _WorkoutsPageState extends State<WorkoutsPage> {
                         ),
                       ),
                       icon: const Icon(Icons.equalizer),
-                      label: const Text('Hypertrophy Lab'),
+                      label: Text(
+                        context.l10n.text('Μυϊκή ανάπτυξη', 'Hypertrophy lab'),
+                      ),
                     ),
                     FilledButton.tonalIcon(
                       onPressed: () => Navigator.of(context).push(
@@ -1792,7 +1807,12 @@ class _WorkoutsPageState extends State<WorkoutsPage> {
                         ),
                       ),
                       icon: const Icon(Icons.favorite_outline),
-                      label: const Text('Conditioning Lab'),
+                      label: Text(
+                        context.l10n.text(
+                          'Φυσική κατάσταση',
+                          'Conditioning lab',
+                        ),
+                      ),
                     ),
                     FilledButton.tonalIcon(
                       onPressed: () => Navigator.of(context).push(
@@ -1801,7 +1821,7 @@ class _WorkoutsPageState extends State<WorkoutsPage> {
                         ),
                       ),
                       icon: const Icon(Icons.directions_run),
-                      label: const Text('Running Lab'),
+                      label: Text(context.l10n.text('Τρέξιμο', 'Running lab')),
                     ),
                     FilledButton.tonalIcon(
                       onPressed: () => Navigator.of(context).push(
@@ -1811,7 +1831,12 @@ class _WorkoutsPageState extends State<WorkoutsPage> {
                         ),
                       ),
                       icon: const Icon(Icons.pedal_bike),
-                      label: const Text('Cycling & Rowing Lab'),
+                      label: Text(
+                        context.l10n.text(
+                          'Ποδήλατο και κωπηλατική',
+                          'Cycling and rowing lab',
+                        ),
+                      ),
                     ),
                     FilledButton.tonalIcon(
                       onPressed: () => Navigator.of(context).push(
@@ -1821,7 +1846,12 @@ class _WorkoutsPageState extends State<WorkoutsPage> {
                         ),
                       ),
                       icon: const Icon(Icons.hub_outlined),
-                      label: const Text('Exercise Intelligence'),
+                      label: Text(
+                        context.l10n.text(
+                          'Ανάλυση ασκήσεων',
+                          'Exercise intelligence',
+                        ),
+                      ),
                     ),
                     FilledButton.tonalIcon(
                       onPressed: () => Navigator.of(context).push(
@@ -1830,7 +1860,9 @@ class _WorkoutsPageState extends State<WorkoutsPage> {
                         ),
                       ),
                       icon: const Icon(Icons.self_improvement),
-                      label: const Text('Mobility Lab'),
+                      label: Text(
+                        context.l10n.text('Κινητικότητα', 'Mobility lab'),
+                      ),
                     ),
                     FilledButton.tonalIcon(
                       onPressed: () => Navigator.of(context).push(
@@ -1840,7 +1872,12 @@ class _WorkoutsPageState extends State<WorkoutsPage> {
                         ),
                       ),
                       icon: const Icon(Icons.accessibility_new),
-                      label: const Text('Mobility Intelligence'),
+                      label: Text(
+                        context.l10n.text(
+                          'Ανάλυση κινητικότητας',
+                          'Mobility intelligence',
+                        ),
+                      ),
                     ),
                     FilledButton.tonalIcon(
                       onPressed: () => Navigator.of(context).push(
@@ -1849,7 +1886,12 @@ class _WorkoutsPageState extends State<WorkoutsPage> {
                         ),
                       ),
                       icon: const Icon(Icons.edit_calendar_outlined),
-                      label: const Text('Weekly Planner'),
+                      label: Text(
+                        context.l10n.text(
+                          'Εβδομαδιαίος προγραμματισμός',
+                          'Weekly planner',
+                        ),
+                      ),
                     ),
                     FilledButton.tonalIcon(
                       onPressed: () => Navigator.of(context).push(
@@ -1859,7 +1901,12 @@ class _WorkoutsPageState extends State<WorkoutsPage> {
                         ),
                       ),
                       icon: const Icon(Icons.sports_gymnastics),
-                      label: const Text('Calisthenics Lab'),
+                      label: Text(
+                        context.l10n.text(
+                          'Ασκήσεις με το βάρος του σώματος',
+                          'Bodyweight training lab',
+                        ),
+                      ),
                     ),
                     FilledButton.tonalIcon(
                       onPressed: () => Navigator.of(context).push(
@@ -1869,7 +1916,12 @@ class _WorkoutsPageState extends State<WorkoutsPage> {
                         ),
                       ),
                       icon: const Icon(Icons.sports_martial_arts),
-                      label: const Text('Advanced Calisthenics'),
+                      label: Text(
+                        context.l10n.text(
+                          'Προχωρημένες ασκήσεις σώματος',
+                          'Advanced bodyweight training',
+                        ),
+                      ),
                     ),
                     FilledButton.tonalIcon(
                       onPressed: () => Navigator.of(context).push(
@@ -1879,7 +1931,12 @@ class _WorkoutsPageState extends State<WorkoutsPage> {
                         ),
                       ),
                       icon: const Icon(Icons.ios_share),
-                      label: const Text('Media & Portability'),
+                      label: Text(
+                        context.l10n.text(
+                          'Μουσική και αρχεία',
+                          'Music and files',
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -1920,7 +1977,12 @@ class _WorkoutsPageState extends State<WorkoutsPage> {
                       store.createRestDayDraft(),
                     ),
               icon: const Icon(Icons.spa_outlined),
-              label: const Text('Rest-day template'),
+              label: Text(
+                context.l10n.text(
+                  'Πρόγραμμα ημέρας ξεκούρασης',
+                  'Rest-day program',
+                ),
+              ),
             ),
           ],
         ),
@@ -2127,7 +2189,7 @@ class _WeeklyScheduleCard extends StatelessWidget {
           if (next != null) ...[
             const SizedBox(height: 6),
             Text(
-              next.template.name,
+              PhoenixCopy.workoutName(context.l10n, next.template),
               style: Theme.of(
                 context,
               ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
@@ -2288,7 +2350,11 @@ class _ScheduledWorkoutRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  entry.template.name.split(' — ').first,
+                  PhoenixCopy.workoutName(
+                    context.l10n,
+                    entry.template,
+                    short: true,
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(fontWeight: FontWeight.w800),
@@ -2312,7 +2378,10 @@ class _ScheduledWorkoutRow extends StatelessWidget {
           else
             IconButton.filledTonal(
               onPressed: active ? null : onStart,
-              tooltip: 'Έναρξη ${entry.template.name}',
+              tooltip: context.l10n.text(
+                'Έναρξη ${PhoenixCopy.workoutName(context.l10n, entry.template)}',
+                'Start ${PhoenixCopy.workoutName(context.l10n, entry.template)}',
+              ),
               icon: const Icon(Icons.play_arrow, size: 20),
             ),
         ],
@@ -2750,7 +2819,9 @@ class _ProgressPageState extends State<ProgressPage> {
               ),
             ),
             icon: const Icon(Icons.query_stats),
-            label: const Text('Advanced Analytics'),
+            label: Text(
+              context.l10n.text('Αναλυτικά στοιχεία', 'Advanced analytics'),
+            ),
           ),
         ),
         const SizedBox(height: 24),
@@ -2919,7 +2990,7 @@ class _DailyMissionCard extends StatelessWidget {
           ),
           const SizedBox(height: 18),
           Text(
-            template.name.split(' — ').first,
+            PhoenixCopy.workoutName(context.l10n, template, short: true),
             style: Theme.of(
               context,
             ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
@@ -3101,7 +3172,7 @@ class _DailyExerciseRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    exercise,
+                    PhoenixCopy.exerciseName(context.l10n, exercise),
                     style: const TextStyle(fontWeight: FontWeight.w800),
                   ),
                   const SizedBox(height: 2),
@@ -3121,9 +3192,9 @@ class _DailyExerciseRow extends StatelessWidget {
                   ),
                   if (guide != null) ...[
                     const SizedBox(height: 4),
-                    const Text(
-                      'Δες πώς γίνεται',
-                      style: TextStyle(
+                    Text(
+                      context.l10n.text('Δες πώς γίνεται', 'See how it works'),
+                      style: const TextStyle(
                         color: Color(0xFFFF9E80),
                         fontSize: 12,
                         fontWeight: FontWeight.w800,
@@ -3218,17 +3289,20 @@ class _WorkoutCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        template.name,
+                        PhoenixCopy.workoutName(context.l10n, template),
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.w700,
                         ),
                       ),
                       if (template.isRecoveryDay)
-                        const Padding(
+                        Padding(
                           padding: EdgeInsets.only(top: 3),
                           child: Text(
-                            'REST-DAY SESSION',
-                            style: TextStyle(
+                            context.l10n.text(
+                              'ΗΜΕΡΑ ΞΕΚΟΥΡΑΣΗΣ',
+                              'REST-DAY SESSION',
+                            ),
+                            style: const TextStyle(
                               color: Color(0xFF81C784),
                               fontSize: 10,
                               fontWeight: FontWeight.w900,
@@ -3315,7 +3389,12 @@ class _WorkoutCard extends StatelessWidget {
             ],
             const SizedBox(height: 12),
             Text(
-              template.exercises.join('  •  '),
+              template.exercises
+                  .map(
+                    (exercise) =>
+                        PhoenixCopy.exerciseName(context.l10n, exercise),
+                  )
+                  .join('  •  '),
               style: TextStyle(color: Colors.white.withValues(alpha: .65)),
             ),
             const SizedBox(height: 14),
@@ -3326,7 +3405,10 @@ class _WorkoutCard extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    template.prescription,
+                    PhoenixCopy.trainingText(
+                      context.l10n,
+                      template.prescription,
+                    ),
                     style: TextStyle(
                       color: colors.onSurfaceVariant,
                       fontWeight: FontWeight.w700,
@@ -3337,7 +3419,7 @@ class _WorkoutCard extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              template.coachingCue,
+              PhoenixCopy.trainingText(context.l10n, template.coachingCue),
               style: TextStyle(
                 color: Colors.white.withValues(alpha: .52),
                 fontSize: 12,

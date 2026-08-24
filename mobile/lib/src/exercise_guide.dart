@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import 'phoenix_copy.dart';
+import 'phoenix_l10n.dart';
+
 class ExerciseGuide {
   const ExerciseGuide({
     required this.assetPath,
@@ -599,7 +602,7 @@ Future<void> showExerciseGuide(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            exercise,
+            PhoenixCopy.exerciseName(context.l10n, exercise),
             style: Theme.of(
               context,
             ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),

@@ -7,6 +7,7 @@ import 'models/fitness_models.dart';
 import 'nutrition_pro_widgets.dart';
 import 'nutrition_planner_page.dart';
 import 'photo_meal_scan_page.dart';
+import 'phoenix_copy.dart';
 import 'phoenix_l10n.dart';
 import 'recommended_nutrition_page.dart';
 import 'state/fitness_store.dart';
@@ -74,7 +75,7 @@ class NutritionPage extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     context.l10n.text(
-                      'Στόχοι, macros και καθοδήγηση — όλα τοπικά.',
+                      'Στόχοι, θρεπτικά στοιχεία και καθοδήγηση — όλα στη συσκευή σου.',
                       'Targets, macros and guidance — all local.',
                     ),
                     style: TextStyle(
@@ -85,7 +86,10 @@ class NutritionPage extends StatelessWidget {
               ),
             ),
             IconButton.filled(
-              tooltip: 'Photo meal scan',
+              tooltip: context.l10n.text(
+                'Καταγραφή γεύματος με φωτογραφία',
+                'Photo meal scan',
+              ),
               onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute<void>(
                   builder: (_) => PhotoMealScanPage(store: store),
@@ -95,7 +99,10 @@ class NutritionPage extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             IconButton.filled(
-              tooltip: 'Nutrition Planner',
+              tooltip: context.l10n.text(
+                'Προγραμματισμός διατροφής',
+                'Nutrition planner',
+              ),
               onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute<void>(
                   builder: (_) => NutritionPlannerPage(store: store),
@@ -135,7 +142,7 @@ class NutritionPage extends StatelessWidget {
             Expanded(
               child: Text(
                 context.l10n.text(
-                  'Σημερινό meal timeline',
+                  'Τα σημερινά γεύματα',
                   'Today’s meal timeline',
                 ),
                 style: Theme.of(
@@ -191,7 +198,7 @@ class NutritionPage extends StatelessWidget {
                       ),
                     ),
                     action: SnackBarAction(
-                      label: 'UNDO',
+                      label: context.l10n.text('ΑΝΑΙΡΕΣΗ', 'UNDO'),
                       onPressed: store.undoLastMutation,
                     ),
                   ),
@@ -229,7 +236,7 @@ class _RecommendedPlanCard extends StatelessWidget {
     final style = switch (preferences.nutritionDietStyle) {
       'mediterranean' => l.text('Μεσογειακή', 'Mediterranean'),
       'vegetarian' => l.text('Χορτοφαγική', 'Vegetarian'),
-      'vegan' => 'Vegan',
+      'vegan' => l.text('Αυστηρά χορτοφαγική', 'Vegan'),
       _ => l.text('Ισορροπημένη', 'Balanced'),
     };
     return Card(
@@ -265,7 +272,7 @@ class _RecommendedPlanCard extends StatelessWidget {
                   children: [
                     Text(
                       l.text(
-                        'Πρόγραμμα φαγητού για σένα',
+                        'Το δικό σου πρόγραμμα διατροφής',
                         'Your recommended meal plan',
                       ),
                       style: const TextStyle(fontWeight: FontWeight.w900),
@@ -312,7 +319,7 @@ class _DailyNutritionCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    context.l10n.text('ΣΗΜΕΡΙΝΟΣ ΣΤΟΧΟΣ', 'TODAY’S TARGET'),
+                    context.l10n.text('Σημερινός στόχος', 'Today’s target'),
                     style: const TextStyle(
                       color: Color(0xFFFF3D00),
                       fontWeight: FontWeight.w900,
@@ -514,8 +521,8 @@ class _MacroChart extends StatelessWidget {
           children: [
             Semantics(
               label: totalEnergy == 0
-                  ? 'Δεν υπάρχουν macros σήμερα.'
-                  : 'Κατανομή macros: ${protein.toStringAsFixed(1)} γραμμάρια '
+                  ? 'Δεν υπάρχουν θρεπτικά στοιχεία σήμερα.'
+                  : 'Κατανομή θρεπτικών στοιχείων: ${protein.toStringAsFixed(1)} γραμμάρια '
                         'πρωτεΐνη, ${carbohydrates.toStringAsFixed(1)} γραμμάρια '
                         'υδατάνθρακες και ${fat.toStringAsFixed(1)} γραμμάρια '
                         'λιπαρά.',
@@ -531,24 +538,27 @@ class _MacroChart extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 22),
-            const Expanded(
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'ΚΑΤΑΝΟΜΗ MACROS',
-                    style: TextStyle(fontWeight: FontWeight.w900),
+                    context.l10n.text(
+                      'Κατανομή θρεπτικών στοιχείων',
+                      'Macro distribution',
+                    ),
+                    style: const TextStyle(fontWeight: FontWeight.w900),
                   ),
-                  SizedBox(height: 12),
-                  _LegendDot(
+                  const SizedBox(height: 12),
+                  const _LegendDot(
                     color: Color(0xFFFF3D00),
                     label: 'Πρωτεΐνη · 4 kcal/g',
                   ),
-                  _LegendDot(
+                  const _LegendDot(
                     color: Color(0xFFFFA000),
                     label: 'Υδατάνθρακες · 4 kcal/g',
                   ),
-                  _LegendDot(
+                  const _LegendDot(
                     color: Color(0xFFB0BEC5),
                     label: 'Λιπαρά · 9 kcal/g',
                   ),
@@ -663,7 +673,7 @@ class _MealTile extends StatelessWidget {
                   ),
                 ),
         ),
-        title: Text(meal.name),
+        title: Text(PhoenixCopy.mealName(context.l10n, meal)),
         subtitle: Text(
           'Π ${meal.proteinGrams.toStringAsFixed(1)}  •  '
           'Υ ${meal.carbohydrateGrams.toStringAsFixed(1)}  •  '
@@ -844,7 +854,7 @@ class _MealEntrySheetState extends State<_MealEntrySheet> {
               contentPadding: EdgeInsets.zero,
               value: _saveAsPreset,
               onChanged: (value) => setState(() => _saveAsPreset = value),
-              title: const Text('Αποθήκευση ως meal preset'),
+              title: const Text('Αποθήκευση ως έτοιμο γεύμα'),
               subtitle: const Text(
                 'Θα μπορείς να το καταγράφεις ξανά με ένα άγγιγμα.',
               ),

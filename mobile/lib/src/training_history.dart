@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import 'models/fitness_models.dart';
+import 'phoenix_copy.dart';
+import 'phoenix_l10n.dart';
 import 'training_insights.dart';
 
 class PersonalRecordsSection extends StatelessWidget {
@@ -91,9 +93,16 @@ class _RecordTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final metrics = [
       if (record.hasWeightedRecord)
-        'e1RM ${record.bestEstimatedOneRepMax.toStringAsFixed(1)} kg',
+        context.l10n.text(
+          'Εκτιμώμενο μέγιστο ${record.bestEstimatedOneRepMax.toStringAsFixed(1)} kg',
+          'e1RM ${record.bestEstimatedOneRepMax.toStringAsFixed(1)} kg',
+        ),
       if (record.maxReps > 0) '${record.maxReps} επαν.',
-      if (record.hasHoldRecord) '${record.maxHoldSeconds}s hold',
+      if (record.hasHoldRecord)
+        context.l10n.text(
+          '${record.maxHoldSeconds} δευτ. στατική θέση',
+          '${record.maxHoldSeconds}s hold',
+        ),
     ].join('  •  ');
     return ListTile(
       leading: CircleAvatar(
@@ -106,7 +115,7 @@ class _RecordTile extends StatelessWidget {
           style: const TextStyle(fontWeight: FontWeight.w900),
         ),
       ),
-      title: Text(record.exerciseName),
+      title: Text(PhoenixCopy.exerciseName(context.l10n, record.exerciseName)),
       subtitle: Text(metrics),
       trailing: const Icon(Icons.military_tech_outlined),
     );
@@ -128,7 +137,7 @@ class _WorkoutHistoryCard extends StatelessWidget {
           color: Color(0xFFFF3D00),
         ),
         title: Text(
-          log.templateName,
+          PhoenixCopy.workoutNameFromRaw(context.l10n, log.templateName),
           style: const TextStyle(fontWeight: FontWeight.w800),
         ),
         subtitle: Text(
@@ -154,7 +163,7 @@ class _WorkoutHistoryCard extends StatelessWidget {
                 children: [
                   if (log.painSeverity > 0)
                     Text(
-                      'Pain flag ${log.painSeverity}/5'
+                      '${context.l10n.text('Ένδειξη πόνου', 'Pain flag')} ${log.painSeverity}/5'
                       '${log.painArea.isEmpty ? '' : ' • ${log.painArea}'}',
                       style: TextStyle(
                         color: log.painSeverity >= 3
@@ -207,13 +216,16 @@ class _ExerciseHistory extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(exercise, style: const TextStyle(fontWeight: FontWeight.w800)),
+          Text(
+            PhoenixCopy.exerciseName(context.l10n, exercise),
+            style: const TextStyle(fontWeight: FontWeight.w800),
+          ),
           const SizedBox(height: 5),
           for (var index = 0; index < sets.length; index++)
             Padding(
               padding: const EdgeInsets.only(bottom: 3),
               child: Text(
-                '${index + 1}. ${_setDescription(sets[index])}',
+                '${index + 1}. ${_setDescription(context.l10n, sets[index])}',
                 style: TextStyle(color: Colors.white.withValues(alpha: .6)),
               ),
             ),
@@ -230,12 +242,16 @@ Iterable<String> _exerciseNames(List<ExerciseSetLog> sets) sync* {
   }
 }
 
-String _setDescription(ExerciseSetLog set) {
+String _setDescription(PhoenixL10n l, ExerciseSetLog set) {
   final parts = [
     if (set.reps > 0) '${set.reps} επαν.',
     if (set.weightKilograms > 0) '${set.weightKilograms.toStringAsFixed(1)} kg',
-    if (set.holdSeconds > 0) '${set.holdSeconds}s hold',
-    'RIR ${set.rir}',
+    if (set.holdSeconds > 0)
+      l.text(
+        '${set.holdSeconds} δευτ. στατική θέση',
+        '${set.holdSeconds}s hold',
+      ),
+    l.text('${set.rir} επαναλήψεις σε απόθεμα', 'RIR ${set.rir}'),
   ];
   return parts.join('  •  ');
 }

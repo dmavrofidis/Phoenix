@@ -2039,7 +2039,7 @@ void main() {
       scrollable: find.byType(Scrollable).first,
     );
     expect(find.text('Οι σημερινές ασκήσεις'), findsOneWidget);
-    expect(find.text('Farmer carry'), findsOneWidget);
+    expect(find.text('Περπάτημα με βάρη'), findsOneWidget);
     expect(find.text('Δες πώς γίνεται'), findsWidgets);
     expect(
       find.byKey(const ValueKey('daily-exercise-guide-Farmer carry')),
@@ -2136,17 +2136,16 @@ void main() {
     expect(find.text('ΕΒΔΟΜΑΔΙΑΙΟ ΠΛΑΝΟ'), findsOneWidget);
     expect(find.textContaining('0/3'), findsWidgets);
     expect(find.byIcon(Icons.play_arrow), findsWidgets);
-    final firstScheduled = store.weeklySchedule.entries.first;
-    final playButton = find.byTooltip('Έναρξη ${firstScheduled.template.name}');
+    final playButton = find.byTooltip('Έναρξη Δύναμη με βάρη — Όλο το σώμα');
     final startControl = find.ancestor(
       of: playButton,
       matching: find.byType(IconButton),
     );
     tester.widget<IconButton>(startControl).onPressed!();
     await tester.pumpAndSettle();
-    expect(find.text('IRON SESSION'), findsOneWidget);
+    expect(find.text('ΠΡΟΠΟΝΗΣΗ ΜΕ ΒΑΡΗ'), findsOneWidget);
     expect(store.hasActiveWorkout, isTrue);
-    Navigator.of(tester.element(find.text('IRON SESSION'))).pop();
+    Navigator.of(tester.element(find.text('ΠΡΟΠΟΝΗΣΗ ΜΕ ΒΑΡΗ'))).pop();
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
       find.text('Ειδικά εργαλεία'),
@@ -2154,10 +2153,10 @@ void main() {
       scrollable: find.byType(Scrollable).first,
     );
     expect(find.text('Ειδικά εργαλεία'), findsOneWidget);
-    expect(find.text('Program Architecture'), findsNothing);
+    expect(find.text('Σχεδιασμός προγράμματος'), findsNothing);
     await tester.tap(find.text('Ειδικά εργαλεία'));
     await tester.pumpAndSettle();
-    expect(find.text('Program Architecture'), findsOneWidget);
+    expect(find.text('Σχεδιασμός προγράμματος'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('ΟΛΑ ΤΑ ΠΡΟΓΡΑΜΜΑΤΑ'),
       400,
@@ -2172,8 +2171,6 @@ void main() {
     final store = FitnessStore(MemoryRepository());
     store.startWorkout(store.data.templates.first);
     await tester.pumpWidget(MaterialApp(home: ActiveWorkoutPage(store: store)));
-    await tester.tap(find.text('WARM-UP PROTOCOL'));
-    await tester.pumpAndSettle();
     for (
       var attempt = 0;
       attempt < 6 && find.byIcon(Icons.swap_horiz).evaluate().isEmpty;
@@ -2190,12 +2187,12 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Αλλαγή άσκησης'), findsOneWidget);
-    expect(find.text('Goblet squat σε πάγκο'), findsOneWidget);
-    await tester.tap(find.text('Goblet squat σε πάγκο'));
+    expect(find.text('Goblet squat to bench'), findsOneWidget);
+    await tester.tap(find.text('Goblet squat to bench'));
     await tester.pumpAndSettle();
 
     expect(store.activeWorkout!.exercises, contains('Goblet squat σε πάγκο'));
-    expect(find.text('Goblet squat σε πάγκο'), findsOneWidget);
+    expect(find.text('Goblet squat to bench'), findsOneWidget);
   });
 
   testWidgets('η ενεργή προπόνηση στο σπίτι δεν εμφανίζει gym εμπειρία', (
@@ -2220,7 +2217,7 @@ void main() {
 
     expect(find.text('HOME WORKOUT'), findsOneWidget);
     expect(find.text('SIMPLE WARM-UP'), findsOneWidget);
-    expect(find.text('IRON SESSION'), findsNothing);
+    expect(find.text('ΠΡΟΠΟΝΗΣΗ ΜΕ ΒΑΡΗ'), findsNothing);
     expect(find.text('WARM-UP PROTOCOL'), findsNothing);
 
     await tester.scrollUntilVisible(
@@ -2251,7 +2248,7 @@ void main() {
     await tester.tap(find.byIcon(Icons.restaurant_outlined));
     await tester.pumpAndSettle();
 
-    expect(find.text('ΣΗΜΕΡΙΝΟΣ ΣΤΟΧΟΣ'), findsOneWidget);
+    expect(find.text('Σημερινός στόχος'), findsOneWidget);
     expect(
       find.textContaining('/ ${store.nutritionTargets.calories} kcal'),
       findsOneWidget,
@@ -2266,19 +2263,19 @@ void main() {
 
     await tester.tap(find.byIcon(Icons.restaurant_outlined));
     await tester.pumpAndSettle();
-    expect(find.text('Πρόγραμμα φαγητού για σένα'), findsOneWidget);
+    expect(find.text('Το δικό σου πρόγραμμα διατροφής'), findsOneWidget);
 
-    await tester.tap(find.text('Πρόγραμμα φαγητού για σένα'));
+    await tester.tap(find.text('Το δικό σου πρόγραμμα διατροφής'));
     await tester.pumpAndSettle();
     expect(find.byType(RecommendedNutritionPage), findsOneWidget);
-    expect(find.text('ΕΤΟΙΜΟ ΓΙΑ ΣΕΝΑ'), findsOneWidget);
-    expect(find.text('ΟΙ ΕΠΙΛΟΓΕΣ ΜΟΥ'), findsOneWidget);
+    expect(find.text('Έτοιμο για εσένα'), findsOneWidget);
+    expect(find.text('Οι επιλογές μου'), findsOneWidget);
     await tester.scrollUntilVisible(
-      find.text('Η ΕΒΔΟΜΑΔΑ ΜΟΥ'),
+      find.text('Η εβδομάδα μου'),
       250,
       scrollable: find.byType(Scrollable).first,
     );
-    expect(find.text('Η ΕΒΔΟΜΑΔΑ ΜΟΥ'), findsOneWidget);
+    expect(find.text('Η εβδομάδα μου'), findsOneWidget);
   });
 
   testWidgets('το Nutrition Pro καταγράφει νερό και meal preset', (
@@ -2302,7 +2299,7 @@ void main() {
     expect(find.text('250 / 2800 ml'), findsOneWidget);
 
     await tester.scrollUntilVisible(
-      find.text('MEAL PRESETS'),
+      find.text('Έτοιμα γεύματα'),
       250,
       scrollable: find.byType(Scrollable).first,
     );
@@ -2318,7 +2315,7 @@ void main() {
     await tester.pumpWidget(MaterialApp(home: NutritionPage(store: store)));
 
     await tester.scrollUntilVisible(
-      find.text('MEAL PRESETS'),
+      find.text('Meal presets'),
       300,
       scrollable: find.byType(Scrollable).first,
     );
@@ -2474,10 +2471,10 @@ void main() {
     final store = FitnessStore(MemoryRepository());
     await tester.pumpWidget(MaterialApp(home: WeeklyPlannerPage(store: store)));
 
-    expect(find.text('WEEKLY PLANNER'), findsOneWidget);
+    expect(find.text('Weekly planner'), findsOneWidget);
     await tester.tap(find.byType(DropdownButtonFormField<String>).first);
     await tester.pumpAndSettle();
-    await tester.tap(find.text(store.data.templates.first.name).last);
+    await tester.tap(find.text('Dumbbell strength — Full body').last);
     await tester.pumpAndSettle();
 
     expect(store.data.weeklyAssignments['1'], store.data.templates.first.id);
@@ -2840,7 +2837,7 @@ void main() {
     await tester.tap(find.text('Global search'));
     await tester.pumpAndSettle();
     expect(find.byType(GlobalSearchPage), findsOneWidget);
-    expect(find.text('GLOBAL SEARCH'), findsOneWidget);
+    expect(find.text('Global search'), findsOneWidget);
   });
 
   testWidgets('profile, validation και vault pages είναι λειτουργικές', (

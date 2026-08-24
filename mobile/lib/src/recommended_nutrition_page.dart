@@ -80,7 +80,7 @@ class _RecommendedNutritionPageState extends State<RecommendedNutritionPage> {
           ),
         ),
         action: SnackBarAction(
-          label: 'UNDO',
+          label: context.l10n.text('ΑΝΑΙΡΕΣΗ', 'UNDO'),
           onPressed: store.undoLastMutation,
         ),
       ),
@@ -143,7 +143,7 @@ class _RecommendedNutritionPageState extends State<RecommendedNutritionPage> {
                       ),
                       const SizedBox(width: 12),
                       Text(
-                        l.text('ΕΤΟΙΜΟ ΓΙΑ ΣΕΝΑ', 'BUILT FOR YOU'),
+                        l.text('Έτοιμο για εσένα', 'Built for you'),
                         style: TextStyle(
                           color: Theme.of(context).colorScheme.primary,
                           fontWeight: FontWeight.w900,
@@ -182,7 +182,7 @@ class _RecommendedNutritionPageState extends State<RecommendedNutritionPage> {
               key: const ValueKey('nutrition-plan-options'),
               leading: const Icon(Icons.tune_rounded),
               title: Text(
-                l.text('ΟΙ ΕΠΙΛΟΓΕΣ ΜΟΥ', 'MY CHOICES'),
+                l.text('Οι επιλογές μου', 'My choices'),
                 style: const TextStyle(
                   fontWeight: FontWeight.w900,
                   letterSpacing: 1,
@@ -281,7 +281,7 @@ class _RecommendedNutritionPageState extends State<RecommendedNutritionPage> {
           ),
           const SizedBox(height: 18),
           Text(
-            l.text('Η ΕΒΔΟΜΑΔΑ ΜΟΥ', 'MY WEEK'),
+            l.text('Η εβδομάδα μου', 'My week'),
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w900,
               letterSpacing: 1,
@@ -369,7 +369,7 @@ class _RecommendedNutritionPageState extends State<RecommendedNutritionPage> {
   static String _dietLabel(PhoenixL10n l, String style) => switch (style) {
     'mediterranean' => l.text('Μεσογειακή', 'Mediterranean'),
     'vegetarian' => l.text('Χορτοφαγική', 'Vegetarian'),
-    'vegan' => 'Vegan',
+    'vegan' => l.text('Αυστηρά χορτοφαγική', 'Vegan'),
     _ => l.text('Ισορροπημένη', 'Balanced'),
   };
 
@@ -488,8 +488,18 @@ class _MealCard extends StatelessWidget {
               runSpacing: 6,
               children: [
                 _MetricChip(label: '${meal.calories} kcal'),
-                _MetricChip(label: '${meal.proteinGrams.round()} g protein'),
-                _MetricChip(label: '${meal.prepMinutes} min'),
+                _MetricChip(
+                  label: l.text(
+                    '${meal.proteinGrams.round()} g πρωτεΐνη',
+                    '${meal.proteinGrams.round()} g protein',
+                  ),
+                ),
+                _MetricChip(
+                  label: l.text(
+                    '${meal.prepMinutes} λεπτά',
+                    '${meal.prepMinutes} min',
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 10),

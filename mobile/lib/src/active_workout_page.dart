@@ -7,6 +7,7 @@ import 'exercise_substitution_engine.dart';
 import 'exercise_guide.dart';
 import 'deterministic_coach_engine.dart';
 import 'models/fitness_models.dart';
+import 'phoenix_copy.dart';
 import 'phoenix_l10n.dart';
 import 'recovery_widgets.dart';
 import 'session_preparation_engine.dart';
@@ -110,9 +111,17 @@ class _ActiveWorkoutPageState extends State<ActiveWorkoutPage> {
         replacement: replacement,
       );
       if (!mounted) return;
+      final l = context.l10n;
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text('$exercise → $replacement')));
+        ..showSnackBar(
+          SnackBar(
+            content: Text(
+              '${PhoenixCopy.exerciseName(l, exercise)} → '
+              '${PhoenixCopy.exerciseName(l, replacement)}',
+            ),
+          ),
+        );
     } on FormatException catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -157,11 +166,14 @@ class _ActiveWorkoutPageState extends State<ActiveWorkoutPage> {
             title: Text(
               isHome
                   ? context.l10n.text('ΠΡΟΠΟΝΗΣΗ ΣΤΟ ΣΠΙΤΙ', 'HOME WORKOUT')
-                  : 'IRON SESSION',
+                  : context.l10n.text('ΠΡΟΠΟΝΗΣΗ ΜΕ ΒΑΡΗ', 'STRENGTH WORKOUT'),
             ),
             actions: [
               IconButton(
-                tooltip: 'Ακύρωση προπόνησης',
+                tooltip: context.l10n.text(
+                  'Ακύρωση προπόνησης',
+                  'Cancel workout',
+                ),
                 onPressed: () {
                   widget.store.cancelWorkout();
                   Navigator.of(context).pop();
@@ -183,13 +195,16 @@ class _ActiveWorkoutPageState extends State<ActiveWorkoutPage> {
               _ProtocolChecklistCard(
                 title: isHome
                     ? context.l10n.text('ΑΠΛΗ ΠΡΟΘΕΡΜΑΝΣΗ', 'SIMPLE WARM-UP')
-                    : 'WARM-UP PROTOCOL',
+                    : context.l10n.text('ΠΡΟΘΕΡΜΑΝΣΗ', 'WARM-UP'),
                 subtitle: isHome
                     ? context.l10n.text(
                         '${preparation.warmupMinutes}′ πριν ξεκινήσεις',
                         '${preparation.warmupMinutes} min before you start',
                       )
-                    : '${preparation.warmupMinutes}′ πριν από τα working sets',
+                    : context.l10n.text(
+                        '${preparation.warmupMinutes}′ πριν από τα βασικά σετ',
+                        '${preparation.warmupMinutes} min before your working sets',
+                      ),
                 icon: Icons.whatshot_outlined,
                 steps: preparation.warmup,
                 completed: _completedWarmupSteps,
@@ -245,9 +260,11 @@ class _ActiveWorkoutPageState extends State<ActiveWorkoutPage> {
                 const SizedBox(height: 12),
               ],
               _ProtocolChecklistCard(
-                title: 'COOLDOWN PROTOCOL',
-                subtitle:
-                    '${preparation.cooldownMinutes}′ για σταδιακή επαναφορά',
+                title: context.l10n.text('ΑΠΟΘΕΡΑΠΕΙΑ', 'COOL-DOWN'),
+                subtitle: context.l10n.text(
+                  '${preparation.cooldownMinutes}′ για να επανέλθει ήρεμα το σώμα',
+                  '${preparation.cooldownMinutes} min to wind down gradually',
+                ),
                 icon: Icons.air,
                 steps: preparation.cooldown,
                 completed: _completedCooldownSteps,
@@ -301,7 +318,7 @@ class _ProtocolChecklistCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       child: ExpansionTile(
-        initiallyExpanded: title.startsWith('WARM'),
+        initiallyExpanded: icon == Icons.whatshot_outlined,
         leading: Icon(icon, color: const Color(0xFFFF6E40)),
         title: Text(
           title,
@@ -555,7 +572,7 @@ class _SessionHeader extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      workout.name.toUpperCase(),
+                      PhoenixCopy.workoutName(context.l10n, workout),
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.w900,
                       ),
@@ -583,7 +600,7 @@ class _SessionHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  workout.prescription,
+                  PhoenixCopy.trainingText(context.l10n, workout.prescription),
                   style: const TextStyle(
                     color: Color(0xFFFF9E80),
                     fontWeight: FontWeight.w800,
@@ -591,7 +608,7 @@ class _SessionHeader extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  workout.coachingCue,
+                  PhoenixCopy.trainingText(context.l10n, workout.coachingCue),
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: .65),
                     fontSize: 12,
@@ -630,7 +647,9 @@ class _RestTimer extends StatelessWidget {
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                remainingSeconds == 0 ? 'REST TIMER' : '$minutes:$seconds',
+                remainingSeconds == 0
+                    ? context.l10n.text('ΧΡΟΝΟΣ ΔΙΑΛΕΙΜΜΑΤΟΣ', 'REST TIMER')
+                    : '$minutes:$seconds',
                 style: Theme.of(
                   context,
                 ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
@@ -682,6 +701,7 @@ class _ExerciseCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final guide = ExerciseGuideCatalog.forExercise(exercise, atHome: atHome);
+    final displayExercise = PhoenixCopy.exerciseName(context.l10n, exercise);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -710,7 +730,7 @@ class _ExerciseCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    exercise,
+                    displayExercise,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w800,
                     ),
@@ -723,7 +743,10 @@ class _ExerciseCard extends StatelessWidget {
                 ),
                 if (videoUrl.isNotEmpty)
                   IconButton(
-                    tooltip: 'Video τεχνικής',
+                    tooltip: context.l10n.text(
+                      'Βίντεο τεχνικής',
+                      'Technique video',
+                    ),
                     onPressed: () => launchUrl(
                       Uri.parse(videoUrl),
                       mode: LaunchMode.externalApplication,
@@ -742,7 +765,10 @@ class _ExerciseCard extends StatelessWidget {
                 padding: const EdgeInsets.only(top: 12),
                 child: Semantics(
                   button: true,
-                  label: 'Δες πώς γίνεται η άσκηση $exercise',
+                  label: context.l10n.text(
+                    'Δες πώς γίνεται η άσκηση $displayExercise',
+                    'See how to perform $displayExercise',
+                  ),
                   child: InkWell(
                     key: ValueKey('active-exercise-guide-$exercise'),
                     borderRadius: BorderRadius.circular(14),
@@ -752,8 +778,10 @@ class _ExerciseCard extends StatelessWidget {
                       children: [
                         ExerciseGuidePreview(
                           guide: guide,
-                          semanticLabel:
-                              'Αρχική και τελική θέση για την άσκηση $exercise',
+                          semanticLabel: context.l10n.text(
+                            'Αρχική και τελική θέση για την άσκηση $displayExercise',
+                            'Start and finish position for $displayExercise',
+                          ),
                         ),
                         const Padding(
                           padding: EdgeInsets.fromLTRB(2, 8, 2, 0),
@@ -807,7 +835,10 @@ class _ExerciseCard extends StatelessWidget {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          prescription.summary,
+                          PhoenixCopy.exercisePrescription(
+                            context.l10n,
+                            prescription,
+                          ),
                           style: const TextStyle(
                             color: Color(0xFFFFAB91),
                             fontWeight: FontWeight.w900,
@@ -822,7 +853,7 @@ class _ExerciseCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 5),
                   Text(
-                    'Tempo ${prescription.tempo}'
+                    '${context.l10n.text('Ρυθμός', 'Tempo')} ${prescription.tempo}'
                     '${prescription.note.isEmpty ? '' : '  •  ${prescription.note}'}',
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: .55),
@@ -917,7 +948,7 @@ class _ExerciseSubstitutionSheet extends StatelessWidget {
             ),
             const SizedBox(height: 5),
             Text(
-              exercise,
+              PhoenixCopy.exerciseName(context.l10n, exercise),
               style: const TextStyle(
                 color: Color(0xFFFF9E80),
                 fontWeight: FontWeight.w800,
@@ -963,7 +994,10 @@ class _ExerciseSubstitutionSheet extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              alternative.name,
+                              PhoenixCopy.exerciseName(
+                                context.l10n,
+                                alternative.name,
+                              ),
                               style: const TextStyle(
                                 fontWeight: FontWeight.w900,
                               ),
@@ -1206,7 +1240,7 @@ class _SetEntrySheetState extends State<_SetEntrySheet> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                widget.exercise,
+                PhoenixCopy.exerciseName(context.l10n, widget.exercise),
                 style: Theme.of(
                   context,
                 ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
@@ -1225,8 +1259,8 @@ class _SetEntrySheetState extends State<_SetEntrySheet> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  '${widget.prescription.summary}\n'
-                  'Tempo ${widget.prescription.tempo}'
+                  '${PhoenixCopy.exercisePrescription(context.l10n, widget.prescription)}\n'
+                  '${context.l10n.text('Ρυθμός', 'Tempo')} ${widget.prescription.tempo}'
                   '${widget.prescription.note.isEmpty ? '' : ' • ${widget.prescription.note}'}',
                   style: const TextStyle(
                     color: Color(0xFFFFAB91),
@@ -1290,7 +1324,12 @@ class _SetEntrySheetState extends State<_SetEntrySheet> {
                 label: '$_rir',
                 onChanged: (value) => setState(() => _rir = value.round()),
               ),
-              Text('SET RPE: $_setRpe'),
+              Text(
+                context.l10n.text(
+                  'Δυσκολία σετ (RPE): $_setRpe',
+                  'SET RPE: $_setRpe',
+                ),
+              ),
               Slider(
                 value: _setRpe.toDouble(),
                 min: 1,
@@ -1301,25 +1340,37 @@ class _SetEntrySheetState extends State<_SetEntrySheet> {
               ),
               DropdownButtonFormField<String>(
                 initialValue: _velocity,
-                decoration: const InputDecoration(
-                  labelText: 'Manual rep velocity',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: context.l10n.text(
+                    'Ταχύτητα επαναλήψεων',
+                    'Manual rep velocity',
+                  ),
+                  border: const OutlineInputBorder(),
                 ),
-                items: const [
+                items: [
                   DropdownMenuItem(
                     value: 'explosive',
-                    child: Text('Explosive'),
+                    child: Text(context.l10n.text('Εκρηκτική', 'Explosive')),
                   ),
-                  DropdownMenuItem(value: 'steady', child: Text('Steady')),
-                  DropdownMenuItem(value: 'slow', child: Text('Slow')),
-                  DropdownMenuItem(value: 'grinding', child: Text('Grinding')),
+                  DropdownMenuItem(
+                    value: 'steady',
+                    child: Text(context.l10n.text('Σταθερή', 'Steady')),
+                  ),
+                  DropdownMenuItem(
+                    value: 'slow',
+                    child: Text(context.l10n.text('Αργή', 'Slow')),
+                  ),
+                  DropdownMenuItem(
+                    value: 'grinding',
+                    child: Text(context.l10n.text('Πολύ δύσκολη', 'Grinding')),
+                  ),
                 ],
                 onChanged: (value) => setState(() => _velocity = value!),
               ),
               const SizedBox(height: 12),
-              const Text(
-                'TECHNIQUE GATE',
-                style: TextStyle(
+              Text(
+                context.l10n.text('ΕΛΕΓΧΟΣ ΤΕΧΝΙΚΗΣ', 'TECHNIQUE CHECK'),
+                style: const TextStyle(
                   fontWeight: FontWeight.w900,
                   letterSpacing: .8,
                 ),
@@ -1350,7 +1401,12 @@ class _SetEntrySheetState extends State<_SetEntrySheet> {
               SwitchListTile(
                 value: _isAmrap,
                 contentPadding: EdgeInsets.zero,
-                title: const Text('AMRAP test set'),
+                title: Text(
+                  context.l10n.text(
+                    'Σετ με όσες σωστές επαναλήψεις μπορώ',
+                    'AMRAP test set',
+                  ),
+                ),
                 subtitle: const Text(
                   'Τεχνικό stop — όχι αποτυχία, όχι forced reps.',
                 ),

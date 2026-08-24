@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import 'models/fitness_models.dart';
+import 'phoenix_copy.dart';
+import 'phoenix_l10n.dart';
 import 'state/fitness_store.dart';
 
 class HydrationCard extends StatelessWidget {
@@ -23,10 +25,10 @@ class HydrationCard extends StatelessWidget {
               children: [
                 const Icon(Icons.water_drop_outlined, color: Color(0xFF4FC3F7)),
                 const SizedBox(width: 9),
-                const Expanded(
+                Expanded(
                   child: Text(
-                    'HYDRATION',
-                    style: TextStyle(
+                    context.l10n.text('Νερό', 'Hydration'),
+                    style: const TextStyle(
                       fontWeight: FontWeight.w900,
                       letterSpacing: 1,
                     ),
@@ -196,10 +198,10 @@ class MealPresetsCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                const Expanded(
+                Expanded(
                   child: Text(
-                    'MEAL PRESETS',
-                    style: TextStyle(
+                    context.l10n.text('Έτοιμα γεύματα', 'Meal presets'),
+                    style: const TextStyle(
                       fontWeight: FontWeight.w900,
                       letterSpacing: 1,
                     ),
@@ -236,7 +238,11 @@ class MealPresetsCard extends StatelessWidget {
                       await store.addMealFromPreset(preset);
                       if (!context.mounted) return;
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('${preset.name}: καταγράφηκε')),
+                        SnackBar(
+                          content: Text(
+                            '${PhoenixCopy.mealPresetName(context.l10n, preset)}: καταγράφηκε',
+                          ),
+                        ),
                       );
                     },
                     onDelete: preset.id.startsWith('custom-meal-')
@@ -281,7 +287,7 @@ class _PresetTile extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  preset.name,
+                  PhoenixCopy.mealPresetName(context.l10n, preset),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(fontWeight: FontWeight.w900),
@@ -500,7 +506,7 @@ class _GroceryListSheetState extends State<_GroceryListSheet> {
             const SizedBox(height: 5),
             Text(
               '${items.length} μοναδικά υλικά από '
-              '${widget.store.data.mealPresets.length} meal presets.',
+              '${widget.store.data.mealPresets.length} έτοιμα γεύματα.',
               style: TextStyle(color: Colors.white.withValues(alpha: .55)),
             ),
             const SizedBox(height: 12),
