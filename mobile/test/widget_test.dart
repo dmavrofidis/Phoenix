@@ -2026,8 +2026,8 @@ void main() {
     store.previewWithoutProfile();
     await tester.pumpWidget(PhoenixApp(store: store));
 
-    expect(find.text('Τι μπορείς να κάνεις σήμερα;'), findsOneWidget);
-    expect(find.text('ΤΟ ΕΠΟΜΕΝΟ ΜΙΚΡΟ ΒΗΜΑ'), findsOneWidget);
+    expect(find.text('Τι θέλεις να κάνεις σήμερα;'), findsOneWidget);
+    expect(find.text('ΤΟ ΣΗΜΕΡΙΝΟ ΣΟΥ ΒΗΜΑ'), findsOneWidget);
     expect(find.text('Ξεκίνα όταν είσαι έτοιμος'), findsOneWidget);
     expect(
       find.textContaining('0 από 3 προπονήσεις αυτή την εβδομάδα'),
@@ -2040,7 +2040,10 @@ void main() {
     );
     expect(find.text('Οι σημερινές ασκήσεις'), findsOneWidget);
     expect(find.text('Περπάτημα με βάρη'), findsOneWidget);
-    expect(find.text('Δες πώς γίνεται'), findsWidgets);
+    expect(find.text('Δες την εκτέλεση'), findsWidgets);
+    expect(find.text('ΕΛΕΓΧΟΣ ΕΤΟΙΜΟΤΗΤΑΣ'), findsOneWidget);
+    expect(find.textContaining('check-in'), findsNothing);
+    expect(find.textContaining('RIR'), findsNothing);
     expect(
       find.byKey(const ValueKey('daily-exercise-guide-Farmer carry')),
       findsNothing,
@@ -2394,25 +2397,25 @@ void main() {
     await tester.pumpWidget(PhoenixApp(store: store));
 
     await tester.scrollUntilVisible(
-      find.text('READINESS CHECK-IN'),
+      find.text('ΕΛΕΓΧΟΣ ΕΤΟΙΜΟΤΗΤΑΣ'),
       300,
       scrollable: find.byType(Scrollable).first,
     );
-    await tester.tap(find.text('READINESS CHECK-IN'));
+    await tester.tap(find.text('ΕΛΕΓΧΟΣ ΕΤΟΙΜΟΤΗΤΑΣ'));
     await tester.pumpAndSettle();
-    expect(find.text('Readiness check-in'), findsOneWidget);
-    expect(find.text('Προσαρμογή σημερινού πλάνου'), findsOneWidget);
+    expect(find.text('Σύντομος έλεγχος ετοιμότητας'), findsOneWidget);
+    expect(find.text('Προσαρμογή του σημερινού πλάνου'), findsOneWidget);
 
     await tester.scrollUntilVisible(
-      find.text('Προσαρμογή σημερινού πλάνου'),
+      find.text('Προσαρμογή του σημερινού πλάνου'),
       250,
       scrollable: find.byType(Scrollable).last,
     );
-    await tester.tap(find.text('Προσαρμογή σημερινού πλάνου'));
+    await tester.tap(find.text('Προσαρμογή του σημερινού πλάνου'));
     await tester.pumpAndSettle();
 
     expect(store.todaysRecoveryCheckIn, isNotNull);
-    expect(find.text('GREEN MODE'), findsOneWidget);
+    expect(find.text('ΠΛΗΡΗΣ ΕΝΤΑΣΗ'), findsOneWidget);
   });
 
   testWidgets('ο Program Builder επεξεργάζεται και αποθηκεύει πρόγραμμα', (

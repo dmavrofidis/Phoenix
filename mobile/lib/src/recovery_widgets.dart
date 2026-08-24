@@ -10,6 +10,18 @@ class RecoveryCheckInCard extends StatelessWidget {
 
   final FitnessStore store;
 
+  String _modeLabel(PhoenixL10n l, RecoveryMode mode) => switch (mode) {
+    RecoveryMode.ready => l.text('ΠΛΗΡΗΣ ΕΝΤΑΣΗ', 'FULL INTENSITY'),
+    RecoveryMode.controlled => l.text(
+      'ΕΛΕΓΧΟΜΕΝΗ ΕΝΤΑΣΗ',
+      'CONTROLLED INTENSITY',
+    ),
+    RecoveryMode.recovery => l.text(
+      'ΠΡΟΤΕΡΑΙΟΤΗΤΑ ΣΤΗΝ ΑΠΟΚΑΤΑΣΤΑΣΗ',
+      'RECOVERY FIRST',
+    ),
+  };
+
   Future<void> _openCheckIn(BuildContext context) async {
     final saved = await showModalBottomSheet<bool>(
       context: context,
@@ -80,7 +92,9 @@ class RecoveryCheckInCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    plan == null ? 'READINESS CHECK-IN' : '${plan.label} MODE',
+                    plan == null
+                        ? l.text('ΕΛΕΓΧΟΣ ΕΤΟΙΜΟΤΗΤΑΣ', 'READINESS CHECK-IN')
+                        : _modeLabel(l, plan.mode),
                     style: TextStyle(
                       color: color,
                       fontSize: 11,
@@ -92,7 +106,7 @@ class RecoveryCheckInCard extends StatelessWidget {
                   Text(
                     plan == null
                         ? l.text(
-                            'Πώς είναι πραγματικά το σώμα σου;',
+                            'Πώς νιώθει πραγματικά το σώμα σου;',
                             'How does your body really feel?',
                           )
                         : l.isEnglish
@@ -109,13 +123,13 @@ class RecoveryCheckInCard extends StatelessWidget {
                   Text(
                     checkIn == null
                         ? l.text(
-                            '30″ για να ρυθμιστούν αυτόματα σετ, RIR και φορτίο.',
-                            '30 seconds to auto-adjust sets, RIR and load.',
+                            'Χρειάζονται μόνο 30 δευτερόλεπτα για να προσαρμοστούν η ένταση και το φορτίο.',
+                            'It takes only 30 seconds to adjust intensity and load.',
                           )
                         : l.text(
-                            '${checkIn.sleepHours.toStringAsFixed(1)} h ύπνος • '
+                            '${checkIn.sleepHours.toStringAsFixed(1).replaceAll('.', ',')} ώρες ύπνου • '
                                 'ενέργεια ${checkIn.energy}/5 • '
-                                'κόπωση ${checkIn.soreness}/5',
+                                'μυϊκή κόπωση ${checkIn.soreness}/5',
                             '${checkIn.sleepHours.toStringAsFixed(1)} h sleep • '
                                 'energy ${checkIn.energy}/5 • '
                                 'fatigue ${checkIn.soreness}/5',
@@ -169,7 +183,7 @@ class RecoverySessionBanner extends StatelessWidget {
               children: [
                 Text(
                   plan.adjustsWorkout
-                      ? 'AUTO-REGULATION ΕΝΕΡΓΗ • ${plan.score}/100'
+                      ? 'ΑΥΤΟΜΑΤΗ ΠΡΟΣΑΡΜΟΓΗ • ${plan.score}/100'
                       : 'ΠΛΗΡΕΣ ΠΛΑΝΟ • ${plan.score}/100',
                   style: TextStyle(
                     color: color,
@@ -247,7 +261,7 @@ class RecoveryTrendCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'RECOVERY 7 ΗΜΕΡΩΝ',
+                        'ΑΠΟΚΑΤΑΣΤΑΣΗ 7 ΗΜΕΡΩΝ',
                         style: TextStyle(
                           fontWeight: FontWeight.w900,
                           letterSpacing: .7,
@@ -293,7 +307,7 @@ class RecoveryTrendCard extends StatelessWidget {
             if (availableScores.isEmpty) ...[
               const SizedBox(height: 14),
               Text(
-                'Κάνε καθημερινό check-in για να εμφανιστεί η τάση αποκατάστασης.',
+                'Κάνε έναν σύντομο καθημερινό έλεγχο για να δεις την πορεία της αποκατάστασής σου.',
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: .5),
                   fontSize: 12,
@@ -462,15 +476,15 @@ class _RecoveryCheckInSheetState extends State<_RecoveryCheckInSheet> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Readiness check-in',
+                'Σύντομος έλεγχος ετοιμότητας',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.w900,
                 ),
               ),
               const SizedBox(height: 5),
               Text(
-                'Δεν είναι ιατρική αξιολόγηση. Αν υπάρχει πόνος ή αδιαθεσία, '
-                'η ασφαλής επιλογή είναι διακοπή και επαγγελματική συμβουλή.',
+                'Δεν αποτελεί ιατρική αξιολόγηση. Αν νιώθεις πόνο ή αδιαθεσία, '
+                'σταμάτησε και ζήτησε συμβουλή από επαγγελματία υγείας.',
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: .5),
                   fontSize: 12,
@@ -486,7 +500,7 @@ class _RecoveryCheckInSheetState extends State<_RecoveryCheckInSheet> {
                     ),
                   ),
                   Text(
-                    '${_sleepHours.toStringAsFixed(1)} ώρες',
+                    '${_sleepHours.toStringAsFixed(1).replaceAll('.', ',')} ώρες',
                     style: const TextStyle(
                       color: Color(0xFFFF9E80),
                       fontWeight: FontWeight.w900,
@@ -504,22 +518,22 @@ class _RecoveryCheckInSheetState extends State<_RecoveryCheckInSheet> {
               ),
               _RatingSelector(
                 title: 'Ενέργεια',
-                lowLabel: 'Άδεια',
-                highLabel: 'Γεμάτη',
+                lowLabel: 'Πολύ χαμηλή',
+                highLabel: 'Πολύ υψηλή',
                 value: _energy,
                 onChanged: (value) => setState(() => _energy = value),
               ),
               _RatingSelector(
                 title: 'Μυϊκή κόπωση',
                 lowLabel: 'Καθόλου',
-                highLabel: 'Πολύ',
+                highLabel: 'Έντονη',
                 value: _soreness,
                 onChanged: (value) => setState(() => _soreness = value),
               ),
               _RatingSelector(
                 title: 'Στρες',
-                lowLabel: 'Ήρεμος',
-                highLabel: 'Υψηλό',
+                lowLabel: 'Καθόλου',
+                highLabel: 'Πολύ',
                 value: _stress,
                 onChanged: (value) => setState(() => _stress = value),
               ),
@@ -527,7 +541,7 @@ class _RecoveryCheckInSheetState extends State<_RecoveryCheckInSheet> {
               ExpansionTile(
                 tilePadding: EdgeInsets.zero,
                 title: const Text(
-                  'BODY MAP & VITALS',
+                  'ΧΑΡΤΗΣ ΣΩΜΑΤΟΣ ΚΑΙ ΒΑΣΙΚΕΣ ΜΕΤΡΗΣΕΙΣ',
                   style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
                 ),
                 subtitle: const Text(
@@ -581,8 +595,8 @@ class _RecoveryCheckInSheetState extends State<_RecoveryCheckInSheet> {
                           controller: _restingHeartRate,
                           keyboardType: TextInputType.number,
                           decoration: const InputDecoration(
-                            labelText: 'Resting HR',
-                            suffixText: 'bpm',
+                            labelText: 'Παλμοί ηρεμίας',
+                            suffixText: 'σφύξεις/λεπτό',
                             border: OutlineInputBorder(),
                           ),
                         ),
@@ -600,7 +614,9 @@ class _RecoveryCheckInSheetState extends State<_RecoveryCheckInSheet> {
                   label: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 13),
                     child: Text(
-                      _saving ? 'Αποθήκευση…' : 'Προσαρμογή σημερινού πλάνου',
+                      _saving
+                          ? 'Αποθήκευση…'
+                          : 'Προσαρμογή του σημερινού πλάνου',
                     ),
                   ),
                 ),

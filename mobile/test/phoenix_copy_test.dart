@@ -56,4 +56,49 @@ void main() {
       'Μπολ αποκατάστασης',
     );
   });
+
+  test('Greek counters use the correct singular and plural forms', () {
+    expect(PhoenixCopy.exerciseCount(greek, 1), '1 άσκηση');
+    expect(PhoenixCopy.exerciseCount(greek, 4), '4 ασκήσεις');
+    expect(PhoenixCopy.minuteCount(greek, 1), '1 λεπτό');
+    expect(PhoenixCopy.minuteCount(greek, 20), '20 λεπτά');
+    expect(
+      PhoenixCopy.weeklyWorkoutProgress(greek, completed: 0, target: 1),
+      '0 από 1 προπόνηση αυτή την εβδομάδα',
+    );
+    expect(
+      PhoenixCopy.weeklyWorkoutProgress(greek, completed: 1, target: 3),
+      '1 από 3 προπονήσεις αυτή την εβδομάδα',
+    );
+  });
+
+  test('compact exercise targets remain grammatical for singular values', () {
+    const repetitions = ExercisePrescription(
+      workingSets: 1,
+      minReps: 1,
+      maxReps: 1,
+      targetRir: 1,
+      restSeconds: 60,
+      tempo: '2–1–2',
+    );
+    const timed = ExercisePrescription(
+      workingSets: 1,
+      minReps: 0,
+      maxReps: 0,
+      targetRir: 1,
+      restSeconds: 60,
+      tempo: '2–1–2',
+      minHoldSeconds: 1,
+      maxHoldSeconds: 1,
+    );
+
+    expect(
+      PhoenixCopy.compactExerciseTarget(greek, repetitions),
+      '1 σετ • 1 επανάληψη',
+    );
+    expect(
+      PhoenixCopy.compactExerciseTarget(greek, timed),
+      '1 σετ • 1 δευτερόλεπτο',
+    );
+  });
 }

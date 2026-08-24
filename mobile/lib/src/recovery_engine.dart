@@ -49,7 +49,7 @@ class RecoveryEngine {
         score: score,
         mode: RecoveryMode.ready,
         label: 'GREEN',
-        headline: 'Έτοιμος για πλήρη ένταση',
+        headline: 'Μπορείς να προπονηθείς σε πλήρη ένταση',
         detail:
             'Κράτησε το κανονικό πλάνο και άφησε την τεχνική να ορίσει το όριο.',
         setReduction: 0,
@@ -65,7 +65,7 @@ class RecoveryEngine {
         label: 'AMBER',
         headline: 'Ελεγχόμενη ένταση σήμερα',
         detail:
-            'Ένα λιγότερο σετ, περισσότερο απόθεμα και καθόλου κυνήγι ρεκόρ.',
+            'Κάνε ένα σετ λιγότερο, άφησε μεγαλύτερο απόθεμα και μην κυνηγήσεις ρεκόρ.',
         setReduction: 1,
         rirIncrease: 1,
         restBonusSeconds: 15,
@@ -78,7 +78,7 @@ class RecoveryEngine {
       label: 'RED',
       headline: 'Προτεραιότητα στην αποκατάσταση',
       detail:
-          'Μείωσε όγκο και φορτίο. Αν υπάρχει πόνος, ζάλη ή αδιαθεσία, σταμάτα.',
+          'Μείωσε τον όγκο και το φορτίο. Αν νιώσεις πόνο, ζάλη ή αδιαθεσία, σταμάτησε.',
       setReduction: 2,
       rirIncrease: 2,
       restBonusSeconds: 30,

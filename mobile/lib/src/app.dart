@@ -612,7 +612,7 @@ void _openWorkout(
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text(
-          'Οι προπονήσεις είναι σε pause mode. Άνοιξε το Recovery Lab.',
+          'Οι προπονήσεις έχουν τεθεί σε παύση. Άνοιξε την ενότητα αποκατάστασης.',
         ),
       ),
     );
@@ -672,8 +672,8 @@ class _GentleMovementSheetState extends State<_GentleMovementSheet> {
   String get _phaseLabel {
     final elapsed = _totalSeconds - _remainingSeconds;
     if (elapsed < 120) return 'Ήρεμο ξεκίνημα';
-    if (elapsed < 480) return 'Άνετος σταθερός ρυθμός';
-    return 'Χαλάρωσε σταδιακά';
+    if (elapsed < 480) return 'Άνετος, σταθερός ρυθμός';
+    return 'Σταδιακή χαλάρωση';
   }
 
   void _toggleTimer() {
@@ -724,7 +724,7 @@ class _GentleMovementSheetState extends State<_GentleMovementSheet> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              l.text('10 λεπτά κίνηση', '10 minutes of movement'),
+              l.text('Κίνηση για 10 λεπτά', '10 minutes of movement'),
               style: Theme.of(
                 context,
               ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
@@ -732,7 +732,7 @@ class _GentleMovementSheetState extends State<_GentleMovementSheet> {
             const SizedBox(height: 6),
             Text(
               l.text(
-                'Περπάτησε $activity. Δεν χρειάζεται ταχύτητα ούτε εξοπλισμός.',
+                'Περπάτησε $activity. Δεν χρειάζεσαι συγκεκριμένη ταχύτητα ή εξοπλισμό.',
                 'Walk $activity. No speed or equipment required.',
               ),
               style: TextStyle(
@@ -761,7 +761,7 @@ class _GentleMovementSheetState extends State<_GentleMovementSheet> {
                           )
                         : l.text(_phaseLabel, switch (_phaseLabel) {
                             'Ήρεμο ξεκίνημα' => 'Easy start',
-                            'Άνετος σταθερός ρυθμός' =>
+                            'Άνετος, σταθερός ρυθμός' =>
                               'Comfortable steady pace',
                             _ => 'Ease down gradually',
                           }),
@@ -776,15 +776,15 @@ class _GentleMovementSheetState extends State<_GentleMovementSheet> {
             const SizedBox(height: 18),
             _GentleMovementStep(
               minutes: '2′',
-              text: l.text('Πολύ ήρεμα', 'Very easy'),
+              text: l.text('Ξεκίνα πολύ ήρεμα', 'Start very easy'),
             ),
             _GentleMovementStep(
               minutes: '6′',
-              text: l.text('Άνετος ρυθμός', 'Comfortable pace'),
+              text: l.text('Κράτησε άνετο ρυθμό', 'Keep a comfortable pace'),
             ),
             _GentleMovementStep(
               minutes: '2′',
-              text: l.text('Χαλάρωσε', 'Ease down'),
+              text: l.text('Χαλάρωσε σταδιακά', 'Ease down gradually'),
             ),
             const SizedBox(height: 18),
             Row(
@@ -1134,7 +1134,7 @@ class _DashboardHeader extends StatelessWidget {
                     ),
                     const SizedBox(width: 5),
                     Text(
-                      context.l10n.text('ΣΤΗ ΣΥΣΚΕΥΗ', 'ON DEVICE'),
+                      context.l10n.text('ΜΟΝΟ ΣΤΗ ΣΥΣΚΕΥΗ', 'ON DEVICE'),
                       style: theme.textTheme.labelSmall?.copyWith(
                         color: colors.onSurfaceVariant,
                         fontWeight: FontWeight.w900,
@@ -1207,14 +1207,17 @@ class _DashboardHeader extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         Text(
-          l.text('Τι μπορείς να κάνεις σήμερα;', 'What can you do today?'),
+          l.text(
+            'Τι θέλεις να κάνεις σήμερα;',
+            'What do you want to do today?',
+          ),
           style: theme.textTheme.headlineLarge,
         ),
         const SizedBox(height: 8),
         Text(
           l.text(
-            'Διάλεξε ένα μόνο πράγμα. Ό,τι κι αν επιλέξεις, μετράει.',
-            'Choose just one thing. Whatever you choose, it counts.',
+            'Διάλεξε μόνο ένα πράγμα. Ακόμη και το μικρότερο βήμα μετράει.',
+            'Choose just one thing. Even the smallest step counts.',
           ),
           style: theme.textTheme.bodyLarge?.copyWith(
             color: colors.onSurfaceVariant,
@@ -1268,7 +1271,7 @@ class DashboardPage extends StatelessWidget {
             const SizedBox(height: 24),
             Text(
               context.l10n.text(
-                'Πώς αισθάνεσαι σήμερα;',
+                'Πώς νιώθεις σήμερα;',
                 'How do you feel today?',
               ),
               style: Theme.of(
@@ -1278,8 +1281,8 @@ class DashboardPage extends StatelessWidget {
             const SizedBox(height: 6),
             Text(
               context.l10n.text(
-                'Πες το όπως είναι. Το πλάνο θα σε σεβαστεί.',
-                'Be honest. Your plan will respect how you feel.',
+                'Απάντησε ειλικρινά, για να προσαρμοστεί το πλάνο σου.',
+                'Answer honestly so your plan can adapt.',
               ),
               style: TextStyle(color: Colors.white.withValues(alpha: .52)),
             ),
@@ -1314,7 +1317,7 @@ class _TodayActionsCard extends StatelessWidget {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            l.text('+250 ml νερό καταγράφηκαν.', '+250 ml water logged.'),
+            l.text('Προστέθηκαν 250 ml νερού.', '250 ml of water added.'),
           ),
         ),
       );
@@ -1327,7 +1330,7 @@ class _TodayActionsCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              l.text('Διάλεξε ένα μικρό βήμα', 'Choose one small step'),
+              l.text('Ένα μικρό βήμα αρκεί', 'One small step is enough'),
               style: Theme.of(
                 context,
               ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
@@ -1353,7 +1356,10 @@ class _TodayActionsCard extends StatelessWidget {
                     _QuickAction(
                       width: width,
                       icon: Icons.photo_camera_outlined,
-                      label: l.text('Φωτογραφία γεύματος', 'Meal photo'),
+                      label: l.text(
+                        'Φωτογράφισε το γεύμα',
+                        'Photograph a meal',
+                      ),
                       color: const Color(0xFF7EA9D4),
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute<void>(
@@ -1364,7 +1370,7 @@ class _TodayActionsCard extends StatelessWidget {
                     _QuickAction(
                       width: width,
                       icon: Icons.water_drop_outlined,
-                      label: l.text('Πρόσθεσε νερό', 'Add water'),
+                      label: l.text('Κατάγραψε νερό', 'Log water'),
                       color: const Color(0xFF65B9D8),
                       onTap: addWater,
                     ),
@@ -1372,7 +1378,10 @@ class _TodayActionsCard extends StatelessWidget {
                       actionKey: const ValueKey('gentle-movement-action'),
                       width: width,
                       icon: Icons.directions_walk_rounded,
-                      label: l.text('10 λεπτά κίνηση', '10-minute movement'),
+                      label: l.text(
+                        'Κινήσου για 10 λεπτά',
+                        'Move for 10 minutes',
+                      ),
                       color: const Color(0xFF8FC5A8),
                       onTap: () => _showGentleMovementPlan(context, store),
                     ),
@@ -1506,16 +1515,16 @@ class _PhoenixBriefCard extends StatelessWidget {
           )
         : next.isOverdue(now)
         ? l.text(
-            'Το πρόγραμμα «$nextName» παραμένει σε εκκρεμότητα.',
+            'Το πρόγραμμα «$nextName» εκκρεμεί.',
             '$nextName is still pending.',
           )
         : next.isToday(now)
         ? l.text(
-            'Το πρόγραμμα «$nextName» είναι το σημερινό σου βήμα.',
+            'Σήμερα μπορείς να κάνεις το πρόγραμμα «$nextName».',
             '$nextName is today’s next step.',
           )
         : l.text(
-            'Επόμενη προπόνηση ${next.date.day}/${next.date.month}.',
+            'Η επόμενη προπόνηση είναι στις ${next.date.day}/${next.date.month}.',
             'Next workout: ${next.date.day}/${next.date.month}.',
           );
 
@@ -1525,13 +1534,17 @@ class _PhoenixBriefCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Row(
+            Row(
               children: [
-                Icon(Icons.auto_awesome, color: Color(0xFFFF6E40), size: 20),
-                SizedBox(width: 9),
+                const Icon(
+                  Icons.auto_awesome,
+                  color: Color(0xFFFF6E40),
+                  size: 20,
+                ),
+                const SizedBox(width: 9),
                 Text(
-                  'PHOENIX BRIEF',
-                  style: TextStyle(
+                  l.text('ΣΥΝΟΨΗ PHOENIX', 'PHOENIX BRIEF'),
+                  style: const TextStyle(
                     fontWeight: FontWeight.w900,
                     letterSpacing: 1,
                   ),
@@ -1545,8 +1558,8 @@ class _PhoenixBriefCard extends StatelessWidget {
               icon: Icons.battery_charging_full,
               text: recovery == null
                   ? l.text(
-                      'Κάνε readiness check-in πριν από βαριά προπόνηση.',
-                      'Complete a readiness check-in before heavy training.',
+                      'Έλεγξε πώς νιώθεις πριν από μια απαιτητική προπόνηση.',
+                      'Check how you feel before a demanding workout.',
                     )
                   : l.isEnglish
                   ? '${switch (recovery.mode) {
@@ -2079,6 +2092,16 @@ class _WeeklyScheduleCard extends StatelessWidget {
     'Κυριακή',
   ];
 
+  static const _fromDayNames = [
+    'ΑΠΟ ΤΗ ΔΕΥΤΕΡΑ',
+    'ΑΠΟ ΤΗΝ ΤΡΙΤΗ',
+    'ΑΠΟ ΤΗΝ ΤΕΤΑΡΤΗ',
+    'ΑΠΟ ΤΗΝ ΠΕΜΠΤΗ',
+    'ΑΠΟ ΤΗΝ ΠΑΡΑΣΚΕΥΗ',
+    'ΑΠΟ ΤΟ ΣΑΒΒΑΤΟ',
+    'ΑΠΟ ΤΗΝ ΚΥΡΙΑΚΗ',
+  ];
+
   String _shortDate(DateTime date) => '${date.day}/${date.month}';
 
   String _weekRange(TrainingSchedule schedule) =>
@@ -2175,10 +2198,10 @@ class _WeeklyScheduleCard extends StatelessWidget {
           else
             Text(
               next.isOverdue(now)
-                  ? 'ΕΚΚΡΕΜΕΙ ΑΠΟ ${_dayNames[next.date.weekday - 1].toUpperCase()}'
+                  ? 'ΕΚΚΡΕΜΕΙ ${_fromDayNames[next.date.weekday - 1]}'
                   : next.isToday(now)
                   ? 'ΣΗΜΕΡΙΝΗ ΠΡΟΠΟΝΗΣΗ'
-                  : 'ΕΠΟΜΕΝΗ • ${_dayNames[next.date.weekday - 1].toUpperCase()}',
+                  : 'ΕΠΟΜΕΝΗ ΠΡΟΠΟΝΗΣΗ • ${_dayNames[next.date.weekday - 1].toUpperCase()}',
               style: const TextStyle(
                 color: Color(0xFFFF9E80),
                 fontSize: 11,
@@ -2408,7 +2431,7 @@ class _ScheduleCompleteBanner extends StatelessWidget {
           SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Η εβδομάδα ολοκληρώθηκε. Αποκατάσταση και επιστροφή δυνατότερος.',
+              'Ολοκλήρωσες το εβδομαδιαίο πλάνο. Ξεκουράσου και συνέχισε με δύναμη.',
               style: TextStyle(fontWeight: FontWeight.w700),
             ),
           ),
@@ -2670,7 +2693,7 @@ class _GentleProgressCard extends StatelessWidget {
             'You made it this week. Well done.',
           )
         : context.l10n.text(
-            'Έχεις ήδη κάνει κάτι καλό για εσένα.',
+            'Έχεις ήδη κάνει κάτι καλό για τον εαυτό σου.',
             'You have already done something good for yourself.',
           );
     return Card(
@@ -2726,7 +2749,7 @@ class _GentleProgressCard extends StatelessWidget {
                     ),
                     child: Text(
                       context.l10n.text(
-                        'Δες την πρόοδό μου',
+                        'Δες την πρόοδό σου',
                         'See my progress',
                       ),
                     ),
@@ -2975,7 +2998,7 @@ class _DailyMissionCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   context.l10n.text(
-                    'ΤΟ ΕΠΟΜΕΝΟ ΜΙΚΡΟ ΒΗΜΑ',
+                    'ΤΟ ΣΗΜΕΡΙΝΟ ΣΟΥ ΒΗΜΑ',
                     'YOUR NEXT SMALL STEP',
                   ),
                   style: TextStyle(
@@ -2998,7 +3021,7 @@ class _DailyMissionCard extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             context.l10n.text(
-              '${template.exercises.length} απλές ασκήσεις • περίπου ${store.profile?.sessionMinutes ?? 45} λεπτά',
+              '${PhoenixCopy.exerciseCount(context.l10n, template.exercises.length)} • περίπου ${PhoenixCopy.minuteCount(context.l10n, store.profile?.sessionMinutes ?? 45)}',
               '${template.exercises.length} simple exercises • about ${store.profile?.sessionMinutes ?? 45} minutes',
             ),
             style: TextStyle(
@@ -3019,7 +3042,11 @@ class _DailyMissionCard extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             context.l10n.text(
-              '${store.workoutsInCurrentWeek} από ${store.weeklyWorkoutTarget} προπονήσεις αυτή την εβδομάδα',
+              PhoenixCopy.weeklyWorkoutProgress(
+                context.l10n,
+                completed: store.workoutsInCurrentWeek,
+                target: store.weeklyWorkoutTarget,
+              ),
               '${store.workoutsInCurrentWeek} of ${store.weeklyWorkoutTarget} workouts this week',
             ),
             style: TextStyle(
@@ -3077,10 +3104,15 @@ class _DailyExercisesCard extends StatelessWidget {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    context.l10n.text(
-                      'Οι σημερινές ασκήσεις',
-                      'Today’s exercises',
-                    ),
+                    template.exercises.length == 1
+                        ? context.l10n.text(
+                            'Η σημερινή άσκηση',
+                            'Today’s exercise',
+                          )
+                        : context.l10n.text(
+                            'Οι σημερινές ασκήσεις',
+                            'Today’s exercises',
+                          ),
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w900,
                     ),
@@ -3098,8 +3130,8 @@ class _DailyExercisesCard extends StatelessWidget {
             const SizedBox(height: 6),
             Text(
               context.l10n.text(
-                'Πάτησε σε άσκηση μόνο όταν θέλεις οδηγίες τεχνικής.',
-                'Tap an exercise only when you want technique guidance.',
+                'Πάτησε μια άσκηση, αν θέλεις να δεις οδηγίες εκτέλεσης.',
+                'Tap an exercise to see instructions.',
               ),
               style: TextStyle(
                 color: Colors.white.withValues(alpha: .48),
@@ -3177,13 +3209,9 @@ class _DailyExerciseRow extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    context.l10n.text(
-                      prescription.isTimed
-                          ? '${prescription.workingSets} σετ • ${prescription.minHoldSeconds}–${prescription.maxHoldSeconds} δευτερόλεπτα'
-                          : '${prescription.workingSets} σετ • ${prescription.minReps}–${prescription.maxReps} επαναλήψεις',
-                      prescription.isTimed
-                          ? '${prescription.workingSets} sets • ${prescription.minHoldSeconds}–${prescription.maxHoldSeconds} seconds'
-                          : '${prescription.workingSets} sets • ${prescription.minReps}–${prescription.maxReps} repetitions',
+                    PhoenixCopy.compactExerciseTarget(
+                      context.l10n,
+                      prescription,
                     ),
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: .48),
@@ -3193,7 +3221,10 @@ class _DailyExerciseRow extends StatelessWidget {
                   if (guide != null) ...[
                     const SizedBox(height: 4),
                     Text(
-                      context.l10n.text('Δες πώς γίνεται', 'See how it works'),
+                      context.l10n.text(
+                        'Δες την εκτέλεση',
+                        'See how to perform it',
+                      ),
                       style: const TextStyle(
                         color: Color(0xFFFF9E80),
                         fontSize: 12,

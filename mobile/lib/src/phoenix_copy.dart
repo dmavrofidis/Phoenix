@@ -7,6 +7,70 @@ import 'phoenix_l10n.dart';
 /// layer gives them natural labels without rewriting a user's history, custom
 /// programs, active workout, or backups.
 abstract final class PhoenixCopy {
+  static String exerciseCount(PhoenixL10n l, int count) {
+    if (l.locale.languageCode == 'el') {
+      return '$count ${count == 1 ? 'άσκηση' : 'ασκήσεις'}';
+    }
+    return '$count ${count == 1 ? 'exercise' : 'exercises'}';
+  }
+
+  static String minuteCount(PhoenixL10n l, int count) {
+    if (l.locale.languageCode == 'el') {
+      return '$count ${count == 1 ? 'λεπτό' : 'λεπτά'}';
+    }
+    return '$count ${count == 1 ? 'minute' : 'minutes'}';
+  }
+
+  static String weeklyWorkoutProgress(
+    PhoenixL10n l, {
+    required int completed,
+    required int target,
+  }) {
+    if (l.locale.languageCode == 'el') {
+      final noun = target == 1 ? 'προπόνηση' : 'προπονήσεις';
+      return '$completed από $target $noun αυτή την εβδομάδα';
+    }
+    final noun = target == 1 ? 'workout' : 'workouts';
+    return '$completed of $target $noun this week';
+  }
+
+  static String compactExerciseTarget(
+    PhoenixL10n l,
+    ExercisePrescription prescription,
+  ) {
+    final sets = prescription.workingSets;
+    if (l.locale.languageCode == 'el') {
+      final target = prescription.isTimed
+          ? _greekRange(
+              prescription.minHoldSeconds,
+              prescription.maxHoldSeconds,
+              singular: 'δευτερόλεπτο',
+              plural: 'δευτερόλεπτα',
+            )
+          : _greekRange(
+              prescription.minReps,
+              prescription.maxReps,
+              singular: 'επανάληψη',
+              plural: 'επαναλήψεις',
+            );
+      return '$sets σετ • $target';
+    }
+    final target = prescription.isTimed
+        ? _englishRange(
+            prescription.minHoldSeconds,
+            prescription.maxHoldSeconds,
+            singular: 'second',
+            plural: 'seconds',
+          )
+        : _englishRange(
+            prescription.minReps,
+            prescription.maxReps,
+            singular: 'repetition',
+            plural: 'repetitions',
+          );
+    return '$sets ${sets == 1 ? 'set' : 'sets'} • $target';
+  }
+
   static String workoutName(
     PhoenixL10n l,
     WorkoutTemplate template, {
@@ -60,15 +124,56 @@ abstract final class PhoenixCopy {
   ) {
     if (l.locale.languageCode != 'el') return prescription.summary;
     final target = prescription.isTimed
-        ? '${prescription.minHoldSeconds}–${prescription.maxHoldSeconds} δευτ.'
-        : '${prescription.minReps}–${prescription.maxReps} επαναλήψεις';
+        ? _greekRange(
+            prescription.minHoldSeconds,
+            prescription.maxHoldSeconds,
+            singular: 'δευτερόλεπτο',
+            plural: 'δευτερόλεπτα',
+          )
+        : _greekRange(
+            prescription.minReps,
+            prescription.maxReps,
+            singular: 'επανάληψη',
+            plural: 'επαναλήψεις',
+          );
     final rest = prescription.restSeconds >= 120
-        ? '${prescription.restSeconds ~/ 60} λεπτά'
-        : '${prescription.restSeconds} δευτ.';
-    final remaining = prescription.targetRir == 1
+        ? minuteCount(l, prescription.restSeconds ~/ 60)
+        : _greekRange(
+            prescription.restSeconds,
+            prescription.restSeconds,
+            singular: 'δευτερόλεπτο',
+            plural: 'δευτερόλεπτα',
+          );
+    final remaining = prescription.targetRir == 0
+        ? 'σταμάτησε πριν χαλάσει η τεχνική σου'
+        : prescription.targetRir == 1
         ? 'άφησε περίπου 1 σωστή επανάληψη'
         : 'άφησε περίπου ${prescription.targetRir} σωστές επαναλήψεις';
     return '${prescription.workingSets} σετ × $target • $remaining • $rest διάλειμμα';
+  }
+
+  static String _greekRange(
+    int minimum,
+    int maximum, {
+    required String singular,
+    required String plural,
+  }) {
+    if (minimum == maximum) {
+      return '$minimum ${minimum == 1 ? singular : plural}';
+    }
+    return '$minimum–$maximum $plural';
+  }
+
+  static String _englishRange(
+    int minimum,
+    int maximum, {
+    required String singular,
+    required String plural,
+  }) {
+    if (minimum == maximum) {
+      return '$minimum ${minimum == 1 ? singular : plural}';
+    }
+    return '$minimum–$maximum $plural';
   }
 
   static String trainingText(PhoenixL10n l, String raw) {
