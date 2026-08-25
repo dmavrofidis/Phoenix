@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import '../data/local_fitness_repository.dart';
 import '../data/drift_fitness_repository.dart';
 import '../data_validation_engine.dart';
+import '../daily_companion_engine.dart';
 import '../exercise_substitution_engine.dart';
 import '../equipment_availability.dart';
 import '../models/fitness_models.dart';
@@ -75,7 +76,39 @@ class FitnessStore extends ChangeNotifier {
       List.unmodifiable(_data.progressPhotos);
   List<WearableDailySummary> get wearableSummaries =>
       List.unmodifiable(_data.wearableSummaries);
+  WearableDailySummary? get todayWearableSummary {
+    final now = DateTime.now();
+    for (final summary in _data.wearableSummaries) {
+      if (summary.day.year == now.year &&
+          summary.day.month == now.month &&
+          summary.day.day == now.day) {
+        return summary;
+      }
+    }
+    return null;
+  }
+
   AppPreferences get preferences => _data.preferences;
+  DailyCompanionCheckIn? get dailyCompanionCheckIn =>
+      DailyCompanionEngine.checkInFrom(preferences);
+  bool get hasTodayCompanionCheckIn =>
+      dailyCompanionCheckIn?.isFor(DateTime.now()) ?? false;
+  DailyCompanionPlan get dailyCompanionPlan => DailyCompanionEngine.buildPlan(
+    checkIn:
+        dailyCompanionCheckIn ??
+        DailyCompanionCheckIn(
+          date: DateTime.now(),
+          minutes: 10,
+          energy: 3,
+          location: EquipmentAvailability.isHome(profile) ? 'home' : 'gym',
+          painArea: '',
+        ),
+    preferences: preferences,
+    recommended: recommendedWorkout,
+    recovery: createRestDayDraft(),
+    profile: profile,
+  );
+  int get returnMoments => DailyCompanionEngine.returnMoments(_data.logs);
   bool get isEnglish => preferences.languageCode != 'el';
   bool get hasVaultPin => preferences.hasVaultPin;
   bool get vaultUnlocked => !hasVaultPin || _vaultUnlocked;
@@ -321,6 +354,7 @@ class FitnessStore extends ChangeNotifier {
     logs: _data.logs,
     assignments: _data.weeklyAssignments,
     dateAssignments: _data.dateAssignments,
+    skippedDates: preferences.skippedWorkoutDates.toSet(),
     catalog: equipmentCompatibleTemplates,
   );
 
@@ -657,6 +691,114 @@ class FitnessStore extends ChangeNotifier {
     await _repository.save(_data);
     await feedback();
     notifyListeners();
+  }
+
+  Future<void> saveDailyCompanionCheckIn({
+    required int minutes,
+    required int energy,
+    required String location,
+    String painArea = '',
+  }) async {
+    if (!const {5, 10, 20, 40}.contains(minutes)) {
+      throw const FormatException('Διάλεξε 5, 10, 20 ή 40 λεπτά.');
+    }
+    if (energy < 1 || energy > 5) {
+      throw const FormatException('Η ενέργεια πρέπει να είναι από 1 έως 5.');
+    }
+    if (!const {'home', 'gym', 'outside'}.contains(location)) {
+      throw const FormatException('Διάλεξε έναν έγκυρο χώρο.');
+    }
+    final now = DateTime.now();
+    _data = _data.copyWith(
+      preferences: preferences.copyWith(
+        dailyCheckInDate: _localDateKey(now),
+        dailyMinutes: minutes,
+        dailyEnergy: energy,
+        dailyLocation: location,
+        dailyPainArea: painArea.trim(),
+      ),
+    );
+    await _repository.save(_data);
+    notifyListeners();
+    await feedback(success: true);
+  }
+
+  Future<void> selectStarterPath(String pathId) async {
+    if (!DailyCompanionEngine.paths.any((path) => path.id == pathId)) {
+      throw const FormatException('Η διαδρομή εκκίνησης δεν είναι έγκυρη.');
+    }
+    _data = _data.copyWith(
+      preferences: preferences.copyWith(starterPath: pathId),
+    );
+    await _repository.save(_data);
+    notifyListeners();
+    await feedback(success: true);
+  }
+
+  Future<void> updatePrivateHealthOptions({
+    bool? healthConnectionEnabled,
+    bool? formCoachEnabled,
+  }) async {
+    _data = _data.copyWith(
+      preferences: preferences.copyWith(
+        healthConnectionEnabled: healthConnectionEnabled,
+        formCoachEnabled: formCoachEnabled,
+      ),
+    );
+    await _repository.save(_data);
+    notifyListeners();
+  }
+
+  Future<int> autoRescheduleMissedWorkouts() async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final overdue = weeklySchedule.entries
+        .where((entry) => entry.isOverdue(today))
+        .toList();
+    if (overdue.isEmpty) return 0;
+
+    final dateAssignments = Map<String, String>.from(_data.dateAssignments);
+    final skipped = preferences.skippedWorkoutDates.toSet();
+    final occupied = <String>{
+      for (final entry in weeklySchedule.entries)
+        if (!entry.date.isBefore(today) && !entry.isCompleted)
+          _localDateKey(entry.date),
+      for (final key in dateAssignments.keys)
+        if ((DateTime.tryParse(key) ?? today).isAfter(today) ||
+            key == _localDateKey(today))
+          key,
+    };
+    var cursor = today;
+    for (final entry in overdue) {
+      while (occupied.contains(_localDateKey(cursor)) &&
+          cursor.isBefore(today.add(const Duration(days: 14)))) {
+        cursor = cursor.add(const Duration(days: 1));
+      }
+      if (cursor.isAfter(today.add(const Duration(days: 14)))) break;
+      final targetKey = _localDateKey(cursor);
+      dateAssignments[targetKey] = entry.template.id;
+      occupied.add(targetKey);
+      skipped.add(_localDateKey(entry.date));
+      cursor = cursor.add(const Duration(days: 1));
+    }
+    final moved = skipped
+        .difference(preferences.skippedWorkoutDates.toSet())
+        .length;
+    if (moved == 0) return 0;
+    _captureUndo('Ήρεμη αναπροσαρμογή εβδομάδας');
+    final sortedSkipped = skipped.toList()..sort();
+    _data = _data.copyWith(
+      dateAssignments: dateAssignments,
+      preferences: preferences.copyWith(
+        skippedWorkoutDates: sortedSkipped.length <= 200
+            ? sortedSkipped
+            : sortedSkipped.sublist(sortedSkipped.length - 200),
+      ),
+    );
+    await _repository.save(_data);
+    await feedback(success: true);
+    notifyListeners();
+    return moved;
   }
 
   Future<void> updateNutritionPlanPreferences({
@@ -3939,3 +4081,8 @@ class FitnessStore extends ChangeNotifier {
     return MusicLink.normalize(input, expectedService: MusicService.spotify);
   }
 }
+
+String _localDateKey(DateTime value) =>
+    '${value.year.toString().padLeft(4, '0')}-'
+    '${value.month.toString().padLeft(2, '0')}-'
+    '${value.day.toString().padLeft(2, '0')}';

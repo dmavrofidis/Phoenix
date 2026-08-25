@@ -56,6 +56,7 @@ class RecoveryCheckInCard extends StatelessWidget {
     };
 
     return InkWell(
+      key: const ValueKey('readiness-check-in-action'),
       onTap: () => _openCheckIn(context),
       borderRadius: BorderRadius.circular(18),
       child: Ink(

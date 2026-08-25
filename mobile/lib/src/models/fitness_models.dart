@@ -1104,6 +1104,15 @@ class AppPreferences {
     this.nutritionBudgetMode = 'standard',
     this.nutritionQuickPrep = true,
     this.nutritionNoCooking = false,
+    this.dailyCheckInDate = '',
+    this.dailyMinutes = 10,
+    this.dailyEnergy = 3,
+    this.dailyLocation = 'home',
+    this.dailyPainArea = '',
+    this.starterPath = 'restart14',
+    this.skippedWorkoutDates = const [],
+    this.healthConnectionEnabled = false,
+    this.formCoachEnabled = false,
   });
 
   final String languageCode;
@@ -1127,6 +1136,15 @@ class AppPreferences {
   final String nutritionBudgetMode;
   final bool nutritionQuickPrep;
   final bool nutritionNoCooking;
+  final String dailyCheckInDate;
+  final int dailyMinutes;
+  final int dailyEnergy;
+  final String dailyLocation;
+  final String dailyPainArea;
+  final String starterPath;
+  final List<String> skippedWorkoutDates;
+  final bool healthConnectionEnabled;
+  final bool formCoachEnabled;
 
   bool get hasVaultPin => vaultPinHash.isNotEmpty;
 
@@ -1152,6 +1170,15 @@ class AppPreferences {
     String? nutritionBudgetMode,
     bool? nutritionQuickPrep,
     bool? nutritionNoCooking,
+    String? dailyCheckInDate,
+    int? dailyMinutes,
+    int? dailyEnergy,
+    String? dailyLocation,
+    String? dailyPainArea,
+    String? starterPath,
+    List<String>? skippedWorkoutDates,
+    bool? healthConnectionEnabled,
+    bool? formCoachEnabled,
   }) => AppPreferences(
     languageCode: languageCode ?? this.languageCode,
     highContrast: highContrast ?? this.highContrast,
@@ -1174,6 +1201,16 @@ class AppPreferences {
     nutritionBudgetMode: nutritionBudgetMode ?? this.nutritionBudgetMode,
     nutritionQuickPrep: nutritionQuickPrep ?? this.nutritionQuickPrep,
     nutritionNoCooking: nutritionNoCooking ?? this.nutritionNoCooking,
+    dailyCheckInDate: dailyCheckInDate ?? this.dailyCheckInDate,
+    dailyMinutes: dailyMinutes ?? this.dailyMinutes,
+    dailyEnergy: dailyEnergy ?? this.dailyEnergy,
+    dailyLocation: dailyLocation ?? this.dailyLocation,
+    dailyPainArea: dailyPainArea ?? this.dailyPainArea,
+    starterPath: starterPath ?? this.starterPath,
+    skippedWorkoutDates: skippedWorkoutDates ?? this.skippedWorkoutDates,
+    healthConnectionEnabled:
+        healthConnectionEnabled ?? this.healthConnectionEnabled,
+    formCoachEnabled: formCoachEnabled ?? this.formCoachEnabled,
   );
 
   Map<String, Object> toJson() => {
@@ -1198,6 +1235,15 @@ class AppPreferences {
     'nutritionBudgetMode': nutritionBudgetMode,
     'nutritionQuickPrep': nutritionQuickPrep,
     'nutritionNoCooking': nutritionNoCooking,
+    'dailyCheckInDate': dailyCheckInDate,
+    'dailyMinutes': dailyMinutes,
+    'dailyEnergy': dailyEnergy,
+    'dailyLocation': dailyLocation,
+    'dailyPainArea': dailyPainArea,
+    'starterPath': starterPath,
+    'skippedWorkoutDates': skippedWorkoutDates,
+    'healthConnectionEnabled': healthConnectionEnabled,
+    'formCoachEnabled': formCoachEnabled,
   };
 
   factory AppPreferences.fromJson(Map<String, dynamic> json) => AppPreferences(
@@ -1235,6 +1281,34 @@ class AppPreferences {
         : 'standard',
     nutritionQuickPrep: json['nutritionQuickPrep'] as bool? ?? true,
     nutritionNoCooking: json['nutritionNoCooking'] as bool? ?? false,
+    dailyCheckInDate: json['dailyCheckInDate'] as String? ?? '',
+    dailyMinutes: const {5, 10, 20, 40}.contains(json['dailyMinutes'])
+        ? json['dailyMinutes'] as int
+        : 10,
+    dailyEnergy: (json['dailyEnergy'] as int? ?? 3).clamp(1, 5),
+    dailyLocation:
+        const {'home', 'gym', 'outside'}.contains(json['dailyLocation'])
+        ? json['dailyLocation'] as String
+        : 'home',
+    dailyPainArea: json['dailyPainArea'] as String? ?? '',
+    starterPath:
+        const {
+          'restart14',
+          'dumbbells',
+          'treadmill',
+          'bodyweight',
+          'strength',
+          'weightCare',
+        }.contains(json['starterPath'])
+        ? json['starterPath'] as String
+        : 'restart14',
+    skippedWorkoutDates: (json['skippedWorkoutDates'] as List? ?? const [])
+        .whereType<String>()
+        .where((value) => DateTime.tryParse(value) != null)
+        .take(200)
+        .toList(),
+    healthConnectionEnabled: json['healthConnectionEnabled'] as bool? ?? false,
+    formCoachEnabled: json['formCoachEnabled'] as bool? ?? false,
   );
 }
 

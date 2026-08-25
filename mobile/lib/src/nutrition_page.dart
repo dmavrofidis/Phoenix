@@ -10,6 +10,7 @@ import 'photo_meal_scan_page.dart';
 import 'phoenix_copy.dart';
 import 'phoenix_l10n.dart';
 import 'recommended_nutrition_page.dart';
+import 'recommended_nutrition_engine.dart';
 import 'state/fitness_store.dart';
 
 class NutritionPage extends StatelessWidget {
@@ -119,6 +120,8 @@ class NutritionPage extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 22),
+        _NextMealDecisionCard(store: store),
+        const SizedBox(height: 12),
         _DailyNutritionCard(store: store),
         const SizedBox(height: 12),
         _RecommendedPlanCard(store: store),
@@ -220,6 +223,148 @@ class NutritionPage extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _NextMealDecisionCard extends StatelessWidget {
+  const _NextMealDecisionCard({required this.store});
+
+  final FitnessStore store;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final preferences = store.preferences;
+    final week = RecommendedNutritionEngine.buildWeek(
+      startDate: DateTime.now(),
+      targetsForDate: store.nutritionTargetsForDate,
+      dietStyle: preferences.nutritionDietStyle,
+      mealsPerDay: preferences.nutritionMealsPerDay,
+      budgetMode: preferences.nutritionBudgetMode,
+      quickPrep: preferences.nutritionQuickPrep,
+      noCooking: preferences.nutritionNoCooking,
+    );
+    final meals = week.days.first.meals;
+    final index = store.todaysMeals.length.clamp(0, meals.length - 1);
+    final meal = meals[index];
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Color.alphaBlend(
+              colors.primary.withValues(alpha: .12),
+              colors.surfaceContainer,
+            ),
+            colors.surfaceContainerLow,
+          ],
+        ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: colors.primary.withValues(alpha: .3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.lightbulb_outline_rounded, color: colors.primary),
+              const SizedBox(width: 8),
+              Text(
+                l.text('ΜΙΑ ΑΠΛΗ ΙΔΕΑ ΤΩΡΑ', 'ONE SIMPLE IDEA NOW'),
+                style: TextStyle(
+                  color: colors.primary,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: .7,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            l.text(meal.titleGreek, meal.titleEnglish),
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            l.text(
+              'Δεν χρειάζεται να σχεδιάσεις όλη την εβδομάδα. Αν σε βολεύει, αυτό μπορεί να είναι το επόμενο γεύμα σου.',
+              'You do not need to plan the whole week. If it suits you, this can be your next meal.',
+            ),
+            style: TextStyle(color: colors.onSurfaceVariant, height: 1.4),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              Chip(
+                avatar: const Icon(Icons.schedule_outlined, size: 17),
+                label: Text('${meal.prepMinutes}′'),
+              ),
+              Chip(
+                avatar: const Icon(
+                  Icons.local_fire_department_outlined,
+                  size: 17,
+                ),
+                label: Text('${meal.calories} kcal'),
+              ),
+              Chip(
+                avatar: const Icon(Icons.fitness_center_outlined, size: 17),
+                label: Text(
+                  '${meal.proteinGrams.toStringAsFixed(0)} g protein',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            meal.ingredients
+                .take(4)
+                .map(
+                  (item) =>
+                      '${l.text(item.greekName, item.englishName)} ${item.grams} g',
+                )
+                .join(' • '),
+            style: TextStyle(
+              color: colors.onSurfaceVariant,
+              fontSize: 12,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton.tonalIcon(
+                  key: const ValueKey('open-simple-meal-plan'),
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => RecommendedNutritionPage(store: store),
+                    ),
+                  ),
+                  icon: const Icon(Icons.restaurant_menu_outlined),
+                  label: Text(l.text('Δες ποσότητες', 'See portions')),
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton.filledTonal(
+                tooltip: l.text('Φωτογράφισε το γεύμα', 'Photograph the meal'),
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => PhotoMealScanPage(store: store),
+                  ),
+                ),
+                icon: const Icon(Icons.camera_alt_outlined),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

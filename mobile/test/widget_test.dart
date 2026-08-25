@@ -38,6 +38,7 @@ import 'package:phoenix/src/data/local_fitness_repository.dart';
 import 'package:phoenix/src/data/phoenix_database.dart';
 import 'package:phoenix/src/data_validation_engine.dart';
 import 'package:phoenix/src/data_validation_page.dart';
+import 'package:phoenix/src/daily_companion_engine.dart';
 import 'package:phoenix/src/deterministic_coach_engine.dart';
 import 'package:phoenix/src/equipment_presets.dart';
 import 'package:phoenix/src/equipment_availability.dart';
@@ -2059,20 +2060,17 @@ void main() {
     expect(jsonDecode(json)['report'], 'Phoenix Advanced Analytics');
   });
 
-  testWidgets('η απλή αρχική δείχνει τρεις καθαρές επιλογές', (tester) async {
+  testWidgets('η απλή αρχική ζητά check-in πριν προτείνει ένα βήμα', (
+    tester,
+  ) async {
     final store = FitnessStore(MemoryRepository());
     store.previewWithoutProfile();
     await tester.pumpWidget(PhoenixApp(store: store));
 
     expect(find.text('Τι θέλεις να κάνεις σήμερα;'), findsOneWidget);
-    expect(find.text('Τι ταιριάζει στη μέρα σου;'), findsOneWidget);
-    expect(find.text('Έχω μόνο 10 λεπτά'), findsOneWidget);
-    expect(find.text('Θέλω κανονική προπόνηση'), findsOneWidget);
-    expect(find.text('Σήμερα χρειάζομαι κάτι ήπιο'), findsOneWidget);
-    expect(
-      find.textContaining('0 από 3 προπονήσεις αυτή την εβδομάδα'),
-      findsOneWidget,
-    );
+    expect(find.text('Πώς είναι η μέρα σου;'), findsOneWidget);
+    expect(find.byKey(const ValueKey('daily-check-in-action')), findsOneWidget);
+    expect(find.text('Θέλω κανονική προπόνηση'), findsNothing);
     await tester.scrollUntilVisible(
       find.text('Οι σημερινές ασκήσεις'),
       400,
@@ -2090,28 +2088,29 @@ void main() {
     );
   });
 
-  testWidgets('η αρχική ανοίγει απλό δεκάλεπτο χωρίς επαγγελματικό lab', (
+  testWidgets('η αρχική φτιάχνει μικρό δεκάλεπτο χωρίς επαγγελματικό lab', (
     tester,
   ) async {
     final store = FitnessStore(MemoryRepository());
     store.previewWithoutProfile();
     await tester.pumpWidget(PhoenixApp(store: store));
 
-    final movement = find.byKey(const ValueKey('gentle-movement-action'));
-    await tester.scrollUntilVisible(
-      movement,
-      300,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.ensureVisible(movement);
+    await tester.tap(find.byKey(const ValueKey('daily-check-in-action')));
     await tester.pumpAndSettle();
-    await tester.tap(movement);
+    await tester.tap(find.byKey(const ValueKey('daily-minutes-10')));
+    final save = find.byKey(const ValueKey('save-daily-check-in'));
+    await tester.ensureVisible(save);
+    await tester.tap(save);
+    await tester.pumpAndSettle();
+    final start = find.byKey(const ValueKey('daily-plan-start-action'));
+    await tester.ensureVisible(start);
+    await tester.pumpAndSettle();
+    await tester.tap(start);
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const ValueKey('gentle-movement-timer')), findsOneWidget);
-    expect(find.text('10:00'), findsOneWidget);
+    expect(find.byType(ActiveWorkoutPage), findsOneWidget);
+    expect(store.activeWorkout?.exercises.length, 3);
     expect(find.text('INTERVAL TIMER LAB'), findsNothing);
-    expect(find.byKey(const ValueKey('gentle-movement-start')), findsOneWidget);
   });
 
   testWidgets('η εικόνα τεχνικής ανοίγει από τη σημερινή άσκηση', (
@@ -2139,47 +2138,51 @@ void main() {
     expect(find.text('ΑΣΦΑΛΕΣΤΕΡΗ ΕΠΙΛΟΓΗ'), findsOneWidget);
   });
 
-  testWidgets('η ήπια επιλογή ξεκινά πραγματικό πρόγραμμα αποκατάστασης', (
+  testWidgets('η ελάχιστη ενέργεια ξεκινά πραγματικό πρόγραμμα αποκατάστασης', (
     tester,
   ) async {
     final store = FitnessStore(MemoryRepository());
     store.previewWithoutProfile();
     await tester.pumpWidget(PhoenixApp(store: store));
 
-    final recovery = find.byKey(const ValueKey('recovery-workout-action'));
-    await tester.scrollUntilVisible(
-      recovery,
-      250,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.ensureVisible(recovery);
+    await tester.tap(find.byKey(const ValueKey('daily-check-in-action')));
     await tester.pumpAndSettle();
-    await tester.tap(recovery);
+    await tester.tap(find.byKey(const ValueKey('daily-energy-1')));
+    final save = find.byKey(const ValueKey('save-daily-check-in'));
+    await tester.ensureVisible(save);
+    await tester.tap(save);
+    await tester.pumpAndSettle();
+    final start = find.byKey(const ValueKey('daily-plan-start-action'));
+    await tester.ensureVisible(start);
+    await tester.pumpAndSettle();
+    await tester.tap(start);
     await tester.pumpAndSettle();
 
     expect(store.activeWorkout?.sessionType, 'recovery');
     expect(find.byType(ActiveWorkoutPage), findsOneWidget);
   });
 
-  testWidgets('το Περισσότερα ανοίγει οργανωμένη εργαλειοθήκη', (tester) async {
+  testWidgets('το Εγώ ανοίγει οργανωμένο Studio για προχωρημένους', (
+    tester,
+  ) async {
     final store = FitnessStore(MemoryRepository());
     store.previewWithoutProfile();
     await tester.pumpWidget(PhoenixApp(store: store));
 
-    await tester.tap(find.text('Περισσότερα'));
+    await tester.tap(find.text('Εγώ'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Όλα τα εργαλεία'), findsOneWidget);
+    expect(find.text('Studio για προχωρημένους'), findsOneWidget);
     expect(find.text('Cali Lab'), findsNothing);
 
     await tester.scrollUntilVisible(
-      find.text('Όλα τα εργαλεία'),
+      find.text('Studio για προχωρημένους'),
       250,
       scrollable: find.byType(Scrollable).first,
     );
-    await tester.ensureVisible(find.text('Όλα τα εργαλεία'));
+    await tester.ensureVisible(find.text('Studio για προχωρημένους'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Όλα τα εργαλεία'));
+    await tester.tap(find.text('Studio για προχωρημένους'));
     await tester.pumpAndSettle();
 
     expect(find.byType(PhoenixToolboxPage), findsOneWidget);
@@ -2336,9 +2339,10 @@ void main() {
 
     await tester.tap(find.byIcon(Icons.restaurant_outlined));
     await tester.pumpAndSettle();
-    expect(find.text('Το δικό σου πρόγραμμα διατροφής'), findsOneWidget);
+    expect(find.text('ΜΙΑ ΑΠΛΗ ΙΔΕΑ ΤΩΡΑ'), findsOneWidget);
+    expect(find.byKey(const ValueKey('open-simple-meal-plan')), findsOneWidget);
 
-    await tester.tap(find.text('Το δικό σου πρόγραμμα διατροφής'));
+    await tester.tap(find.byKey(const ValueKey('open-simple-meal-plan')));
     await tester.pumpAndSettle();
     expect(find.byType(RecommendedNutritionPage), findsOneWidget);
     expect(find.text('Έτοιμο για εσένα'), findsOneWidget);
@@ -2385,7 +2389,11 @@ void main() {
 
   testWidgets('η grocery list παράγεται από τα meal presets', (tester) async {
     final store = FitnessStore(MemoryRepository());
-    await tester.pumpWidget(MaterialApp(home: NutritionPage(store: store)));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: NutritionPage(store: store)),
+      ),
+    );
 
     await tester.scrollUntilVisible(
       find.text('Meal presets'),
@@ -2466,12 +2474,15 @@ void main() {
     store.previewWithoutProfile();
     await tester.pumpWidget(PhoenixApp(store: store));
 
+    final readiness = find.byKey(const ValueKey('readiness-check-in-action'));
     await tester.scrollUntilVisible(
-      find.text('ΕΛΕΓΧΟΣ ΕΤΟΙΜΟΤΗΤΑΣ'),
+      readiness,
       300,
       scrollable: find.byType(Scrollable).first,
     );
-    await tester.tap(find.text('ΕΛΕΓΧΟΣ ΕΤΟΙΜΟΤΗΤΑΣ'));
+    await tester.ensureVisible(readiness);
+    await tester.pumpAndSettle();
+    await tester.tap(readiness);
     await tester.pumpAndSettle();
     expect(find.text('Σύντομος έλεγχος ετοιμότητας'), findsOneWidget);
     expect(find.text('Προσαρμογή του σημερινού πλάνου'), findsOneWidget);
@@ -3148,6 +3159,38 @@ void main() {
       expect(entry.template.id, data.templates.last.id);
     },
   );
+
+  test('η ήρεμη αναπροσαρμογή κρύβει την παλιά χαμένη ημέρα', () {
+    final data = FitnessData.initial();
+    final schedule = TrainingScheduleEngine.build(
+      now: DateTime(2026, 7, 29),
+      daysPerWeek: 3,
+      rotation: data.templates,
+      logs: const [],
+      skippedDates: const {'2026-07-27'},
+      dateAssignments: {'2026-07-30': data.templates.first.id},
+      catalog: data.templates,
+    );
+
+    expect(
+      schedule.entries.any(
+        (entry) =>
+            entry.date.year == 2026 &&
+            entry.date.month == 7 &&
+            entry.date.day == 27,
+      ),
+      isFalse,
+    );
+    expect(
+      schedule.entries.any(
+        (entry) =>
+            entry.date.year == 2026 &&
+            entry.date.month == 7 &&
+            entry.date.day == 30,
+      ),
+      isTrue,
+    );
+  });
 
   test('injury-aware substitutions αποκλείουν συγκρουόμενες ασκήσεις', () {
     final alternatives = ExerciseSubstitutionEngine.alternativesFor(
@@ -7490,6 +7533,110 @@ void main() {
     expect(roundTrip.nutritionNoCooking, isTrue);
   });
 
+  test('οι καθημερινές επιλογές μεταφέρονται με ασφαλείς προεπιλογές', () {
+    final migrated = AppPreferences.fromJson(const {});
+    final restored = AppPreferences.fromJson(
+      migrated
+          .copyWith(
+            dailyCheckInDate: '2026-08-25',
+            dailyMinutes: 20,
+            dailyEnergy: 2,
+            dailyLocation: 'outside',
+            dailyPainArea: 'knee',
+            starterPath: 'treadmill',
+            skippedWorkoutDates: const ['2026-08-24'],
+            healthConnectionEnabled: true,
+            formCoachEnabled: true,
+          )
+          .toJson(),
+    );
+
+    expect(migrated.starterPath, 'restart14');
+    expect(migrated.dailyMinutes, 10);
+    expect(restored.dailyMinutes, 20);
+    expect(restored.dailyEnergy, 2);
+    expect(restored.dailyLocation, 'outside');
+    expect(restored.skippedWorkoutDates, ['2026-08-24']);
+    expect(restored.healthConnectionEnabled, isTrue);
+    expect(restored.formCoachEnabled, isTrue);
+  });
+
+  test('ο καθημερινός συνοδός μικραίνει το πλάνο χωρίς ενοχή', () {
+    final templates = FitnessData.initial().templates;
+    final plan = DailyCompanionEngine.buildPlan(
+      checkIn: DailyCompanionCheckIn(
+        date: DateTime(2026, 8, 25),
+        minutes: 5,
+        energy: 2,
+        location: 'home',
+        painArea: '',
+      ),
+      preferences: const AppPreferences(starterPath: 'restart14'),
+      recommended: templates.first,
+      recovery: templates.last.copyWith(sessionType: 'recovery'),
+      profile: const UserProfile(
+        goal: 'Strength',
+        trainingPlace: 'Σπίτι',
+        equipment: 'Χωρίς εξοπλισμό',
+        daysPerWeek: 3,
+        heightCentimeters: 180,
+        weightKilograms: 80,
+      ),
+    );
+
+    expect(plan.kind, DailyCompanionKind.shortWorkout);
+    expect(plan.minutes, 5);
+    expect(plan.workout.exercises, hasLength(2));
+    expect(
+      plan.workout.prescriptionFor(plan.workout.exercises.first).workingSets,
+      1,
+    );
+    expect(plan.encouragementGreek, contains('εμφανιστείς'));
+  });
+
+  test('ενόχληση ή ελάχιστη ενέργεια οδηγεί σε αποκατάσταση', () {
+    final templates = FitnessData.initial().templates;
+    final recovery = templates.last.copyWith(sessionType: 'recovery');
+    final plan = DailyCompanionEngine.buildPlan(
+      checkIn: DailyCompanionCheckIn(
+        date: DateTime(2026, 8, 25),
+        minutes: 10,
+        energy: 1,
+        location: 'home',
+        painArea: 'knee',
+      ),
+      preferences: const AppPreferences(),
+      recommended: templates.first,
+      recovery: recovery,
+    );
+
+    expect(plan.kind, DailyCompanionKind.recovery);
+    expect(plan.workout, same(recovery));
+    expect(plan.reasonGreek, contains('γόνατο'));
+  });
+
+  test('η εφαρμογή μετρά επιστροφές και όχι τιμωρητικά streaks', () {
+    final logs = [
+      WorkoutLog(
+        templateName: 'A',
+        completedAt: DateTime(2026, 8, 1),
+        minutes: 10,
+      ),
+      WorkoutLog(
+        templateName: 'A',
+        completedAt: DateTime(2026, 8, 2),
+        minutes: 10,
+      ),
+      WorkoutLog(
+        templateName: 'B',
+        completedAt: DateTime(2026, 8, 8),
+        minutes: 20,
+      ),
+    ];
+
+    expect(DailyCompanionEngine.returnMoments(logs), 2);
+  });
+
   test('goal-phase calorie planner orders deficit maintenance and surplus', () {
     final loss = NutritionPlannerEngine.phasePlan(
       weightKilograms: 80,
@@ -10511,12 +10658,13 @@ void main() {
     expect(find.bySemanticsLabel('Search'), findsOneWidget);
     expect(find.bySemanticsLabel('Change colors and theme'), findsOneWidget);
     expect(find.text('Today'), findsWidgets);
-    expect(find.text('Training'), findsWidgets);
-    expect(find.text('More'), findsWidgets);
+    expect(find.text('Move'), findsWidgets);
+    expect(find.text('Food'), findsWidgets);
+    expect(find.text('Me'), findsWidgets);
     semantics.dispose();
   });
 
-  testWidgets('the simple shell keeps advanced features under More', (
+  testWidgets('the simple shell keeps advanced features under Me', (
     tester,
   ) async {
     final repository = MemoryRepository()
@@ -10535,14 +10683,55 @@ void main() {
     await tester.pumpWidget(MaterialApp(home: PhoenixShell(store: store)));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('More'));
+    await tester.tap(find.text('Me'));
     await tester.pumpAndSettle();
 
     expect(find.text('My progress'), findsOneWidget);
     expect(find.text('Music & photos'), findsOneWidget);
     expect(find.text('Colors & appearance'), findsOneWidget);
-    expect(find.text('All tools'), findsOneWidget);
+    expect(find.text('Advanced Studio'), findsOneWidget);
     expect(find.text('Profile, data & settings'), findsOneWidget);
+  });
+
+  testWidgets('daily check-in replaces the home dashboard with one next step', (
+    tester,
+  ) async {
+    final repository = MemoryRepository()
+      ..value = FitnessData.initial().copyWith(
+        profile: const UserProfile(
+          goal: 'Strength',
+          trainingPlace: 'Home',
+          equipment: 'Bodyweight',
+          daysPerWeek: 3,
+          heightCentimeters: 180,
+          weightKilograms: 80,
+        ),
+      );
+    final store = FitnessStore(repository);
+    await store.load();
+    await tester.pumpWidget(MaterialApp(home: PhoenixShell(store: store)));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('daily-check-in-action')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('recommended-workout-action')),
+      findsNothing,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('daily-check-in-action')));
+    await tester.pumpAndSettle();
+    final save = find.byKey(const ValueKey('save-daily-check-in'));
+    await tester.ensureVisible(save);
+    await tester.tap(save);
+    await tester.pumpAndSettle();
+
+    expect(store.hasTodayCompanionCheckIn, isTrue);
+    expect(find.byType(BottomSheet), findsNothing);
+    expect(
+      find.byKey(const ValueKey('daily-plan-start-action')),
+      findsOneWidget,
+    );
+    expect(find.textContaining('every return counts'), findsOneWidget);
   });
 
   test('every historical storage version reaches the current schema', () {

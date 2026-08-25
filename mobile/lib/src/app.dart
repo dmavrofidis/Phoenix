@@ -16,11 +16,13 @@ import 'cycling_rowing_lab_page.dart';
 import 'coach_hub_page.dart';
 import 'calisthenics_lab_page.dart';
 import 'data_validation_page.dart';
+import 'daily_companion_engine.dart';
 import 'exercise_guide.dart';
 import 'equipment_availability.dart';
 import 'exercise_intelligence_page.dart';
 import 'experience_settings_page.dart';
 import 'fitness_charts.dart';
+import 'form_check_page.dart';
 import 'global_search_page.dart';
 import 'habit_builder_page.dart';
 import 'hypertrophy_lab_page.dart';
@@ -41,6 +43,7 @@ import 'profile_editor_page.dart';
 import 'program_architecture_page.dart';
 import 'program_editor_page.dart';
 import 'program_history_page.dart';
+import 'private_health_page.dart';
 import 'recovery_engine.dart';
 import 'recovery_intelligence_page.dart';
 import 'recovery_lab_page.dart';
@@ -870,9 +873,9 @@ class _PhoenixShellState extends State<PhoenixShell> {
         ];
         final labels = [
           context.l10n.text('Σήμερα', 'Today'),
-          context.l10n.text('Προπόνηση', 'Training'),
-          context.l10n.text('Διατροφή', 'Nutrition'),
-          context.l10n.text('Περισσότερα', 'More'),
+          context.l10n.text('Κίνηση', 'Move'),
+          context.l10n.text('Φαγητό', 'Food'),
+          context.l10n.text('Εγώ', 'Me'),
         ];
         const icons = [
           Icons.today_outlined,
@@ -1252,11 +1255,7 @@ class DashboardPage extends StatelessWidget {
           children: [
             _DashboardHeader(store: store),
             const SizedBox(height: 20),
-            _TodayChoicePanel(
-              store: store,
-              template: store.recommendedWorkout,
-              active: store.hasActiveWorkout,
-            ),
+            _DailyCompanionCard(store: store),
             if (store.hasActiveWorkout) ...[
               const SizedBox(height: 12),
               _ActiveWorkoutCard(store: store),
@@ -1289,7 +1288,9 @@ class DashboardPage extends StatelessWidget {
             RecoveryCheckInCard(store: store),
             const SizedBox(height: 20),
             _DailyExercisesCard(
-              template: store.recommendedWorkout,
+              template: store.hasTodayCompanionCheckIn
+                  ? store.dailyCompanionPlan.workout
+                  : store.recommendedWorkout,
               profile: store.profile,
             ),
             const SizedBox(height: 20),
@@ -2449,7 +2450,7 @@ class _MorePage extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
           children: [
             Text(
-              context.l10n.text('Περισσότερα', 'More'),
+              context.l10n.text('Εγώ', 'Me'),
               style: Theme.of(
                 context,
               ).textTheme.headlineLarge?.copyWith(fontWeight: FontWeight.w900),
@@ -2491,6 +2492,33 @@ class _MorePage extends StatelessWidget {
                       'Your coach and Phoenix suggestions',
                     ),
                     onTap: () => _open(context, CoachHubPage(store: store)),
+                  ),
+                  const Divider(height: 1),
+                  _MoreDestination(
+                    icon: Icons.accessibility_new_rounded,
+                    title: context.l10n.text(
+                      'Τοπικός έλεγχος στάσης',
+                      'Local form check',
+                    ),
+                    subtitle: context.l10n.text(
+                      'Σύγκρινε μια φωτογραφία με τις οδηγίες — χωρίς αποθήκευση ή αποστολή',
+                      'Compare a photo with guidance — no saving or upload',
+                    ),
+                    onTap: () => _open(context, FormCheckPage(store: store)),
+                  ),
+                  const Divider(height: 1),
+                  _MoreDestination(
+                    icon: Icons.watch_outlined,
+                    title: context.l10n.text(
+                      'Βήματα & Apple Health',
+                      'Steps & Apple Health',
+                    ),
+                    subtitle: context.l10n.text(
+                      'Προαιρετικά δεδομένα κίνησης που μένουν στη συσκευή',
+                      'Optional movement data that stays on the device',
+                    ),
+                    onTap: () =>
+                        _open(context, PrivateHealthPage(store: store)),
                   ),
                   const Divider(height: 1),
                   _MoreDestination(
@@ -2541,10 +2569,13 @@ class _MorePage extends StatelessWidget {
                   const Divider(height: 1),
                   _MoreDestination(
                     icon: Icons.grid_view_rounded,
-                    title: context.l10n.text('Όλα τα εργαλεία', 'All tools'),
+                    title: context.l10n.text(
+                      'Studio για προχωρημένους',
+                      'Advanced Studio',
+                    ),
                     subtitle: context.l10n.text(
-                      'Οι ειδικές και προχωρημένες λειτουργίες',
-                      'Special and advanced features',
+                      'Όλα τα ειδικά εργαλεία, όταν τα χρειαστείς',
+                      'All specialist tools, when you need them',
                     ),
                     onTap: () =>
                         _open(context, PhoenixToolboxPage(store: store)),
@@ -2947,6 +2978,582 @@ class _ProgressPageState extends State<ProgressPage> {
   }
 }
 
+class _DailyCompanionCard extends StatelessWidget {
+  const _DailyCompanionCard({required this.store});
+
+  final FitnessStore store;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final l = context.l10n;
+    if (!store.hasTodayCompanionCheckIn) {
+      return Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: colors.surfaceContainer,
+          borderRadius: BorderRadius.circular(26),
+          border: Border.all(color: colors.primary.withValues(alpha: .28)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: colors.primary.withValues(alpha: .12),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                l.text('30 ΔΕΥΤΕΡΟΛΕΠΤΑ', '30 SECONDS'),
+                style: TextStyle(
+                  color: colors.primary,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: .7,
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            Text(
+              l.text('Πώς είναι η μέρα σου;', 'How is your day?'),
+              style: Theme.of(
+                context,
+              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 7),
+            Text(
+              l.text(
+                'Πες μόνο πόσο χρόνο και ενέργεια έχεις. Το Phoenix θα διαλέξει ένα ασφαλές επόμενο βήμα.',
+                'Share only your available time and energy. Phoenix will choose one safe next step.',
+              ),
+              style: TextStyle(color: colors.onSurfaceVariant, height: 1.45),
+            ),
+            const SizedBox(height: 18),
+            FilledButton.icon(
+              key: const ValueKey('daily-check-in-action'),
+              onPressed: () => _showDailyCompanionCheckIn(context, store),
+              icon: const Icon(Icons.waving_hand_outlined),
+              label: Text(l.text('Πες μου πώς είσαι', 'Tell me how you are')),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final checkIn = store.dailyCompanionCheckIn!;
+    final plan = store.dailyCompanionPlan;
+    final path = DailyCompanionEngine.pathFor(store.preferences.starterPath);
+    final overdue = store.weeklySchedule.entries
+        .where((entry) => entry.isOverdue(DateTime.now()))
+        .length;
+    final accent = switch (plan.kind) {
+      DailyCompanionKind.recovery => const Color(0xFF9DA7C8),
+      DailyCompanionKind.walk => const Color(0xFF79B9A1),
+      DailyCompanionKind.shortWorkout => const Color(0xFFE0AD73),
+      DailyCompanionKind.fullWorkout => colors.primary,
+    };
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Color.alphaBlend(
+              accent.withValues(alpha: .13),
+              colors.surfaceContainer,
+            ),
+            colors.surfaceContainerLow,
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(color: accent.withValues(alpha: .35)),
+        boxShadow: [
+          BoxShadow(
+            color: accent.withValues(alpha: .08),
+            blurRadius: 30,
+            offset: const Offset(0, 14),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: .15),
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: Icon(_dailyPlanIcon(plan.kind), color: accent),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l.text('ΕΝΑ ΒΗΜΑ ΓΙΑ ΣΗΜΕΡΑ', 'ONE STEP FOR TODAY'),
+                      style: TextStyle(
+                        color: accent,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: .7,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      l.text(plan.titleGreek, plan.titleEnglish),
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Text(
+            l.text(plan.reasonGreek, plan.reasonEnglish),
+            style: TextStyle(color: colors.onSurfaceVariant, height: 1.45),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _DailyFact(
+                icon: Icons.schedule_outlined,
+                label: l.text(
+                  '${checkIn.minutes} λεπτά',
+                  '${checkIn.minutes} min',
+                ),
+              ),
+              _DailyFact(
+                icon: Icons.battery_4_bar_outlined,
+                label: l.text(
+                  'Ενέργεια ${checkIn.energy}/5',
+                  'Energy ${checkIn.energy}/5',
+                ),
+              ),
+              _DailyFact(
+                icon: Icons.route_outlined,
+                label: l.text(path.titleGreek, path.titleEnglish),
+              ),
+              if (store.preferences.healthConnectionEnabled &&
+                  store.todayWearableSummary != null)
+                _DailyFact(
+                  icon: Icons.directions_walk_outlined,
+                  label: l.text(
+                    '${store.todayWearableSummary!.steps} βήματα στη συσκευή',
+                    '${store.todayWearableSummary!.steps} on-device steps',
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: accent.withValues(alpha: .08),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Text(
+              l.text(plan.encouragementGreek, plan.encouragementEnglish),
+              style: const TextStyle(fontWeight: FontWeight.w700, height: 1.35),
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              key: const ValueKey('daily-plan-start-action'),
+              onPressed: () => _openWorkout(context, store, plan.workout),
+              icon: Icon(
+                store.hasActiveWorkout
+                    ? Icons.play_arrow_rounded
+                    : Icons.arrow_forward_rounded,
+              ),
+              label: Text(
+                store.hasActiveWorkout
+                    ? l.text(
+                        'Συνέχισε από εκεί που έμεινες',
+                        'Continue where you left off',
+                      )
+                    : l.text('Κάνε αυτό το ένα βήμα', 'Take this one step'),
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Expanded(
+                child: TextButton.icon(
+                  key: const ValueKey('change-daily-check-in'),
+                  onPressed: () => _showDailyCompanionCheckIn(context, store),
+                  icon: const Icon(Icons.tune_outlined),
+                  label: Text(l.text('Άλλαξε απαντήσεις', 'Change answers')),
+                ),
+              ),
+              Expanded(
+                child: TextButton.icon(
+                  key: const ValueKey('starter-path-action'),
+                  onPressed: () => _showStarterPathPicker(context, store),
+                  icon: const Icon(Icons.route_outlined),
+                  label: Text(l.text('Άλλαξε διαδρομή', 'Change path')),
+                ),
+              ),
+            ],
+          ),
+          if (overdue > 0) ...[
+            const Divider(height: 24),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.event_repeat_outlined),
+              title: Text(
+                l.text(
+                  'Χάθηκε μια μέρα; Δεν χάθηκε το πλάνο.',
+                  'Missed a day? The plan is not lost.',
+                ),
+              ),
+              subtitle: Text(
+                l.text(
+                  'Μετέφερε αυτόματα ${overdue == 1 ? 'την προπόνηση' : 'τις προπονήσεις'} στις επόμενες ελεύθερες ημέρες.',
+                  'Move missed workouts to the next available days.',
+                ),
+              ),
+              trailing: FilledButton.tonal(
+                key: const ValueKey('auto-reschedule-action'),
+                onPressed: () async {
+                  final moved = await store.autoRescheduleMissedWorkouts();
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        l.text(
+                          'Το πλάνο ηρέμησε: μεταφέρθηκαν $moved προπονήσεις.',
+                          'Plan adjusted: $moved workouts moved.',
+                        ),
+                      ),
+                    ),
+                  );
+                },
+                child: Text(l.text('Διόρθωσέ το', 'Fix it')),
+              ),
+            ),
+          ],
+          const Divider(height: 24),
+          Row(
+            children: [
+              Icon(Icons.restart_alt_rounded, color: accent),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  l.text(
+                    '${store.returnMoments} ξεκινήματα ή επιστροφές • κάθε επιστροφή μετράει',
+                    '${store.returnMoments} starts or returns • every return counts',
+                  ),
+                  style: TextStyle(
+                    color: colors.onSurfaceVariant,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DailyFact extends StatelessWidget {
+  const _DailyFact({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+    decoration: BoxDecoration(
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      borderRadius: BorderRadius.circular(999),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 15),
+        const SizedBox(width: 6),
+        Flexible(
+          child: Text(
+            label,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+IconData _dailyPlanIcon(DailyCompanionKind kind) => switch (kind) {
+  DailyCompanionKind.recovery => Icons.self_improvement_outlined,
+  DailyCompanionKind.walk => Icons.directions_walk_rounded,
+  DailyCompanionKind.shortWorkout => Icons.bolt_outlined,
+  DailyCompanionKind.fullWorkout => Icons.fitness_center_rounded,
+};
+
+class _DailyCompanionInput {
+  const _DailyCompanionInput({
+    required this.minutes,
+    required this.energy,
+    required this.location,
+    required this.painArea,
+  });
+
+  final int minutes;
+  final int energy;
+  final String location;
+  final String painArea;
+}
+
+Future<void> _showDailyCompanionCheckIn(
+  BuildContext context,
+  FitnessStore store,
+) async {
+  final current = store.dailyCompanionCheckIn;
+  var minutes = current?.minutes ?? 10;
+  var energy = current?.energy ?? 3;
+  var location =
+      current?.location ??
+      (EquipmentAvailability.isHome(store.profile) ? 'home' : 'gym');
+  var painArea = current?.painArea ?? '';
+  final input = await showModalBottomSheet<_DailyCompanionInput>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    builder: (sheetContext) => StatefulBuilder(
+      builder: (context, setState) {
+        final l = context.l10n;
+        String locationLabel(String value) => switch (value) {
+          'gym' => l.text('Γυμναστήριο', 'Gym'),
+          'outside' => l.text('Έξω', 'Outside'),
+          _ => l.text('Σπίτι', 'Home'),
+        };
+        String painLabel(String value) => switch (value) {
+          'shoulder' => l.text('Ώμος', 'Shoulder'),
+          'back' => l.text('Μέση/πλάτη', 'Back'),
+          'knee' => l.text('Γόνατο', 'Knee'),
+          'other' => l.text('Κάπου αλλού', 'Somewhere else'),
+          _ => l.text('Δεν πονάω', 'No pain'),
+        };
+        return SafeArea(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(
+              20,
+              4,
+              20,
+              24 + MediaQuery.viewInsetsOf(context).bottom,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l.text('Πώς είναι η μέρα σου;', 'How is your day?'),
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  l.text(
+                    'Δεν υπάρχει σωστή απάντηση. Το πλάνο μικραίνει όταν το χρειάζεσαι.',
+                    'There is no right answer. The plan gets smaller when you need it.',
+                  ),
+                ),
+                const SizedBox(height: 22),
+                Text(
+                  l.text('Πόσο χρόνο έχεις;', 'How much time do you have?'),
+                  style: const TextStyle(fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    for (final value in const [5, 10, 20, 40])
+                      ChoiceChip(
+                        key: ValueKey('daily-minutes-$value'),
+                        label: Text('$value′'),
+                        selected: minutes == value,
+                        onSelected: (_) => setState(() => minutes = value),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  l.text(
+                    'Πόση ενέργεια έχεις;',
+                    'How much energy do you have?',
+                  ),
+                  style: const TextStyle(fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    for (final value in const [1, 2, 3, 4, 5])
+                      ChoiceChip(
+                        key: ValueKey('daily-energy-$value'),
+                        label: Text('$value'),
+                        selected: energy == value,
+                        onSelected: (_) => setState(() => energy = value),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  l.text('Πού θα κινηθείς;', 'Where will you move?'),
+                  style: const TextStyle(fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    for (final value in const ['home', 'gym', 'outside'])
+                      ChoiceChip(
+                        key: ValueKey('daily-location-$value'),
+                        label: Text(locationLabel(value)),
+                        selected: location == value,
+                        onSelected: (_) => setState(() => location = value),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  l.text('Υπάρχει ενόχληση σήμερα;', 'Any discomfort today?'),
+                  style: const TextStyle(fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final value in const [
+                      '',
+                      'shoulder',
+                      'back',
+                      'knee',
+                      'other',
+                    ])
+                      ChoiceChip(
+                        key: ValueKey(
+                          'daily-pain-${value.isEmpty ? 'none' : value}',
+                        ),
+                        label: Text(painLabel(value)),
+                        selected: painArea == value,
+                        onSelected: (_) => setState(() => painArea = value),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    key: const ValueKey('save-daily-check-in'),
+                    onPressed: () => Navigator.of(sheetContext).pop(
+                      _DailyCompanionInput(
+                        minutes: minutes,
+                        energy: energy,
+                        location: location,
+                        painArea: painArea,
+                      ),
+                    ),
+                    child: Text(
+                      l.text('Βρες το ένα βήμα μου', 'Find my one step'),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    ),
+  );
+  if (input == null) return;
+  await store.saveDailyCompanionCheckIn(
+    minutes: input.minutes,
+    energy: input.energy,
+    location: input.location,
+    painArea: input.painArea,
+  );
+}
+
+Future<void> _showStarterPathPicker(
+  BuildContext context,
+  FitnessStore store,
+) async {
+  await showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    builder: (sheetContext) => SafeArea(
+      child: ListView(
+        shrinkWrap: true,
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+        children: [
+          Text(
+            context.l10n.text('Διάλεξε τη διαδρομή σου', 'Choose your path'),
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            context.l10n.text(
+              'Μπορείς να την αλλάξεις οποιαδήποτε στιγμή.',
+              'You can change it at any time.',
+            ),
+          ),
+          const SizedBox(height: 14),
+          for (final path in DailyCompanionEngine.paths)
+            Card(
+              child: ListTile(
+                leading: Icon(
+                  store.preferences.starterPath == path.id
+                      ? Icons.radio_button_checked_rounded
+                      : Icons.radio_button_unchecked_rounded,
+                ),
+                title: Text(
+                  context.l10n.text(path.titleGreek, path.titleEnglish),
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+                subtitle: Text(
+                  context.l10n.text(path.subtitleGreek, path.subtitleEnglish),
+                ),
+                onTap: () async {
+                  await store.selectStarterPath(path.id);
+                  if (sheetContext.mounted) Navigator.pop(sheetContext);
+                },
+              ),
+            ),
+        ],
+      ),
+    ),
+  );
+}
+
+// Kept as an internal fallback while older deep links finish migrating.
+// ignore: unused_element
 class _TodayChoicePanel extends StatelessWidget {
   const _TodayChoicePanel({
     required this.store,
