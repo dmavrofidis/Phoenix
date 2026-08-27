@@ -1,4 +1,5 @@
 import 'models/fitness_models.dart';
+import 'restart14_engine.dart';
 
 enum DailyCompanionKind { fullWorkout, shortWorkout, recovery, walk }
 
@@ -132,6 +133,7 @@ class DailyCompanionEngine {
     required WorkoutTemplate recommended,
     required WorkoutTemplate recovery,
     UserProfile? profile,
+    int restartDay = 1,
   }) {
     final hasPain = checkIn.painArea.trim().isNotEmpty;
     if (hasPain || checkIn.energy == 1) {
@@ -158,6 +160,31 @@ class DailyCompanionEngine {
 
     final equipment = profile?.equipment.toLowerCase() ?? '';
     final path = preferences.starterPath;
+    if (path == 'restart14') {
+      final restart = Restart14Engine.dayPlan(
+        day: restartDay,
+        availableMinutes: checkIn.minutes,
+        energy: checkIn.energy,
+        hasChair: equipment.contains('καρέκ') || equipment.contains('chair'),
+      );
+      return DailyCompanionPlan(
+        kind: restart.workout.isRecoveryDay
+            ? DailyCompanionKind.recovery
+            : checkIn.minutes <= 10 || checkIn.energy == 2
+            ? DailyCompanionKind.shortWorkout
+            : DailyCompanionKind.fullWorkout,
+        titleGreek: 'Ημέρα ${restart.day}/14 • ${restart.titleGreek}',
+        titleEnglish: 'Day ${restart.day}/14 • ${restart.titleEnglish}',
+        reasonGreek: restart.focusGreek,
+        reasonEnglish: restart.focusEnglish,
+        encouragementGreek:
+            'Αρκεί να εμφανιστείς. Αν χαθεί μια ημέρα, συνεχίζεις από εδώ — τίποτα δεν μηδενίζεται.',
+        encouragementEnglish:
+            'Showing up is enough. If you miss a day, continue from here — nothing resets.',
+        minutes: checkIn.minutes,
+        workout: restart.workout,
+      );
+    }
     final hasTreadmill =
         equipment.contains('διάδρο') || equipment.contains('treadmill');
     final wantsWalk =

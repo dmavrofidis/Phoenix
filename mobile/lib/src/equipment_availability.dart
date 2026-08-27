@@ -16,33 +16,55 @@ class EquipmentAvailability {
     profile,
   ).containsAny(const ['αλτηρ', 'βαρακ', 'dumbbell', 'kettlebell']);
 
-  static bool hasPullUpBar(UserProfile? profile) => _available(
-    profile,
-  ).containsAny(const ['μονοζυγ', 'pull-up bar', 'pull up bar', 'μπαρα']);
+  static bool hasPullUpBar(UserProfile? profile) =>
+      _available(profile).containsAny(const [
+        'μονοζυγ',
+        'pull-up bar',
+        'pull up bar',
+        'μπαρα ελξεων',
+      ]);
 
   static bool hasTreadmill(UserProfile? profile) =>
       _available(profile).containsAny(const ['διαδρομ', 'treadmill']);
 
   static bool supportsExercise(String exercise, UserProfile? profile) {
-    if (profile == null || !isHome(profile)) return true;
+    if (profile == null) return true;
     final available = _available(profile);
-    if (available.containsAny(const ['πληρες γυμναστηριο', 'full gym'])) {
+    if (available.containsAny(const ['πληρεσ γυμναστηριο', 'full gym'])) {
       return true;
     }
 
     final name = _normalize(exercise);
     if (name.containsAny(const [
-      'trap-bar',
-      'trap bar',
-      'landmine',
-      'τροχαλ',
-      'cable machine',
-      'κωπηλατικο εργομετρο',
-      'row ergometer',
-      'air bike',
-      'sled',
-      'safety bars',
-    ])) {
+          'trap-bar',
+          'trap bar',
+          'landmine',
+          'τροχαλ',
+          'cable machine',
+          'κωπηλατικο εργομετρο',
+          'row ergometer',
+          'air bike',
+          'sled',
+          'safety bars',
+          'leg press',
+          'machine',
+          'μηχανημα',
+        ]) &&
+        !available.containsAny(const [
+          'trap-bar',
+          'trap bar',
+          'landmine',
+          'τροχαλ',
+          'cable',
+          'εργομετρο',
+          'rower',
+          'air bike',
+          'sled',
+          'safety',
+          'leg press',
+          'machine',
+          'μηχανημα',
+        ])) {
       return false;
     }
     if (name.containsAny(const ['λαστιχ', 'band', 'pallof', 'face pull']) &&
@@ -82,6 +104,22 @@ class EquipmentAvailability {
     }
     if (name.containsAny(const ['παγκο', 'bench']) &&
         !available.containsAny(const ['παγκο', 'bench'])) {
+      return false;
+    }
+    if (name.containsAny(const [
+          'barbell',
+          'back squat',
+          'front squat',
+          'deadlift',
+          'αρση θανατου',
+          'μπαρα',
+        ]) &&
+        !available.containsAny(const [
+          'barbell',
+          'μπαρα',
+          'ελευθερα βαρη',
+          'free weights',
+        ])) {
       return false;
     }
     return true;

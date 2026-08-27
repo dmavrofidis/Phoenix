@@ -337,6 +337,38 @@ class _NextMealDecisionCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              key: const ValueKey('greek-budget-meals'),
+              onPressed: () async {
+                await store.updateNutritionPlanPreferences(
+                  dietStyle: 'mediterranean',
+                  budgetMode: 'economy',
+                  quickPrep: true,
+                );
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      l.text(
+                        'Επιλέχθηκαν απλά, ελληνικά και οικονομικά γεύματα.',
+                        'Simple, Mediterranean budget meals selected.',
+                      ),
+                    ),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.savings_outlined),
+              label: Text(
+                l.text(
+                  'Ελληνικά, απλά και οικονομικά',
+                  'Simple Mediterranean budget meals',
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
           Row(
             children: [
               Expanded(

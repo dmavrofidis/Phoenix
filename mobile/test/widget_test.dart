@@ -95,6 +95,7 @@ import 'package:phoenix/src/recovery_lab_engine.dart';
 import 'package:phoenix/src/recovery_lab_page.dart';
 import 'package:phoenix/src/reports_studio_engine.dart';
 import 'package:phoenix/src/reports_studio_page.dart';
+import 'package:phoenix/src/restart14_engine.dart';
 import 'package:phoenix/src/release_audit_engine.dart';
 import 'package:phoenix/src/reliability_center_page.dart';
 import 'package:phoenix/src/running_engine.dart';
@@ -105,6 +106,7 @@ import 'package:phoenix/src/secure_backup_engine.dart';
 import 'package:phoenix/src/sleep_stress_engine.dart';
 import 'package:phoenix/src/sleep_stress_page.dart';
 import 'package:phoenix/src/session_preparation_engine.dart';
+import 'package:phoenix/src/simple_equipment_page.dart';
 import 'package:phoenix/src/state/fitness_store.dart';
 import 'package:phoenix/src/spotify_card.dart';
 import 'package:phoenix/src/strength_test_page.dart';
@@ -140,6 +142,169 @@ const _coreWorkoutIds = {
 };
 
 void main() {
+  test('14ήμερη επανεκκίνηση συνεχίζει χωρίς να μηδενίζει ημέρες', () {
+    final logs = [
+      WorkoutLog(
+        templateName: 'ΕΠΑΝΕΚΚΙΝΗΣΗ 14 • ΗΜΕΡΑ 1 — Απλώς εμφανίσου',
+        completedAt: DateTime(2024, 1, 1),
+        minutes: 5,
+      ),
+      WorkoutLog(
+        templateName: 'ΕΠΑΝΕΚΚΙΝΗΣΗ 14 • ΗΜΕΡΑ 2 — Ήρεμος κορμός',
+        completedAt: DateTime(2026, 8, 20),
+        minutes: 8,
+      ),
+      WorkoutLog(
+        templateName: 'ΕΠΑΝΕΚΚΙΝΗΣΗ 14 • ΗΜΕΡΑ 2 — Ήρεμος κορμός',
+        completedAt: DateTime(2026, 8, 21),
+        minutes: 8,
+      ),
+      WorkoutLog(
+        templateName: 'ΕΠΑΝΕΚΚΙΝΗΣΗ 14 • ΗΜΕΡΑ 4 — Ημέρα φροντίδας',
+        completedAt: DateTime(2026, 8, 22),
+        minutes: 5,
+      ),
+    ];
+
+    expect(Restart14Engine.completedDays(logs), 3);
+    expect(Restart14Engine.currentDay(logs), 3);
+    expect(Restart14Engine.isComplete(logs), isFalse);
+  });
+
+  test('14ήμερο πρόγραμμα προσαρμόζει χρόνο, ενέργεια και καρέκλα', () {
+    final plan = Restart14Engine.dayPlan(
+      day: 5,
+      availableMinutes: 5,
+      energy: 1,
+      hasChair: false,
+    );
+
+    expect(plan.workout.exercises, hasLength(2));
+    expect(
+      plan.workout.exercises,
+      contains('Καθίσματα με το βάρος του σώματος'),
+    );
+    expect(
+      plan.workout.exercisePrescriptions.values.every(
+        (prescription) => prescription.workingSets == 1,
+      ),
+      isTrue,
+    );
+  });
+
+  test('παλιές προτιμήσεις αποκτούν ασφαλείς εβδομαδιαίες προεπιλογές', () {
+    final preferences = AppPreferences.fromJson(const {});
+
+    expect(preferences.weeklyReviewDate, isEmpty);
+    expect(preferences.weeklyReviewWin, isEmpty);
+    expect(preferences.weeklyReviewBarrier, isEmpty);
+    expect(preferences.weeklyReviewMinutes, 10);
+  });
+
+  test('ο εξοπλισμός φιλτράρεται αυστηρά και στο γυμναστήριο', () {
+    const noBandProfile = UserProfile(
+      goal: 'Υγεία',
+      trainingPlace: 'Γυμναστήριο',
+      equipment: 'Αλτήρες, Πάγκος',
+      daysPerWeek: 3,
+      heightCentimeters: 175,
+      weightKilograms: 80,
+    );
+    const withBandProfile = UserProfile(
+      goal: 'Υγεία',
+      trainingPlace: 'Γυμναστήριο',
+      equipment: 'Αλτήρες, Λάστιχο αντίστασης',
+      daysPerWeek: 3,
+      heightCentimeters: 175,
+      weightKilograms: 80,
+    );
+
+    expect(
+      EquipmentAvailability.supportsExercise(
+        'Face pull με λάστιχο',
+        noBandProfile,
+      ),
+      isFalse,
+    );
+    expect(
+      EquipmentAvailability.supportsExercise(
+        'Face pull με λάστιχο',
+        withBandProfile,
+      ),
+      isTrue,
+    );
+  });
+
+  test('η δύσκολη μέρα μειώνει άμεσα την απαίτηση', () async {
+    final store = FitnessStore(MemoryRepository());
+    await store.load();
+
+    await store.activateHardDay();
+
+    expect(store.preferences.dailyMinutes, 5);
+    expect(store.preferences.dailyEnergy, 1);
+    expect(store.dailyCompanionPlan.kind, DailyCompanionKind.recovery);
+  });
+
+  test('η ήπια ανασκόπηση απλοποιεί το επόμενο ξεκίνημα', () async {
+    final store = FitnessStore(MemoryRepository());
+    await store.load();
+
+    await store.saveGentleWeeklyReview(
+      win: 'Έκανα μία μικρή προπόνηση',
+      barrier: 'Δεν είχα χρόνο',
+      easierMinutes: 5,
+    );
+
+    expect(store.weeklyReviewDue, isFalse);
+    expect(store.preferences.weeklyReviewMinutes, 5);
+    expect(store.preferences.dailyMinutes, 5);
+    expect(store.preferences.weeklyReviewWin, isNotEmpty);
+  });
+
+  test('ο νέος οπτικός οδηγός έχει τρία καθαρά στάδια', () {
+    final guide = ExerciseGuideCatalog.forExercise(
+      'Κάμψεις στον τοίχο',
+      atHome: true,
+    );
+
+    expect(guide, isNotNull);
+    expect(guide!.assetPath, contains('home-restart-basics-v1.png'));
+    expect(guide.stageCount, 3);
+  });
+
+  testWidgets('η απλή οθόνη εξοπλισμού αποθηκεύει μόνο τις επιλογές', (
+    tester,
+  ) async {
+    final store = FitnessStore(MemoryRepository());
+    await store.saveProfile(
+      const UserProfile(
+        goal: 'Υγεία',
+        trainingPlace: 'Σπίτι',
+        equipment: 'Σωματικό βάρος',
+        daysPerWeek: 3,
+        heightCentimeters: 175,
+        weightKilograms: 80,
+      ),
+    );
+    await tester.pumpWidget(
+      MaterialApp(home: SimpleEquipmentPage(store: store)),
+    );
+
+    await tester.tap(find.byKey(const ValueKey('equipment-bands')));
+    final saveEquipment = find.byKey(const ValueKey('save-simple-equipment'));
+    await tester.scrollUntilVisible(
+      saveEquipment,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(saveEquipment);
+    await tester.pump(const Duration(seconds: 1));
+
+    expect(store.profile!.equipment, contains('Λάστιχο αντίστασης'));
+    expect(store.profile!.trainingPlace, 'Σπίτι');
+  });
+
   test('ολοκλήρωση προπόνησης δημιουργεί μία καταχώρηση', () async {
     final store = FitnessStore(MemoryRepository());
     await store.load();
@@ -2109,7 +2274,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(ActiveWorkoutPage), findsOneWidget);
-    expect(store.activeWorkout?.exercises.length, 3);
+    expect(store.activeWorkout?.exercises.length, 2);
     expect(find.text('INTERVAL TIMER LAB'), findsNothing);
   });
 
@@ -2295,6 +2460,7 @@ void main() {
     expect(find.text('SIMPLE WARM-UP'), findsOneWidget);
     expect(find.text('ΠΡΟΠΟΝΗΣΗ ΜΕ ΒΑΡΗ'), findsNothing);
     expect(find.text('WARM-UP PROTOCOL'), findsNothing);
+    expect(find.byKey(const ValueKey('workout-voice-coach')), findsOneWidget);
 
     await tester.scrollUntilVisible(
       find.text('Κάθισμα και σήκωμα από καρέκλα'),
@@ -2307,7 +2473,7 @@ void main() {
             widget is Image &&
             widget.image is AssetImage &&
             (widget.image as AssetImage).assetName.contains(
-              'home-no-equipment-guide-v1.jpg',
+              'home-restart-basics-v1.png',
             ),
       ),
       findsWidgets,
@@ -2341,6 +2507,13 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('ΜΙΑ ΑΠΛΗ ΙΔΕΑ ΤΩΡΑ'), findsOneWidget);
     expect(find.byKey(const ValueKey('open-simple-meal-plan')), findsOneWidget);
+    final economy = find.byKey(const ValueKey('greek-budget-meals'));
+    expect(economy, findsOneWidget);
+    await tester.tap(economy);
+    await tester.pumpAndSettle();
+    expect(store.preferences.nutritionDietStyle, 'mediterranean');
+    expect(store.preferences.nutritionBudgetMode, 'economy');
+    expect(store.preferences.nutritionQuickPrep, isTrue);
 
     await tester.tap(find.byKey(const ValueKey('open-simple-meal-plan')));
     await tester.pumpAndSettle();
@@ -2400,7 +2573,14 @@ void main() {
       300,
       scrollable: find.byType(Scrollable).first,
     );
-    await tester.tap(find.text('Λίστα αγορών'));
+    final groceryList = find.text('Λίστα αγορών');
+    await tester.scrollUntilVisible(
+      groceryList,
+      150,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(groceryList);
     await tester.pumpAndSettle();
 
     expect(find.text('Αυτόματη λίστα αγορών'), findsOneWidget);

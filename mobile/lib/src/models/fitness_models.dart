@@ -1113,6 +1113,10 @@ class AppPreferences {
     this.skippedWorkoutDates = const [],
     this.healthConnectionEnabled = false,
     this.formCoachEnabled = false,
+    this.weeklyReviewDate = '',
+    this.weeklyReviewWin = '',
+    this.weeklyReviewBarrier = '',
+    this.weeklyReviewMinutes = 10,
   });
 
   final String languageCode;
@@ -1145,6 +1149,10 @@ class AppPreferences {
   final List<String> skippedWorkoutDates;
   final bool healthConnectionEnabled;
   final bool formCoachEnabled;
+  final String weeklyReviewDate;
+  final String weeklyReviewWin;
+  final String weeklyReviewBarrier;
+  final int weeklyReviewMinutes;
 
   bool get hasVaultPin => vaultPinHash.isNotEmpty;
 
@@ -1179,6 +1187,10 @@ class AppPreferences {
     List<String>? skippedWorkoutDates,
     bool? healthConnectionEnabled,
     bool? formCoachEnabled,
+    String? weeklyReviewDate,
+    String? weeklyReviewWin,
+    String? weeklyReviewBarrier,
+    int? weeklyReviewMinutes,
   }) => AppPreferences(
     languageCode: languageCode ?? this.languageCode,
     highContrast: highContrast ?? this.highContrast,
@@ -1211,6 +1223,10 @@ class AppPreferences {
     healthConnectionEnabled:
         healthConnectionEnabled ?? this.healthConnectionEnabled,
     formCoachEnabled: formCoachEnabled ?? this.formCoachEnabled,
+    weeklyReviewDate: weeklyReviewDate ?? this.weeklyReviewDate,
+    weeklyReviewWin: weeklyReviewWin ?? this.weeklyReviewWin,
+    weeklyReviewBarrier: weeklyReviewBarrier ?? this.weeklyReviewBarrier,
+    weeklyReviewMinutes: weeklyReviewMinutes ?? this.weeklyReviewMinutes,
   );
 
   Map<String, Object> toJson() => {
@@ -1244,6 +1260,10 @@ class AppPreferences {
     'skippedWorkoutDates': skippedWorkoutDates,
     'healthConnectionEnabled': healthConnectionEnabled,
     'formCoachEnabled': formCoachEnabled,
+    'weeklyReviewDate': weeklyReviewDate,
+    'weeklyReviewWin': weeklyReviewWin,
+    'weeklyReviewBarrier': weeklyReviewBarrier,
+    'weeklyReviewMinutes': weeklyReviewMinutes,
   };
 
   factory AppPreferences.fromJson(Map<String, dynamic> json) => AppPreferences(
@@ -1309,6 +1329,12 @@ class AppPreferences {
         .toList(),
     healthConnectionEnabled: json['healthConnectionEnabled'] as bool? ?? false,
     formCoachEnabled: json['formCoachEnabled'] as bool? ?? false,
+    weeklyReviewDate: json['weeklyReviewDate'] as String? ?? '',
+    weeklyReviewWin: json['weeklyReviewWin'] as String? ?? '',
+    weeklyReviewBarrier: json['weeklyReviewBarrier'] as String? ?? '',
+    weeklyReviewMinutes: const {5, 10, 20}.contains(json['weeklyReviewMinutes'])
+        ? json['weeklyReviewMinutes'] as int
+        : 10,
   );
 }
 

@@ -11,6 +11,7 @@ class ExerciseGuide {
     required this.execution,
     required this.avoid,
     this.equipmentLabel = '',
+    this.stageCount = 2,
   });
 
   final String assetPath;
@@ -19,6 +20,7 @@ class ExerciseGuide {
   final String execution;
   final String avoid;
   final String equipmentLabel;
+  final int stageCount;
 }
 
 class ExerciseGuideCatalog {
@@ -258,6 +260,35 @@ class ExerciseGuideCatalog {
   }
 
   static ExerciseGuide? _forHomeExercise(String name) {
+    if (name.contains('κάθισμα και σήκωμα από καρέκλα') ||
+        name.contains('chair sit-to-stand')) {
+      return _homeRestartBasics(
+        0,
+        'Πάτησε ολόκληρο το πέλμα, γείρε λίγο μπροστά και σηκώσου χωρίς φόρα.',
+        'Μην πέφτεις στην καρέκλα και μην αφήνεις τα γόνατα να κλείνουν προς τα μέσα.',
+      );
+    }
+    if (name.contains('κάμψεις στον τοίχο') || name.contains('wall push-up')) {
+      return _homeRestartBasics(
+        1,
+        'Κράτησε το σώμα σε μία γραμμή και πλησίασε αργά το στήθος στον τοίχο.',
+        'Μην αφήνεις τη μέση να κρεμάσει και μην ανοίγεις απότομα τους αγκώνες.',
+      );
+    }
+    if (name.contains('bird dog')) {
+      return _homeRestartBasics(
+        2,
+        'Τέντωσε αντίθετο χέρι και πόδι χωρίς να περιστρέφεται η λεκάνη.',
+        'Μην σηκώνεις το πόδι ψηλότερα από όσο κρατάς τη μέση σταθερή.',
+      );
+    }
+    if (name.contains('γέφυρα γλουτών') || name.contains('glute bridge')) {
+      return _homeRestartBasics(
+        3,
+        'Πίεσε τα πέλματα και σήκωσε τη λεκάνη μέχρι ο κορμός να γίνει μία ήρεμη γραμμή.',
+        'Μην υπερεκτείνεις τη μέση και μην πιέζεις από τον αυχένα.',
+      );
+    }
     if (name.contains('διάδρομ') || name.contains('treadmill')) {
       return _homeCardio(
         0,
@@ -530,6 +561,22 @@ class ExerciseGuideCatalog {
     equipmentLabel: 'ΣΠΙΤΙ • ΜΟΝΟΖΥΓΟ • ΧΩΡΙΣ ΛΑΣΤΙΧΟ',
   );
 
+  static ExerciseGuide _homeRestartBasics(
+    int index,
+    String execution,
+    String avoid,
+  ) => _guide(
+    'home-restart-basics-v1.png',
+    index,
+    4,
+    execution,
+    avoid,
+    equipmentLabel: index == 0
+        ? 'ΣΠΙΤΙ • ΣΤΑΘΕΡΗ ΚΑΡΕΚΛΑ'
+        : 'ΣΠΙΤΙ • ΧΩΡΙΣ ΕΞΟΠΛΙΣΜΟ',
+    stageCount: 3,
+  );
+
   static ExerciseGuide _guide(
     String filename,
     int bandIndex,
@@ -537,6 +584,7 @@ class ExerciseGuideCatalog {
     String execution,
     String avoid, {
     String equipmentLabel = '',
+    int stageCount = 2,
   }) => ExerciseGuide(
     assetPath: 'assets/exercise_guides/$filename',
     bandIndex: bandIndex,
@@ -544,6 +592,7 @@ class ExerciseGuideCatalog {
     execution: execution,
     avoid: avoid,
     equipmentLabel: equipmentLabel,
+    stageCount: stageCount,
   );
 }
 
@@ -766,6 +815,16 @@ class _GuideBand extends StatelessWidget {
           top: 10,
           child: _GuidePositionLabel(label: 'ΑΡΧΗ'),
         ),
+        if (guide.stageCount == 3)
+          const Positioned.fill(
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: Padding(
+                padding: EdgeInsets.only(top: 10),
+                child: _GuidePositionLabel(label: 'ΚΙΝΗΣΗ'),
+              ),
+            ),
+          ),
         const Positioned(
           right: 10,
           top: 10,

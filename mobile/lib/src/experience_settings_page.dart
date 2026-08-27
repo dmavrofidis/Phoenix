@@ -258,18 +258,47 @@ class ExperienceSettingsPage extends StatelessWidget {
               SwitchListTile(
                 value: preferences.audioCues,
                 contentPadding: EdgeInsets.zero,
-                onChanged: (value) => store.updatePreferences(audioCues: value),
+                onChanged: (value) => store.updatePreferences(
+                  audioCues: value,
+                  audioCueStyle: value ? preferences.audioCueStyle : 'minimal',
+                ),
                 secondary: const Icon(Icons.volume_up_outlined),
                 title: Text(
-                  l.text('Ηχητική επιβεβαίωση', 'Audio confirmation'),
+                  l.text(
+                    'Ήχος και φωνητική καθοδήγηση',
+                    'Audio and voice guidance',
+                  ),
                 ),
                 subtitle: Text(
                   l.text(
-                    'Μικρός ήχος μόνο σε σημαντική επιτυχή ενέργεια.',
-                    'A short cue only after an important successful action.',
+                    'Διάλεξε απλούς ήχους ή φωνή μέσα στην προπόνηση.',
+                    'Choose simple cues or spoken workout guidance.',
                   ),
                 ),
               ),
+              if (preferences.audioCues) ...[
+                const SizedBox(height: 6),
+                SegmentedButton<String>(
+                  key: const ValueKey('audio-guidance-style'),
+                  segments: [
+                    ButtonSegment(
+                      value: 'minimal',
+                      icon: const Icon(Icons.music_note_outlined),
+                      label: Text(l.text('Απλοί ήχοι', 'Simple cues')),
+                    ),
+                    ButtonSegment(
+                      value: 'coach',
+                      icon: const Icon(Icons.record_voice_over_outlined),
+                      label: Text(l.text('Φωνή', 'Voice')),
+                    ),
+                  ],
+                  selected: {
+                    preferences.audioCueStyle == 'coach' ? 'coach' : 'minimal',
+                  },
+                  onSelectionChanged: (value) =>
+                      store.updatePreferences(audioCueStyle: value.first),
+                ),
+              ],
               const Divider(height: 26),
               _SectionTitle(label: l.text('ΕΡΓΑΛΕΙΑ', 'TOOLS')),
               const SizedBox(height: 7),

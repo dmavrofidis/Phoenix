@@ -16,6 +16,7 @@ import 'state/fitness_store.dart';
 import 'spotify_card.dart';
 import 'training_insights.dart';
 import 'training_intelligence_widgets.dart';
+import 'voice_coach.dart';
 
 class ActiveWorkoutPage extends StatefulWidget {
   const ActiveWorkoutPage({super.key, required this.store});
@@ -29,22 +30,70 @@ class ActiveWorkoutPage extends StatefulWidget {
 class _ActiveWorkoutPageState extends State<ActiveWorkoutPage> {
   Timer? _timer;
   int _remainingSeconds = 0;
+  final VoiceCoach _voiceCoach = VoiceCoach();
   final Set<int> _completedWarmupSteps = {};
   final Set<int> _completedCooldownSteps = {};
 
   @override
   void dispose() {
     _timer?.cancel();
+    unawaited(_voiceCoach.stop());
     super.dispose();
+  }
+
+  bool get _voiceEnabled =>
+      widget.store.preferences.audioCues &&
+      widget.store.preferences.audioCueStyle == 'coach';
+
+  Future<void> _toggleVoice() async {
+    final enabled = !_voiceEnabled;
+    await widget.store.updatePreferences(
+      audioCues: enabled,
+      audioCueStyle: enabled ? 'coach' : 'minimal',
+    );
+    if (!mounted) return;
+    if (enabled) {
+      await _voiceCoach.speak(
+        text: context.l10n.text(
+          'Η φωνητική καθοδήγηση ενεργοποιήθηκε. Θα σου λέω πότε τελειώνει η ξεκούραση.',
+          'Voice guidance is on. I will tell you when rest ends.',
+        ),
+        languageCode: widget.store.preferences.languageCode,
+      );
+    } else {
+      await _voiceCoach.stop();
+    }
   }
 
   void _startRest(int seconds) {
     _timer?.cancel();
     setState(() => _remainingSeconds = seconds);
+    if (_voiceEnabled) {
+      unawaited(
+        _voiceCoach.speak(
+          text: context.l10n.text(
+            'Ξεκουράσου για $seconds δευτερόλεπτα.',
+            'Rest for $seconds seconds.',
+          ),
+          languageCode: widget.store.preferences.languageCode,
+        ),
+      );
+    }
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted || _remainingSeconds <= 1) {
         timer.cancel();
         unawaited(widget.store.playCountdownCue(finalCue: true));
+        if (_voiceEnabled) {
+          unawaited(
+            _voiceCoach.speak(
+              text: context.l10n.text(
+                'Η ξεκούραση τελείωσε. Πάμε στο επόμενο σετ.',
+                'Rest is over. Let us do the next set.',
+              ),
+              languageCode: widget.store.preferences.languageCode,
+            ),
+          );
+        }
         if (mounted) setState(() => _remainingSeconds = 0);
         return;
       }
@@ -170,6 +219,21 @@ class _ActiveWorkoutPageState extends State<ActiveWorkoutPage> {
                   : context.l10n.text('ΠΡΟΠΟΝΗΣΗ ΜΕ ΒΑΡΗ', 'STRENGTH WORKOUT'),
             ),
             actions: [
+              IconButton(
+                key: const ValueKey('workout-voice-coach'),
+                tooltip: context.l10n.text(
+                  _voiceEnabled
+                      ? 'Κλείσιμο φωνητικής καθοδήγησης'
+                      : 'Φωνητική καθοδήγηση',
+                  _voiceEnabled ? 'Turn off voice guidance' : 'Voice guidance',
+                ),
+                onPressed: _toggleVoice,
+                icon: Icon(
+                  _voiceEnabled
+                      ? Icons.record_voice_over_rounded
+                      : Icons.voice_over_off_outlined,
+                ),
+              ),
               IconButton(
                 tooltip: context.l10n.text(
                   'Ακύρωση προπόνησης',

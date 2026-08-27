@@ -1277,12 +1277,14 @@ class _TransferTabState extends State<_TransferTab> {
           ),
           const SizedBox(height: 8),
           FilledButton.icon(
+            key: const ValueKey('export-encrypted-phoenix'),
             onPressed: _exportEncryptedBackup,
             icon: const Icon(Icons.enhanced_encryption_outlined),
             label: const Text('Δημιουργία προστατευμένου αρχείου'),
           ),
           const SizedBox(height: 6),
           OutlinedButton.icon(
+            key: const ValueKey('import-encrypted-phoenix'),
             onPressed: _importEncryptedBackup,
             icon: const Icon(Icons.lock_open_outlined),
             label: const Text('Άνοιγμα προστατευμένου αρχείου'),
@@ -1386,12 +1388,14 @@ class _TransferTabState extends State<_TransferTab> {
           ),
           const SizedBox(height: 6),
           OutlinedButton.icon(
+            key: const ValueKey('export-encrypted-sync'),
             onPressed: _exportEncryptedSync,
             icon: const Icon(Icons.sync_lock_outlined),
             label: const Text('Δημιουργία αρχείου μεταφοράς'),
           ),
           const SizedBox(height: 6),
           OutlinedButton.icon(
+            key: const ValueKey('import-encrypted-sync'),
             onPressed: _importEncryptedSync,
             icon: const Icon(Icons.rule_folder_outlined),
             label: const Text('Άνοιγμα και έλεγχος αρχείου'),

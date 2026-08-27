@@ -18,6 +18,7 @@ import '../nutrition_analytics_engine.dart';
 import '../periodization_engine.dart';
 import '../recovery_engine.dart';
 import '../recovery_lab_engine.dart';
+import '../restart14_engine.dart';
 import '../structured_import_export_engine.dart';
 import '../training_analytics_engine.dart';
 import '../training_insights.dart';
@@ -107,7 +108,17 @@ class FitnessStore extends ChangeNotifier {
     recommended: recommendedWorkout,
     recovery: createRestDayDraft(),
     profile: profile,
+    restartDay: restart14CurrentDay,
   );
+  int get restart14CompletedDays => Restart14Engine.completedDays(_data.logs);
+  int get restart14CurrentDay => Restart14Engine.currentDay(_data.logs);
+  bool get restart14IsComplete => Restart14Engine.isComplete(_data.logs);
+  bool get weeklyReviewDue {
+    final saved = DateTime.tryParse(preferences.weeklyReviewDate);
+    if (saved == null) return true;
+    return DateTime.now().difference(saved).inDays >= 7;
+  }
+
   int get returnMoments => DailyCompanionEngine.returnMoments(_data.logs);
   bool get isEnglish => preferences.languageCode != 'el';
   bool get hasVaultPin => preferences.hasVaultPin;
@@ -716,6 +727,46 @@ class FitnessStore extends ChangeNotifier {
         dailyEnergy: energy,
         dailyLocation: location,
         dailyPainArea: painArea.trim(),
+      ),
+    );
+    await _repository.save(_data);
+    notifyListeners();
+    await feedback(success: true);
+  }
+
+  Future<void> activateHardDay() async {
+    final current = dailyCompanionCheckIn;
+    await saveDailyCompanionCheckIn(
+      minutes: 5,
+      energy: 1,
+      location: current?.location ?? 'home',
+      painArea: current?.painArea ?? '',
+    );
+  }
+
+  Future<void> saveGentleWeeklyReview({
+    required String win,
+    required String barrier,
+    required int easierMinutes,
+  }) async {
+    if (!const {5, 10, 20}.contains(easierMinutes)) {
+      throw const FormatException('Διάλεξε 5, 10 ή 20 λεπτά.');
+    }
+    final cleanWin = win.trim();
+    final cleanBarrier = barrier.trim();
+    if (cleanWin.isEmpty || cleanBarrier.isEmpty) {
+      throw const FormatException('Συμπλήρωσε και τις δύο μικρές απαντήσεις.');
+    }
+    if (cleanWin.length > 240 || cleanBarrier.length > 240) {
+      throw const FormatException('Κράτησε κάθε απάντηση έως 240 χαρακτήρες.');
+    }
+    _data = _data.copyWith(
+      preferences: preferences.copyWith(
+        weeklyReviewDate: DateTime.now().toIso8601String(),
+        weeklyReviewWin: cleanWin,
+        weeklyReviewBarrier: cleanBarrier,
+        weeklyReviewMinutes: easierMinutes,
+        dailyMinutes: easierMinutes,
       ),
     );
     await _repository.save(_data);

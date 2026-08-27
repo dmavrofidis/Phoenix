@@ -52,6 +52,7 @@ import 'reliability_center_page.dart';
 import 'reports_studio_page.dart';
 import 'running_lab_page.dart';
 import 'sleep_stress_page.dart';
+import 'simple_equipment_page.dart';
 import 'state/fitness_store.dart';
 import 'spotify_card.dart';
 import 'training_history.dart';
@@ -1256,6 +1257,8 @@ class DashboardPage extends StatelessWidget {
             _DashboardHeader(store: store),
             const SizedBox(height: 20),
             _DailyCompanionCard(store: store),
+            const SizedBox(height: 12),
+            _GentleWeeklyReviewCard(store: store),
             if (store.hasActiveWorkout) ...[
               const SizedBox(height: 12),
               _ActiveWorkoutCard(store: store),
@@ -2495,6 +2498,20 @@ class _MorePage extends StatelessWidget {
                   ),
                   const Divider(height: 1),
                   _MoreDestination(
+                    icon: Icons.home_repair_service_outlined,
+                    title: context.l10n.text(
+                      'Τι έχω διαθέσιμο',
+                      'My available equipment',
+                    ),
+                    subtitle: context.l10n.text(
+                      'Καρέκλα, αλτήρες, διάδρομος ή τίποτα — χωρίς λάθος ασκήσεις',
+                      'Chair, dumbbells, treadmill or nothing — no mismatched exercises',
+                    ),
+                    onTap: () =>
+                        _open(context, SimpleEquipmentPage(store: store)),
+                  ),
+                  const Divider(height: 1),
+                  _MoreDestination(
                     icon: Icons.accessibility_new_rounded,
                     title: context.l10n.text(
                       'Τοπικός έλεγχος στάσης',
@@ -3157,6 +3174,42 @@ class _DailyCompanionCard extends StatelessWidget {
                 ),
             ],
           ),
+          if (store.preferences.starterPath == 'restart14') ...[
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    l.text(
+                      'Ημέρα ${store.restart14CurrentDay} από 14',
+                      'Day ${store.restart14CurrentDay} of 14',
+                    ),
+                    style: const TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                ),
+                Text(
+                  '${store.restart14CompletedDays}/14',
+                  style: TextStyle(color: accent, fontWeight: FontWeight.w900),
+                ),
+              ],
+            ),
+            const SizedBox(height: 7),
+            LinearProgressIndicator(
+              value: store.restart14CompletedDays / 14,
+              minHeight: 7,
+              borderRadius: BorderRadius.circular(999),
+              color: accent,
+              backgroundColor: accent.withValues(alpha: .13),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              l.text(
+                'Δεν υπάρχει χαμένο σερί. Η επόμενη ημέρα περιμένει μέχρι να επιστρέψεις.',
+                'There is no broken streak. The next day waits until you return.',
+              ),
+              style: TextStyle(color: colors.onSurfaceVariant, fontSize: 12),
+            ),
+          ],
           const SizedBox(height: 14),
           Container(
             width: double.infinity,
@@ -3171,6 +3224,33 @@ class _DailyCompanionCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
+          if (plan.kind != DailyCompanionKind.recovery) ...[
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                key: const ValueKey('hard-day-action'),
+                onPressed: () async {
+                  await store.activateHardDay();
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        l.text(
+                          'Το σημερινό πλάνο έγινε πέντε λεπτά ήπιας φροντίδας.',
+                          'Today is now five minutes of gentle care.',
+                        ),
+                      ),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.favorite_outline_rounded),
+                label: Text(
+                  l.text('Δεν είμαι καλά σήμερα', 'I am not doing well today'),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
@@ -3303,6 +3383,251 @@ class _DailyFact extends StatelessWidget {
       ],
     ),
   );
+}
+
+class _GentleWeeklyReviewCard extends StatelessWidget {
+  const _GentleWeeklyReviewCard({required this.store});
+
+  final FitnessStore store;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final colors = Theme.of(context).colorScheme;
+    final due = store.weeklyReviewDue;
+    return Card(
+      color: colors.surfaceContainerLow,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: colors.secondary.withValues(alpha: .12),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(Icons.auto_awesome_outlined, color: colors.secondary),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    due
+                        ? l.text(
+                            'Μια ήρεμη ματιά στην εβδομάδα',
+                            'A gentle look at your week',
+                          )
+                        : l.text(
+                            'Η επόμενη εβδομάδα έγινε πιο απλή',
+                            'Next week is now simpler',
+                          ),
+                    style: const TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    due
+                        ? l.text(
+                            'Τρεις μικρές απαντήσεις. Χωρίς βαθμολογία και χωρίς ενοχές.',
+                            'Three small answers. No score and no guilt.',
+                          )
+                        : l.text(
+                            'Το Phoenix θα ξεκινά από ${store.preferences.weeklyReviewMinutes} λεπτά. Κέρδος: ${store.preferences.weeklyReviewWin}',
+                            'Phoenix will start from ${store.preferences.weeklyReviewMinutes} minutes. Win: ${store.preferences.weeklyReviewWin}',
+                          ),
+                    style: TextStyle(
+                      color: colors.onSurfaceVariant,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: FilledButton.tonalIcon(
+                      key: const ValueKey('gentle-weekly-review-action'),
+                      onPressed: () => _showGentleWeeklyReview(context, store),
+                      icon: const Icon(Icons.edit_note_rounded),
+                      label: Text(
+                        due
+                            ? l.text('Κάνε την ανασκόπηση', 'Review the week')
+                            : l.text(
+                                'Άλλαξε την προσαρμογή',
+                                'Change adjustment',
+                              ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _GentleWeeklyReviewInput {
+  const _GentleWeeklyReviewInput({
+    required this.win,
+    required this.barrier,
+    required this.minutes,
+  });
+
+  final String win;
+  final String barrier;
+  final int minutes;
+}
+
+Future<void> _showGentleWeeklyReview(
+  BuildContext context,
+  FitnessStore store,
+) async {
+  final win = TextEditingController(text: store.preferences.weeklyReviewWin);
+  final barrier = TextEditingController(
+    text: store.preferences.weeklyReviewBarrier,
+  );
+  var minutes = store.preferences.weeklyReviewMinutes;
+  try {
+    final input = await showModalBottomSheet<_GentleWeeklyReviewInput>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (context, setState) {
+          final l = context.l10n;
+          return SafeArea(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(
+                20,
+                4,
+                20,
+                MediaQuery.viewInsetsOf(context).bottom + 20,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    l.text('Η εβδομάδα σου', 'Your week'),
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    l.text(
+                      'Δεν ψάχνουμε το τέλειο. Ψάχνουμε τι μπορεί να γίνει λίγο ευκολότερο.',
+                      'We are not looking for perfect. We are looking for what can feel a little easier.',
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  TextField(
+                    controller: win,
+                    maxLength: 240,
+                    minLines: 2,
+                    maxLines: 3,
+                    decoration: InputDecoration(
+                      labelText: l.text(
+                        'Τι κατάφερες, όσο μικρό κι αν ήταν;',
+                        'What did you manage, however small?',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: barrier,
+                    maxLength: 240,
+                    minLines: 2,
+                    maxLines: 3,
+                    decoration: InputDecoration(
+                      labelText: l.text(
+                        'Τι σε δυσκόλεψε περισσότερο;',
+                        'What made things hardest?',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    l.text(
+                      'Με πόσο χρόνο να ξεκινά η επόμενη εβδομάδα;',
+                      'How much time should next week start with?',
+                    ),
+                    style: const TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(height: 8),
+                  SegmentedButton<int>(
+                    segments: const [
+                      ButtonSegment(value: 5, label: Text('5′')),
+                      ButtonSegment(value: 10, label: Text('10′')),
+                      ButtonSegment(value: 20, label: Text('20′')),
+                    ],
+                    selected: {minutes},
+                    onSelectionChanged: (value) =>
+                        setState(() => minutes = value.first),
+                  ),
+                  const SizedBox(height: 18),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      key: const ValueKey('save-gentle-weekly-review'),
+                      onPressed: () => Navigator.of(sheetContext).pop(
+                        _GentleWeeklyReviewInput(
+                          win: win.text,
+                          barrier: barrier.text,
+                          minutes: minutes,
+                        ),
+                      ),
+                      icon: const Icon(Icons.check_rounded),
+                      label: Text(
+                        l.text(
+                          'Κάνε την επόμενη εβδομάδα πιο εύκολη',
+                          'Make next week easier',
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+    if (input == null) return;
+    try {
+      await store.saveGentleWeeklyReview(
+        win: input.win,
+        barrier: input.barrier,
+        easierMinutes: input.minutes,
+      );
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.l10n.text(
+              'Η επόμενη εβδομάδα θα ξεκινά από ${input.minutes} λεπτά.',
+              'Next week will start from ${input.minutes} minutes.',
+            ),
+          ),
+        ),
+      );
+    } on FormatException catch (error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    }
+  } finally {
+    win.dispose();
+    barrier.dispose();
+  }
 }
 
 IconData _dailyPlanIcon(DailyCompanionKind kind) => switch (kind) {
