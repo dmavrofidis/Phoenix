@@ -42,6 +42,7 @@ import 'package:phoenix/src/daily_companion_engine.dart';
 import 'package:phoenix/src/deterministic_coach_engine.dart';
 import 'package:phoenix/src/equipment_presets.dart';
 import 'package:phoenix/src/equipment_availability.dart';
+import 'package:phoenix/src/equipment_quick_choices.dart';
 import 'package:phoenix/src/education_library.dart';
 import 'package:phoenix/src/encrypted_sync_engine.dart';
 import 'package:phoenix/src/exercise_guide.dart';
@@ -303,6 +304,49 @@ void main() {
 
     expect(store.profile!.equipment, contains('Λάστιχο αντίστασης'));
     expect(store.profile!.trainingPlace, 'Σπίτι');
+  });
+
+  testWidgets('μια γρήγορη επιλογή εξοπλισμού ξετικάρεται με δεύτερο πάτημα', (
+    tester,
+  ) async {
+    final controller = TextEditingController();
+    addTearDown(controller.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: EquipmentQuickChoices(controller: controller)),
+      ),
+    );
+    final bands = find.byKey(const ValueKey('equipment-bands'));
+
+    await tester.tap(bands);
+    await tester.pump();
+    expect(controller.text, isNotEmpty);
+
+    await tester.tap(bands);
+    await tester.pump();
+    expect(controller.text, isEmpty);
+  });
+
+  testWidgets('η προαιρετική ενόχληση ξετικάρεται με δεύτερο πάτημα', (
+    tester,
+  ) async {
+    final store = FitnessStore(MemoryRepository());
+    store.previewWithoutProfile();
+    await tester.pumpWidget(PhoenixApp(store: store));
+    await tester.tap(find.byKey(const ValueKey('daily-check-in-action')));
+    await tester.pumpAndSettle();
+    final knee = find.byKey(const ValueKey('daily-pain-knee'));
+
+    await tester.tap(knee);
+    await tester.pump();
+    await tester.tap(knee);
+    await tester.pump();
+    final save = find.byKey(const ValueKey('save-daily-check-in'));
+    await tester.ensureVisible(save);
+    await tester.tap(save);
+    await tester.pumpAndSettle();
+
+    expect(store.preferences.dailyPainArea, isEmpty);
   });
 
   test('ολοκλήρωση προπόνησης δημιουργεί μία καταχώρηση', () async {

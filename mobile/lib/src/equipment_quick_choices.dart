@@ -42,7 +42,8 @@ class EquipmentQuickChoices extends StatelessWidget {
                   label: Text(
                     context.l10n.text(option.greekLabel, option.englishLabel),
                   ),
-                  onSelected: (_) => _toggle(context, option),
+                  onSelected: (selected) =>
+                      _setSelected(context, option, selected),
                 ),
             ],
           ),
@@ -51,22 +52,21 @@ class EquipmentQuickChoices extends StatelessWidget {
     );
   }
 
-  void _toggle(BuildContext context, _EquipmentOption option) {
+  void _setSelected(
+    BuildContext context,
+    _EquipmentOption option,
+    bool selected,
+  ) {
     final entries = controller.text
         .split(RegExp(r'[,;]'))
         .map((entry) => entry.trim())
         .where((entry) => entry.isNotEmpty)
         .toList();
-    final selected = option.matches(controller.text);
-
     if (option.exclusive) {
-      entries
-        ..clear()
-        ..addAll(
-          selected
-              ? const []
-              : [context.l10n.text(option.greekLabel, option.englishLabel)],
-        );
+      entries.clear();
+      if (selected) {
+        entries.add(context.l10n.text(option.greekLabel, option.englishLabel));
+      }
     } else {
       entries.removeWhere(
         (entry) =>
@@ -75,7 +75,7 @@ class EquipmentQuickChoices extends StatelessWidget {
               (candidate) => candidate.exclusive && candidate.matches(entry),
             ),
       );
-      if (!selected) {
+      if (selected) {
         entries.add(context.l10n.text(option.greekLabel, option.englishLabel));
       }
     }

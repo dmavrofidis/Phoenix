@@ -2017,7 +2017,8 @@ class _WorkoutsPageState extends State<WorkoutsPage> {
                 ChoiceChip(
                   selected: _selectedTag == tag,
                   label: Text(tag),
-                  onSelected: (_) => setState(() => _selectedTag = tag),
+                  onSelected: (selected) =>
+                      setState(() => _selectedTag = selected ? tag : 'Όλα'),
                 ),
                 const SizedBox(width: 7),
               ],
@@ -3785,7 +3786,8 @@ Future<void> _showDailyCompanionCheckIn(
                         ),
                         label: Text(painLabel(value)),
                         selected: painArea == value,
-                        onSelected: (_) => setState(() => painArea = value),
+                        onSelected: (selected) =>
+                            setState(() => painArea = selected ? value : ''),
                       ),
                   ],
                 ),
