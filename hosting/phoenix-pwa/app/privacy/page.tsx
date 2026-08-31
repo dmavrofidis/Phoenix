@@ -1,5 +1,5 @@
+/* eslint-disable @next/next/no-html-link-for-pages -- Vinext renders these static legal routes reliably with native anchors. */
 import type { Metadata } from "next";
-import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Πολιτική Απορρήτου — Phoenix",
@@ -13,9 +13,9 @@ export default function PrivacyPage() {
       <article className="legal-card">
         <header className="legal-topbar">
           <span className="legal-brand">PHOENIX · LOCAL-FIRST</span>
-          <Link className="legal-back" href="/">
+          <a className="legal-back" href="/">
             ← Αρχική
-          </Link>
+          </a>
         </header>
 
         <h1>Πολιτική Απορρήτου</h1>
@@ -106,7 +106,7 @@ export default function PrivacyPage() {
           <h3>9. Επικοινωνία</h3>
           <p>
             Για ερωτήσεις απορρήτου ή υποστήριξη, χρησιμοποίησε τη σελίδα
-            <Link href="/support"> Υποστήριξης Phoenix</Link>.
+            <a href="/support"> Υποστήριξης Phoenix</a>.
           </p>
         </section>
 
@@ -182,7 +182,7 @@ export default function PrivacyPage() {
           <h3>9. Contact</h3>
           <p>
             For privacy questions or assistance, visit
-            <Link href="/support"> Phoenix Support</Link>.
+            <a href="/support"> Phoenix Support</a>.
           </p>
         </section>
 
@@ -259,7 +259,7 @@ export default function PrivacyPage() {
           <h3>9. Kontakt</h3>
           <p>
             Bei Datenschutzfragen oder für Unterstützung besuche den
-            <Link href="/support"> Phoenix-Support</Link>.
+            <a href="/support"> Phoenix-Support</a>.
           </p>
         </section>
       </article>

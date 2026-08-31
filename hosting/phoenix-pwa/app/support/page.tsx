@@ -1,5 +1,5 @@
+/* eslint-disable @next/next/no-html-link-for-pages -- Vinext renders these static legal routes reliably with native anchors. */
 import type { Metadata } from "next";
-import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Υποστήριξη — Phoenix",
@@ -12,9 +12,9 @@ export default function SupportPage() {
       <article className="legal-card">
         <header className="legal-topbar">
           <span className="legal-brand">PHOENIX · SUPPORT</span>
-          <Link className="legal-back" href="/">
+          <a className="legal-back" href="/">
             ← Αρχική
-          </Link>
+          </a>
         </header>
 
         <h1>Είμαστε εδώ για να βοηθήσουμε.</h1>
@@ -37,14 +37,14 @@ export default function SupportPage() {
             <strong>Αναφορά προβλήματος</strong>
             <span>Άνοιξε ένα ασφαλές, δημόσιο GitHub issue χωρίς προσωπικά δεδομένα.</span>
           </a>
-          <Link className="support-action" href="/privacy">
+          <a className="support-action" href="/privacy">
             <strong>Πολιτική Απορρήτου</strong>
             <span>Δες ακριβώς τι μένει στη συσκευή σου.</span>
-          </Link>
-          <Link className="support-action" href="/">
+          </a>
+          <a className="support-action" href="/">
             <strong>Εγκατάσταση σε iPhone</strong>
             <span>Οδηγίες για προσθήκη στην οθόνη Αφετηρίας.</span>
-          </Link>
+          </a>
         </div>
 
         <section className="legal-section" lang="el">
