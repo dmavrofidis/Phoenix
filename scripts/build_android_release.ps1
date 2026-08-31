@@ -5,6 +5,37 @@ $mobileRoot = Join-Path $repoRoot 'mobile'
 $keyProperties = Join-Path $mobileRoot 'android\key.properties'
 $symbols = Join-Path $mobileRoot 'build\symbols'
 
+$flutterCommand = Get-Command flutter -ErrorAction SilentlyContinue
+if ($flutterCommand) {
+    $flutter = $flutterCommand.Source
+}
+else {
+    $localProperties = Join-Path $mobileRoot 'android\local.properties'
+    $flutterSdkLine = if (Test-Path -LiteralPath $localProperties) {
+        Get-Content -LiteralPath $localProperties |
+            Where-Object { $_ -match '^flutter\.sdk=' } |
+            Select-Object -First 1
+    }
+    $flutterSdk = if ($flutterSdkLine) {
+        ($flutterSdkLine -replace '^flutter\.sdk=', '') -replace '\\\\', '\'
+    }
+    $flutter = if ($flutterSdk) {
+        Join-Path $flutterSdk 'bin\flutter.bat'
+    }
+    if (-not $flutter -or -not (Test-Path -LiteralPath $flutter)) {
+        throw 'Flutter was not found on PATH or in mobile/android/local.properties.'
+    }
+}
+
+$flutterBin = Split-Path -Parent $flutter
+$dart = Join-Path $flutterBin 'dart.bat'
+if (-not (Test-Path -LiteralPath $dart)) {
+    $dart = Join-Path $flutterBin 'dart'
+}
+if (-not (Test-Path -LiteralPath $dart)) {
+    throw 'Dart was not found beside the resolved Flutter executable.'
+}
+
 if (-not (Test-Path -LiteralPath $keyProperties)) {
     throw 'Missing mobile/android/key.properties. Copy key.properties.example and use a private upload keystore.'
 }
@@ -21,13 +52,13 @@ if (-not (Test-Path -LiteralPath $signing['storeFile'])) {
 
 Push-Location $mobileRoot
 try {
-    flutter pub get
-    dart run build_runner build
-    dart format --output=none --set-exit-if-changed lib test
-    flutter analyze
-    flutter test
-    flutter build appbundle --release --obfuscate --split-debug-info=$symbols
-    flutter build apk --release --obfuscate --split-debug-info=$symbols
+    & $flutter pub get
+    & $dart run build_runner build
+    & $dart format --output=none --set-exit-if-changed lib test
+    & $flutter analyze
+    & $flutter test
+    & $flutter build appbundle --release --obfuscate --split-debug-info=$symbols
+    & $flutter build apk --release --obfuscate --split-debug-info=$symbols
 
     $aab = Join-Path $mobileRoot 'build\app\outputs\bundle\release\app-release.aab'
     $apk = Join-Path $mobileRoot 'build\app\outputs\flutter-apk\app-release.apk'

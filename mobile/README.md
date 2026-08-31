@@ -56,8 +56,8 @@ flutter build web --release --no-tree-shake-icons
 ## Quality status
 
 - `flutter analyze`: no issues
-- `flutter test`: 351/351 passing
+- `flutter test`: 459/459 passing
 - `flutter build web --release`: passing
-- Android and Windows native build prerequisites are not installed on this
-  workstation; their manifests, generated plugin registrants, and platform
-  configuration are committed with the app.
+- The Android SDK is available locally, while a JDK and private release signing
+  key are intentionally not installed or generated on this workstation. The
+  signed Android workflow remains ready for an approved release owner.

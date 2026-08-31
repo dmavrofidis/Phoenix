@@ -5,6 +5,8 @@ This checklist keeps Android production work reproducible without changing the d
 ## Identity and version
 
 - Confirm `applicationId` is `com.phoenix.fitness`.
+- Confirm `compileSdk` and `targetSdk` are API 36, the Google Play requirement
+  for new apps and updates from 31 August 2026.
 - Read `versionName` and `versionCode` from `mobile/pubspec.yaml`; CI or the release operator may override them with Flutter's `--build-name` and `--build-number` flags.
 - Build signed release artifacts only when `mobile/android/key.properties` is supplied outside source control. Release tasks fail closed when signing is absent; they never fall back to the debug key.
 - Record the Git commit and Flutter version beside every artifact.
@@ -30,6 +32,7 @@ This checklist keeps Android production work reproducible without changing the d
 Run from the repository root:
 
 ```powershell
+./scripts/verify_store_readiness.ps1
 .\scripts\build_android_release.ps1
 ```
 

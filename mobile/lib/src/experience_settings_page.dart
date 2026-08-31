@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'data_validation_page.dart';
 import 'global_search_page.dart';
@@ -17,8 +18,32 @@ class ExperienceSettingsPage extends StatelessWidget {
   final FitnessStore store;
   final bool focusTheme;
 
+  static final Uri _privacyUri = Uri.parse(
+    'https://phoenix-fitness-local.d-mavrofidis.chatgpt.site/privacy',
+  );
+  static final Uri _supportUri = Uri.parse(
+    'https://phoenix-fitness-local.d-mavrofidis.chatgpt.site/support',
+  );
+
   Future<void> _push(BuildContext context, Widget page) =>
       Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => page));
+
+  Future<void> _openExternal(BuildContext context, Uri uri) async {
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!opened && context.mounted) {
+      final l = context.l10n;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            l.text(
+              'Δεν ήταν δυνατό να ανοίξει ο σύνδεσμος.',
+              'The link could not be opened.',
+            ),
+          ),
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -299,6 +324,29 @@ class ExperienceSettingsPage extends StatelessWidget {
                       store.updatePreferences(audioCueStyle: value.first),
                 ),
               ],
+              const Divider(height: 26),
+              _SectionTitle(
+                label: l.text('ΑΠΟΡΡΗΤΟ & ΒΟΗΘΕΙΑ', 'PRIVACY & SUPPORT'),
+              ),
+              const SizedBox(height: 7),
+              _SettingsTile(
+                icon: Icons.privacy_tip_outlined,
+                title: l.text('Πολιτική απορρήτου', 'Privacy policy'),
+                subtitle: l.text(
+                  'Δες τι μένει στη συσκευή σου και τι δεν συλλέγεται.',
+                  'See what stays on your device and what is not collected.',
+                ),
+                onTap: () => _openExternal(context, _privacyUri),
+              ),
+              _SettingsTile(
+                icon: Icons.help_outline,
+                title: l.text('Υποστήριξη', 'Support'),
+                subtitle: l.text(
+                  'Οδηγίες εγκατάστασης, backup και αναφοράς προβλημάτων.',
+                  'Installation, backup, and problem-reporting guidance.',
+                ),
+                onTap: () => _openExternal(context, _supportUri),
+              ),
               const Divider(height: 26),
               _SectionTitle(label: l.text('ΕΡΓΑΛΕΙΑ', 'TOOLS')),
               const SizedBox(height: 7),

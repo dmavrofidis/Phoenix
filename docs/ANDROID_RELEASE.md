@@ -2,6 +2,7 @@
 
 Το Android package είναι `com.phoenix.fitness`. Η παραγωγική έκδοση απαιτεί
 ιδιωτικό upload keystore και δεν αποθηκεύει κωδικούς ή κλειδιά στο repository.
+Η έκδοση κλειδώνει `compileSdk` και `targetSdk` στο API 36.
 
 1. Δημιούργησε upload key σύμφωνα με το Play App Signing.
 2. Αντέγραψε το `mobile/android/key.properties.example` σε
@@ -10,6 +11,7 @@
 4. Εκτέλεσε:
 
 ```powershell
+.\scripts\verify_store_readiness.ps1
 .\scripts\build_android_release.ps1
 ```
 

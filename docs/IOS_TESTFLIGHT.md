@@ -34,6 +34,8 @@ Developer account και να χρησιμοποιηθεί και στο App Sto
 Το workflow .github/workflows/ios-testflight.yml εισάγει certificate και
 profile σε προσωρινό keychain, κάνει signed archive, εξάγει IPA, γράφει SHA-256
 checksum και διαγράφει τα signing αρχεία ακόμη και αν αποτύχει κάποιο βήμα.
+Το `build name` διαβάζεται αυτόματα από το `mobile/pubspec.yaml`, ώστε το iOS
+archive να μην μπορεί να μείνει σε παλιά, hard-coded έκδοση.
 
 ## Πρώτη διάθεση
 

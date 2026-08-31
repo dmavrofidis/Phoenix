@@ -13,6 +13,8 @@ Business model for first release: Free, no account, no ads, no in-app purchases
 - Privacy policy: `https://phoenix-fitness-local.d-mavrofidis.chatgpt.site/privacy`
 - Support: `https://phoenix-fitness-local.d-mavrofidis.chatgpt.site/support`
 - Support email: `<the account owner must provide the verified store email>`
+- Android release baseline: API 36 target/compile, Android 7.0+ (`minSdk 24`)
+- iOS release baseline: iOS 13+, privacy manifest with no tracking or off-device collection
 
 The identifier must be reserved in both developer accounts before the first
 upload. If it is unavailable, change it before creating either store record.
@@ -58,7 +60,9 @@ upload. If it is unavailable, change it before creating either store record.
 και μοιραστείς ένα backup.
 
 Το Phoenix είναι εργαλείο γενικής άσκησης και ευεξίας. Δεν είναι ιατρική
-συσκευή και δεν αντικαθιστά επαγγελματία υγείας.
+συσκευή και δεν διαγιγνώσκει, θεραπεύει, ιάται ή προλαμβάνει οποιαδήποτε
+ιατρική πάθηση. Για ιατρική συμβουλή, διάγνωση ή θεραπεία απευθύνσου σε
+κατάλληλο επαγγελματία υγείας.
 
 ### Τι νέο υπάρχει — 1.5.1
 
@@ -106,7 +110,8 @@ on the device. The current release contains no ads or tracking. Moving to a new
 device happens only when you explicitly create and share a backup.
 
 Phoenix is a general fitness and wellbeing tool. It is not a medical device and
-does not replace advice from a qualified health professional.
+does not diagnose, treat, cure, or prevent any medical condition. Consult a
+qualified healthcare professional for medical advice, diagnosis, or treatment.
 
 ### What’s new — 1.5.1
 
@@ -156,7 +161,9 @@ Tracking. Ein Gerätewechsel erfolgt nur, wenn du ausdrücklich ein Backup
 erstellst und weitergibst.
 
 Phoenix ist ein allgemeines Fitness- und Wohlbefindenswerkzeug. Die App ist kein
-Medizinprodukt und ersetzt keine Beratung durch qualifiziertes Fachpersonal.
+Medizinprodukt und diagnostiziert, behandelt, heilt oder verhindert keine
+Erkrankungen. Wende dich für medizinische Beratung, Diagnose oder Behandlung an
+qualifiziertes medizinisches Fachpersonal.
 
 ### Neu in Version 1.5.1
 
@@ -177,11 +184,64 @@ rating. Use these prepared answers for the current binary:
 | Ads or paid digital purchases | None |
 | Unrestricted web browsing | No |
 | Fitness, nutrition, and wellbeing guidance | Yes |
-| Medical diagnosis or treatment | No |
+| Apple “Health or Wellness Topics” | Yes; expected Apple rating is 9+ on iOS 26+, subject to the store questionnaire |
+| Medical or treatment information | None |
+| Medical diagnosis, treatment, cure, or prevention | No |
+| Regulated medical device | No in every distribution region |
 | Camera/photo access | Optional, user initiated |
 | Location access | None |
 | Intended audience | General audience; not specifically directed at children |
 | Minors | Use with parent/guardian knowledge and supervision |
+
+## Google Play declarations prepared for this binary
+
+### Health apps declaration
+
+Select only these current features:
+
+- `Activity and fitness`
+- `Nutrition and weight management`
+- `Sleep management`
+- `Stress management, relaxation, mental acuity`
+
+Do not select a medical category, medical-device status, Health Connect, period
+tracking, clinical decision support, rehabilitation, research, or emergency
+care. Phoenix stores user-entered information locally and makes no medical
+claim.
+
+### Data safety
+
+- Does the app collect or share user data off the device? `No`
+- Ads, analytics, advertising ID, or tracking SDKs? `No`
+- Account creation? `No`
+- User-requested export or share? `Yes`; this is an explicit user action and the
+  user chooses the destination.
+- Can users delete their data? `Yes`; through in-app local deletion controls or
+  by removing the app and its local data.
+- Privacy-policy URL: `https://phoenix-fitness-local.d-mavrofidis.chatgpt.site/privacy`
+- In-app privacy access: `Me → Phoenix Experience → Privacy policy`
+
+### App content
+
+- Contains ads: `No`
+- App access: `All core features are available without a login`
+- Target audience: `Not specifically designed for children`
+- Unrestricted web access: `No`; only user-initiated links to specific external
+  HTTPS services are opened.
+- Health disclaimer: use the exact disclaimer included in every localized full
+  description above.
+
+## Apple declarations prepared for this binary
+
+- App Privacy — data collected: `No, we do not collect data from this app`
+- Privacy Policy URL: `https://phoenix-fitness-local.d-mavrofidis.chatgpt.site/privacy`
+- User Privacy Choices URL: the same privacy page is acceptable for this
+  local-only release because it explains local deletion and export choices.
+- Age rating: answer `Health or Wellness Topics = Yes`; all violence, sexual
+  content, gambling, advertising, social, messaging, and unrestricted-web
+  fields are absent. Apple calculates the final regional ratings.
+- Regulated Medical Device Status: `No` for EU/EEA, UK, and US.
+- Sign-in required for review: `No`.
 
 ## Reviewer notes
 
@@ -210,7 +270,9 @@ The user chooses the destination of an encrypted backup. The app does not
 silently upload health or fitness information.
 
 Phoenix provides general fitness and wellbeing information. It is not a medical
-device and does not diagnose, treat, or claim to prevent disease.
+device and does not diagnose, treat, cure, or prevent any medical condition.
+Users are directed to a qualified healthcare professional for medical advice,
+diagnosis, or treatment.
 
 ## Visual asset inventory
 
@@ -233,3 +295,17 @@ medical note, PIN, backup payload, or personal training history is present.
 - Developer account address and phone required by the stores
 - Final country availability, trader status, and price (`Free` recommended)
 - Confirmation that `com.phoenix.fitness` was successfully reserved
+
+## Account- or payment-dependent actions intentionally not performed
+
+- Apple Developer Program enrollment and App Store Connect app creation
+- Google Play Console developer registration and app creation
+- Reservation of `com.phoenix.fitness` inside those accounts
+- Creation of Apple distribution certificates/profiles and the Android upload
+  keystore passwords
+- Upload to TestFlight, App Store Connect, or Google Play
+
+Everything else in this package is prepared without a paid service. Run
+`./scripts/verify_store_readiness.ps1` from the repository root before every
+submission to recheck identifiers, platform privacy declarations, public URLs,
+API level, and visual-asset dimensions.

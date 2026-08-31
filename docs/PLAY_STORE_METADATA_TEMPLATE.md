@@ -4,11 +4,12 @@ Use sanitized screenshots and verify every statement against the release artifac
 
 ## Listing
 
-- App name: `Phoenix — Local Fitness OS`
-- Short description: `Private, offline-first training, nutrition and recovery tools.`
+- App name: `Phoenix Fitness`
+- Short description: `Simple fitness and nutrition, with your personal data kept on your device.`
 - Category: `Health & Fitness`
 - Support contact: `<release owner supplies this>`
-- Privacy-policy URL: `<release owner supplies this>`
+- Support URL: `https://phoenix-fitness-local.d-mavrofidis.chatgpt.site/support`
+- Privacy-policy URL: `https://phoenix-fitness-local.d-mavrofidis.chatgpt.site/privacy`
 
 ## Long-description facts
 
@@ -29,7 +30,22 @@ Use sanitized screenshots and verify every statement against the release artifac
 
 ## Data-safety review prompts
 
-- Does this exact build transmit any user data? `<verify before every release>`
+- Does this exact build collect or share user data off the device? `No.`
 - Are crash reporting, analytics or advertising SDKs present? `No in the current repository.`
 - Can users export and delete their local data? `Yes, through explicit portability and retention controls.`
 - Is Android system backup disabled for profile databases? `Yes.`
+
+## Health apps declaration
+
+- Activity and fitness: `Yes`
+- Nutrition and weight management: `Yes`
+- Sleep management: `Yes`
+- Stress management, relaxation, mental acuity: `Yes`
+- Medical categories or medical-device status: `No`
+- Health Connect access: `No`
+
+Use this disclaimer in the full description:
+
+> Phoenix is not a medical device and does not diagnose, treat, cure, or
+> prevent any medical condition. Consult a qualified healthcare professional
+> for medical advice, diagnosis, or treatment.

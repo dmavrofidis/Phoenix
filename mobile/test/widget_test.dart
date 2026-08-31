@@ -11055,6 +11055,11 @@ void main() {
       expect(spanish.text('Διατροφή', 'Nutrition'), 'Nutrición');
       expect(english.text('Αποθήκευση', 'Save'), 'Save');
       expect(
+        german.text('Πολιτική απορρήτου', 'Privacy policy'),
+        'Datenschutzerklärung',
+      );
+      expect(spanish.text('Υποστήριξη', 'Support'), 'Ayuda');
+      expect(
         german.text('Άγνωστο', 'Feature-specific copy'),
         'Feature-specific copy',
       );
