@@ -8,7 +8,7 @@
 
 - Display name: Phoenix
 - Bundle identifier: com.phoenix.fitness
-- Version: 1.1.0
+- Version: 1.5.1 (build 10)
 - Ελάχιστη έκδοση: iOS 13
 - Privacy manifest: χωρίς tracking domains ή δεδομένα που αποστέλλονται εκτός
   συσκευής

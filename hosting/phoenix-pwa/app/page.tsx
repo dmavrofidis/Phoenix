@@ -46,6 +46,12 @@ export default function Home() {
           Χωρίς λογαριασμό · Χωρίς tracking · Λειτουργεί και offline μετά την
           πρώτη φόρτωση.
         </p>
+
+        <nav className="legal-links" aria-label="Πληροφορίες και υποστήριξη">
+          <a href="/privacy">Απόρρητο</a>
+          <span aria-hidden="true">·</span>
+          <a href="/support">Υποστήριξη</a>
+        </nav>
       </section>
     </main>
   );

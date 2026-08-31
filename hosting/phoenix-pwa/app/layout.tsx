@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { headers } from "next/headers";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -13,36 +12,26 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export async function generateMetadata(): Promise<Metadata> {
-  const requestHeaders = await headers();
-  const host =
-    requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host");
-  const protocol = requestHeaders.get("x-forwarded-proto") ?? "https";
-  const metadataBase = host
-    ? new URL(protocol + "://" + host)
-    : undefined;
+const publicOrigin = "https://phoenix-fitness-local.d-mavrofidis.chatgpt.site";
 
-  return {
-    metadataBase,
-    title: "Phoenix — Local fitness στο iPhone σου",
+export const metadata: Metadata = {
+  metadataBase: new URL(publicOrigin),
+  title: "Phoenix — Local fitness στο κινητό σου",
+  description:
+    "Ιδιωτική, local-first εφαρμογή άσκησης και διατροφής για την καθημερινότητα.",
+  icons: {
+    icon: "/app/favicon.png",
+    shortcut: "/app/favicon.png",
+    apple: "/app/icons/Icon-192.png",
+  },
+  openGraph: {
+    type: "website",
+    title: "Phoenix — Μικρά βήματα. Μεγάλη αλλαγή.",
     description:
-      "Εγκατάστησε το ιδιωτικό, offline-first Phoenix στο iPhone σου.",
-    icons: {
-      icon: "/app/favicon.png",
-      shortcut: "/app/favicon.png",
-      apple: "/app/icons/Icon-192.png",
-    },
-    openGraph: {
-      type: "website",
-      title: "Phoenix — Μικρά βήματα. Μεγάλη αλλαγή.",
-      description:
-        "Η local-first εφαρμογή fitness που κρατά τα δεδομένα στη συσκευή σου.",
-      images: metadataBase
-        ? [new URL("/og.png", metadataBase).toString()]
-        : undefined,
-    },
-  };
-}
+      "Η local-first εφαρμογή fitness που κρατά τα δεδομένα στη συσκευή σου.",
+    images: [new URL("/og.png", publicOrigin).toString()],
+  },
+};
 
 export const viewport: Viewport = {
   colorScheme: "dark",

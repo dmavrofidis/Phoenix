@@ -4,13 +4,13 @@ import test from "node:test";
 
 const templateRoot = new URL("../", import.meta.url);
 
-async function render() {
+async function render(pathname = "/") {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
   workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}`);
   const { default: worker } = await import(workerUrl.href);
 
   return worker.fetch(
-    new Request("http://localhost/", {
+    new Request(`http://localhost${pathname}`, {
       headers: { accept: "text/html" },
     }),
     {
@@ -37,6 +37,28 @@ test("server-renders the Phoenix iPhone installer", async () => {
   assert.match(html, /Προσθήκη στην οθόνη Αφετηρίας/);
   assert.match(html, /Χωρίς tracking/);
   assert.doesNotMatch(html, /Codex|codex-preview|react-loading-skeleton/);
+});
+
+test("server-renders the public privacy and support pages", async () => {
+  const [privacyResponse, supportResponse] = await Promise.all([
+    render("/privacy"),
+    render("/support"),
+  ]);
+
+  assert.equal(privacyResponse.status, 200);
+  assert.equal(supportResponse.status, 200);
+
+  const [privacyHtml, supportHtml] = await Promise.all([
+    privacyResponse.text(),
+    supportResponse.text(),
+  ]);
+  assert.match(privacyHtml, /Πολιτική Απορρήτου/);
+  assert.match(privacyHtml, /English/);
+  assert.match(privacyHtml, /Deutsch/);
+  assert.match(privacyHtml, /31 Αυγούστου 2026/);
+  assert.match(supportHtml, /Είμαστε εδώ για να βοηθήσουμε/);
+  assert.match(supportHtml, /github\.com\/dmavrofidis\/Phoenix\/issues/);
+  assert.match(supportHtml, /Μεταφορά σε άλλη συσκευή/);
 });
 
 test("bundles the Phoenix offline PWA shell", async () => {
