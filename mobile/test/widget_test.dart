@@ -1019,6 +1019,17 @@ void main() {
     expect(guide.equipmentLabel, contains('ΧΩΡΙΣ ΛΑΣΤΙΧΟ'));
   });
 
+  test('το περπάτημα έξω έχει δικό του οδηγό χωρίς εικόνα γυμναστηρίου', () {
+    final guide = ExerciseGuideCatalog.forExercise(
+      'Περπάτημα σε εξωτερικό χώρο',
+      atHome: true,
+    );
+
+    expect(guide, isNotNull);
+    expect(guide!.assetPath, contains('outdoor-walking-guide-v1.png'));
+    expect(guide.equipmentLabel, 'ΕΞΩ • ΧΩΡΙΣ ΕΞΟΠΛΙΣΜΟ');
+  });
+
   test('η προθέρμανση στο σπίτι σέβεται τον πραγματικό εξοπλισμό', () {
     const profile = UserProfile(
       goal: 'Γενική φυσική κατάσταση',
@@ -2277,7 +2288,10 @@ void main() {
     await tester.pumpWidget(PhoenixApp(store: store));
 
     expect(find.text('Τι θέλεις να κάνεις σήμερα;'), findsOneWidget);
-    expect(find.text('Πώς είναι η μέρα σου;'), findsOneWidget);
+    expect(find.text('Ξεκίνα από εκεί που είσαι'), findsOneWidget);
+    expect(find.byKey(const ValueKey('quick-start-7')), findsOneWidget);
+    expect(find.byKey(const ValueKey('quick-start-15')), findsOneWidget);
+    expect(find.byKey(const ValueKey('quick-start-30')), findsOneWidget);
     expect(find.byKey(const ValueKey('daily-check-in-action')), findsOneWidget);
     expect(find.text('Θέλω κανονική προπόνηση'), findsNothing);
     await tester.scrollUntilVisible(
@@ -2293,7 +2307,7 @@ void main() {
     expect(find.textContaining('RIR'), findsNothing);
     expect(
       find.byKey(const ValueKey('daily-exercise-guide-Farmer carry')),
-      findsNothing,
+      findsOneWidget,
     );
   });
 
@@ -2338,6 +2352,10 @@ void main() {
     );
     await tester.ensureVisible(exerciseRow);
     await tester.pumpAndSettle();
+    expect(
+      find.byKey(ValueKey('daily-exercise-guide-$exercise')),
+      findsOneWidget,
+    );
     await tester.tap(exerciseRow);
     await tester.pumpAndSettle();
 
@@ -2563,6 +2581,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(RecommendedNutritionPage), findsOneWidget);
     expect(find.text('Έτοιμο για εσένα'), findsOneWidget);
+    expect(find.byKey(const ValueKey('simple-plate-guide')), findsOneWidget);
+    expect(find.text('Ένα πιάτο χωρίς μέτρημα'), findsOneWidget);
     expect(find.text('Οι επιλογές μου'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('Η εβδομάδα μου'),
@@ -10956,6 +10976,42 @@ void main() {
       findsOneWidget,
     );
     expect(find.textContaining('every return counts'), findsOneWidget);
+  });
+
+  testWidgets('quick start opens a seven-minute equipment-safe workout', (
+    tester,
+  ) async {
+    final repository = MemoryRepository()
+      ..value = FitnessData.initial().copyWith(
+        profile: const UserProfile(
+          goal: 'Strength',
+          trainingPlace: 'Home',
+          equipment: 'Bodyweight',
+          daysPerWeek: 3,
+          heightCentimeters: 180,
+          weightKilograms: 80,
+        ),
+      );
+    final store = FitnessStore(repository);
+    await store.load();
+    await tester.pumpWidget(MaterialApp(home: PhoenixShell(store: store)));
+    await tester.pumpAndSettle();
+
+    final quickStart = find.byKey(const ValueKey('quick-start-7'));
+    await tester.ensureVisible(quickStart);
+    await tester.tap(quickStart);
+    await tester.pumpAndSettle();
+
+    expect(store.dailyCompanionCheckIn?.minutes, 7);
+    expect(store.hasActiveWorkout, isTrue);
+    expect(find.byType(ActiveWorkoutPage), findsOneWidget);
+    expect(
+      store.activeWorkout!.exercises.every(
+        (exercise) =>
+            EquipmentAvailability.supportsExercise(exercise, store.profile),
+      ),
+      isTrue,
+    );
   });
 
   test('every historical storage version reaches the current schema', () {

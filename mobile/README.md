@@ -56,7 +56,7 @@ flutter build web --release --no-tree-shake-icons
 ## Quality status
 
 - `flutter analyze`: no issues
-- `flutter test`: 459/459 passing
+- `flutter test`: 461/461 passing
 - `flutter build web --release`: passing
 - The Android SDK is available locally, while a JDK and private release signing
   key are intentionally not installed or generated on this workstation. The

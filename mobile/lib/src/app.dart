@@ -2996,6 +2996,23 @@ class _ProgressPageState extends State<ProgressPage> {
   }
 }
 
+Future<void> _quickStartDailyPlan(
+  BuildContext context,
+  FitnessStore store,
+  int minutes,
+) async {
+  final navigator = Navigator.of(context);
+  final location = EquipmentAvailability.isHome(store.profile) ? 'home' : 'gym';
+  await store.saveDailyCompanionCheckIn(
+    minutes: minutes,
+    energy: 3,
+    location: location,
+    confirmWithFeedback: false,
+  );
+  if (!navigator.mounted) return;
+  _openWorkout(navigator.context, store, store.dailyCompanionPlan.workout);
+}
+
 class _DailyCompanionCard extends StatelessWidget {
   const _DailyCompanionCard({required this.store});
 
@@ -3016,25 +3033,8 @@ class _DailyCompanionCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: colors.primary.withValues(alpha: .12),
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Text(
-                l.text('30 ΔΕΥΤΕΡΟΛΕΠΤΑ', '30 SECONDS'),
-                style: TextStyle(
-                  color: colors.primary,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: .7,
-                ),
-              ),
-            ),
-            const SizedBox(height: 14),
             Text(
-              l.text('Πώς είναι η μέρα σου;', 'How is your day?'),
+              l.text('Ξεκίνα από εκεί που είσαι', 'Start where you are'),
               style: Theme.of(
                 context,
               ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
@@ -3042,17 +3042,44 @@ class _DailyCompanionCard extends StatelessWidget {
             const SizedBox(height: 7),
             Text(
               l.text(
-                'Πες μόνο πόσο χρόνο και ενέργεια έχεις. Το Phoenix θα διαλέξει ένα ασφαλές επόμενο βήμα.',
-                'Share only your available time and energy. Phoenix will choose one safe next step.',
+                'Χωρίς ενόχληση; Διάλεξε χρόνο. Το πλάνο χρησιμοποιεί μόνο τον εξοπλισμό σου.',
+                'No discomfort? Choose a duration. The plan uses only your equipment.',
               ),
               style: TextStyle(color: colors.onSurfaceVariant, height: 1.45),
             ),
-            const SizedBox(height: 18),
-            FilledButton.icon(
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                for (final minutes in const [7, 15, 30]) ...[
+                  Expanded(
+                    child: OutlinedButton(
+                      key: ValueKey('quick-start-$minutes'),
+                      onPressed: () =>
+                          _quickStartDailyPlan(context, store, minutes),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 11),
+                        child: Text(
+                          '$minutes′',
+                          style: const TextStyle(fontWeight: FontWeight.w900),
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (minutes != 30) const SizedBox(width: 8),
+                ],
+              ],
+            ),
+            const SizedBox(height: 10),
+            TextButton.icon(
               key: const ValueKey('daily-check-in-action'),
               onPressed: () => _showDailyCompanionCheckIn(context, store),
-              icon: const Icon(Icons.waving_hand_outlined),
-              label: Text(l.text('Πες μου πώς είσαι', 'Tell me how you are')),
+              icon: const Icon(Icons.tune_outlined),
+              label: Text(
+                l.text(
+                  'Έχω ενόχληση ή θέλω προσαρμογή',
+                  'I have discomfort or need adjustments',
+                ),
+              ),
             ),
           ],
         ),
@@ -4199,6 +4226,7 @@ class _DailyExerciseRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final guide = ExerciseGuideCatalog.forExercise(exercise, atHome: atHome);
+    final equipmentLabel = guide?.localizedEquipmentLabel(context.l10n) ?? '';
     return InkWell(
       key: ValueKey('daily-exercise-row-$exercise'),
       borderRadius: BorderRadius.circular(12),
@@ -4209,22 +4237,64 @@ class _DailyExerciseRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 10),
         child: Row(
           children: [
-            Container(
-              width: 30,
-              height: 30,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: colors.primary.withValues(alpha: .1),
-                borderRadius: BorderRadius.circular(9),
-              ),
-              child: Text(
-                '$index',
-                style: TextStyle(
-                  color: colors.primary,
-                  fontWeight: FontWeight.w900,
+            if (guide != null)
+              SizedBox(
+                key: ValueKey('daily-exercise-guide-$exercise'),
+                width: 104,
+                height: 62,
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: ExerciseGuidePreview(
+                        guide: guide,
+                        semanticLabel: context.l10n.text(
+                          'Οπτικός οδηγός για την άσκηση ${PhoenixCopy.exerciseName(context.l10n, exercise)}',
+                          'Visual guide for ${PhoenixCopy.exerciseName(context.l10n, exercise)}',
+                        ),
+                        height: 62,
+                        borderRadius: BorderRadius.circular(11),
+                      ),
+                    ),
+                    Positioned(
+                      left: 5,
+                      top: 5,
+                      child: Container(
+                        width: 24,
+                        height: 24,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: colors.surface.withValues(alpha: .86),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          '$index',
+                          style: TextStyle(
+                            color: colors.primary,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              Container(
+                width: 30,
+                height: 30,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: colors.primary.withValues(alpha: .1),
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: Text(
+                  '$index',
+                  style: TextStyle(
+                    color: colors.primary,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
               ),
-            ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -4258,6 +4328,18 @@ class _DailyExerciseRow extends StatelessWidget {
                         fontWeight: FontWeight.w800,
                       ),
                     ),
+                    if (equipmentLabel.isNotEmpty) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        equipmentLabel,
+                        style: TextStyle(
+                          color: colors.primary.withValues(alpha: .78),
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: .35,
+                        ),
+                      ),
+                    ],
                   ],
                 ],
               ),

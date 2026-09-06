@@ -1302,7 +1302,8 @@ class AppPreferences {
     nutritionQuickPrep: json['nutritionQuickPrep'] as bool? ?? true,
     nutritionNoCooking: json['nutritionNoCooking'] as bool? ?? false,
     dailyCheckInDate: json['dailyCheckInDate'] as String? ?? '',
-    dailyMinutes: const {5, 10, 20, 40}.contains(json['dailyMinutes'])
+    dailyMinutes:
+        const {5, 7, 10, 15, 20, 30, 40}.contains(json['dailyMinutes'])
         ? json['dailyMinutes'] as int
         : 10,
     dailyEnergy: (json['dailyEnergy'] as int? ?? 3).clamp(1, 5),

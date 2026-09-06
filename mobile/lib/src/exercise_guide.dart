@@ -21,6 +21,32 @@ class ExerciseGuide {
   final String avoid;
   final String equipmentLabel;
   final int stageCount;
+
+  String localizedEquipmentLabel(PhoenixL10n l) => switch (equipmentLabel) {
+    'ΣΠΙΤΙ • ΧΩΡΙΣ ΕΞΟΠΛΙΣΜΟ' => l.text(
+      'ΣΠΙΤΙ • ΧΩΡΙΣ ΕΞΟΠΛΙΣΜΟ',
+      'HOME • NO EQUIPMENT',
+    ),
+    'ΣΠΙΤΙ • ΑΛΤΗΡΕΣ' => l.text('ΣΠΙΤΙ • ΑΛΤΗΡΕΣ', 'HOME • DUMBBELLS'),
+    'ΣΠΙΤΙ • ΛΑΣΤΙΧΟ' => l.text('ΣΠΙΤΙ • ΛΑΣΤΙΧΟ', 'HOME • BAND'),
+    'ΣΠΙΤΙ • ΑΠΛΟΣ ΔΙΑΔΡΟΜΟΣ' => l.text(
+      'ΣΠΙΤΙ • ΑΠΛΟΣ ΔΙΑΔΡΟΜΟΣ',
+      'HOME • BASIC TREADMILL',
+    ),
+    'ΣΠΙΤΙ • ΜΟΝΟΖΥΓΟ • ΧΩΡΙΣ ΛΑΣΤΙΧΟ' => l.text(
+      'ΣΠΙΤΙ • ΜΟΝΟΖΥΓΟ • ΧΩΡΙΣ ΛΑΣΤΙΧΟ',
+      'HOME • PULL-UP BAR • NO BAND',
+    ),
+    'ΣΠΙΤΙ • ΣΤΑΘΕΡΗ ΚΑΡΕΚΛΑ' => l.text(
+      'ΣΠΙΤΙ • ΣΤΑΘΕΡΗ ΚΑΡΕΚΛΑ',
+      'HOME • STABLE CHAIR',
+    ),
+    'ΕΞΩ • ΧΩΡΙΣ ΕΞΟΠΛΙΣΜΟ' => l.text(
+      'ΕΞΩ • ΧΩΡΙΣ ΕΞΟΠΛΙΣΜΟ',
+      'OUTDOORS • NO EQUIPMENT',
+    ),
+    _ => equipmentLabel,
+  };
 }
 
 class ExerciseGuideCatalog {
@@ -28,6 +54,14 @@ class ExerciseGuideCatalog {
 
   static ExerciseGuide? forExercise(String exercise, {bool atHome = false}) {
     final name = exercise.toLowerCase();
+
+    if (name.contains('περπάτημα σε εξωτερικό') ||
+        name.contains('outdoor walk')) {
+      return _outdoorWalking(
+        'Περπάτα με ήρεμο, φυσικό βήμα, χαλαρούς ώμους και βλέμμα μπροστά.',
+        'Μην κυνηγάς ταχύτητα και μην συνεχίζεις αν νιώσεις πόνο ή ζάλη.',
+      );
+    }
 
     if (atHome) return _forHomeExercise(name);
 
@@ -561,6 +595,17 @@ class ExerciseGuideCatalog {
     equipmentLabel: 'ΣΠΙΤΙ • ΜΟΝΟΖΥΓΟ • ΧΩΡΙΣ ΛΑΣΤΙΧΟ',
   );
 
+  static ExerciseGuide _outdoorWalking(String execution, String avoid) =>
+      _guide(
+        'outdoor-walking-guide-v1.png',
+        0,
+        1,
+        execution,
+        avoid,
+        equipmentLabel: 'ΕΞΩ • ΧΩΡΙΣ ΕΞΟΠΛΙΣΜΟ',
+        stageCount: 3,
+      );
+
   static ExerciseGuide _homeRestartBasics(
     int index,
     String execution,
@@ -644,114 +689,137 @@ Future<void> showExerciseGuide(
   context: context,
   isScrollControlled: true,
   showDragHandle: true,
-  builder: (context) => SafeArea(
-    child: SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            PhoenixCopy.exerciseName(context.l10n, exercise),
-            style: Theme.of(
-              context,
-            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'ΑΡΧΙΚΗ ΘΕΣΗ  →  ΤΕΛΙΚΗ ΘΕΣΗ',
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.primary,
-              fontWeight: FontWeight.w800,
-              letterSpacing: .7,
-              fontSize: 12,
+  builder: (context) {
+    final l = context.l10n;
+    final equipmentLabel = guide.localizedEquipmentLabel(l);
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              PhoenixCopy.exerciseName(context.l10n, exercise),
+              style: Theme.of(
+                context,
+              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
             ),
-          ),
-          const SizedBox(height: 16),
-          if (guide.equipmentLabel.isNotEmpty) ...[
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: Theme.of(
-                  context,
-                ).colorScheme.primary.withValues(alpha: .1),
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(
+            const SizedBox(height: 6),
+            Text(
+              l.text(
+                'ΑΡΧΙΚΗ ΘΕΣΗ  →  ΤΕΛΙΚΗ ΘΕΣΗ',
+                'START POSITION  →  END POSITION',
+              ),
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.primary,
+                fontWeight: FontWeight.w800,
+                letterSpacing: .7,
+                fontSize: 12,
+              ),
+            ),
+            const SizedBox(height: 16),
+            if (equipmentLabel.isNotEmpty) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
                   color: Theme.of(
                     context,
-                  ).colorScheme.primary.withValues(alpha: .24),
+                  ).colorScheme.primary.withValues(alpha: .1),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.primary.withValues(alpha: .24),
+                  ),
+                ),
+                child: Text(
+                  equipmentLabel,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.primary,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 11,
+                    letterSpacing: .45,
+                  ),
                 ),
               ),
-              child: Text(
-                guide.equipmentLabel,
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.primary,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 11,
-                  letterSpacing: .45,
-                ),
-              ),
+              const SizedBox(height: 10),
+            ],
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: _GuideBand(guide: guide),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              l.text('3 απλά βήματα', '3 simple steps'),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
             ),
             const SizedBox(height: 10),
-          ],
-          ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: _GuideBand(guide: guide),
-          ),
-          const SizedBox(height: 18),
-          Text(
-            '3 απλά βήματα',
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
-          ),
-          const SizedBox(height: 10),
-          const _GuideStep(
-            number: 1,
-            detail: 'Στήσου σταθερά και βεβαιώσου ότι έχεις αρκετό χώρο.',
-          ),
-          const SizedBox(height: 8),
-          _GuideStep(number: 2, detail: guide.execution),
-          const SizedBox(height: 8),
-          const _GuideStep(
-            number: 3,
-            detail: 'Κινήσου αργά και σταμάτα πριν χάσεις τον έλεγχο.',
-          ),
-          const SizedBox(height: 16),
-          _GuideCue(
-            icon: Icons.check_circle_outline,
-            color: const Color(0xFF61D095),
-            title: 'ΤΙ ΝΑ ΠΡΟΣΕΞΕΙΣ',
-            detail: 'Η κίνηση πρέπει να παραμένει άνετη και ελεγχόμενη.',
-          ),
-          const SizedBox(height: 12),
-          _GuideCue(
-            icon: Icons.warning_amber_rounded,
-            color: const Color(0xFFFF9E80),
-            title: 'ΣΥΝΗΘΙΣΜΕΝΟ ΛΑΘΟΣ',
-            detail: guide.avoid,
-          ),
-          const SizedBox(height: 12),
-          const _GuideCue(
-            icon: Icons.health_and_safety_outlined,
-            color: Color(0xFF8FC5A8),
-            title: 'ΑΣΦΑΛΕΣΤΕΡΗ ΕΠΙΛΟΓΗ',
-            detail:
-                'Μείωσε το βάρος ή το εύρος της κίνησης. Αν δεν νιώθεις ασφάλεια, διάλεξε ευκολότερη εκδοχή ή σταμάτα.',
-          ),
-          const SizedBox(height: 14),
-          Text(
-            'Η εικόνα είναι οδηγός τεχνικής, όχι ιατρική αξιολόγηση. '
-            'Αν υπάρχει πόνος, σταμάτα την άσκηση.',
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: .45),
-              fontSize: 12,
-              height: 1.4,
+            _GuideStep(
+              number: 1,
+              detail: l.text(
+                'Στήσου σταθερά και βεβαιώσου ότι έχεις αρκετό χώρο.',
+                'Set up in a stable position and make sure you have enough room.',
+              ),
             ),
-          ),
-        ],
+            const SizedBox(height: 8),
+            _GuideStep(number: 2, detail: guide.execution),
+            const SizedBox(height: 8),
+            _GuideStep(
+              number: 3,
+              detail: l.text(
+                'Κινήσου αργά και σταμάτα πριν χάσεις τον έλεγχο.',
+                'Move slowly and stop before you lose control.',
+              ),
+            ),
+            const SizedBox(height: 16),
+            _GuideCue(
+              icon: Icons.check_circle_outline,
+              color: const Color(0xFF61D095),
+              title: l.text('ΤΙ ΝΑ ΠΡΟΣΕΞΕΙΣ', 'WHAT TO NOTICE'),
+              detail: l.text(
+                'Η κίνηση πρέπει να παραμένει άνετη και ελεγχόμενη.',
+                'The movement should stay comfortable and controlled.',
+              ),
+            ),
+            const SizedBox(height: 12),
+            _GuideCue(
+              icon: Icons.warning_amber_rounded,
+              color: const Color(0xFFFF9E80),
+              title: l.text('ΣΥΝΗΘΙΣΜΕΝΟ ΛΑΘΟΣ', 'COMMON MISTAKE'),
+              detail: guide.avoid,
+            ),
+            const SizedBox(height: 12),
+            _GuideCue(
+              icon: Icons.health_and_safety_outlined,
+              color: const Color(0xFF8FC5A8),
+              title: l.text('ΑΣΦΑΛΕΣΤΕΡΗ ΕΠΙΛΟΓΗ', 'SAFER OPTION'),
+              detail: l.text(
+                'Μείωσε το βάρος ή το εύρος της κίνησης. Αν δεν νιώθεις ασφάλεια, διάλεξε ευκολότερη εκδοχή ή σταμάτα.',
+                'Reduce the weight or range of motion. If you do not feel safe, choose an easier version or stop.',
+              ),
+            ),
+            const SizedBox(height: 14),
+            Text(
+              l.text(
+                'Η εικόνα είναι οδηγός τεχνικής, όχι ιατρική αξιολόγηση. Αν υπάρχει πόνος, σταμάτα την άσκηση.',
+                'The image is a technique guide, not a medical assessment. Stop the exercise if you feel pain.',
+              ),
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: .45),
+                fontSize: 12,
+                height: 1.4,
+              ),
+            ),
+          ],
+        ),
       ),
-    ),
-  ),
+    );
+  },
 );
 
 class _GuideStep extends StatelessWidget {
@@ -810,25 +878,27 @@ class _GuideBand extends StatelessWidget {
             ),
           ),
         ),
-        const Positioned(
+        Positioned(
           left: 10,
           top: 10,
-          child: _GuidePositionLabel(label: 'ΑΡΧΗ'),
+          child: _GuidePositionLabel(label: context.l10n.text('ΑΡΧΗ', 'START')),
         ),
         if (guide.stageCount == 3)
-          const Positioned.fill(
+          Positioned.fill(
             child: Align(
               alignment: Alignment.topCenter,
               child: Padding(
-                padding: EdgeInsets.only(top: 10),
-                child: _GuidePositionLabel(label: 'ΚΙΝΗΣΗ'),
+                padding: const EdgeInsets.only(top: 10),
+                child: _GuidePositionLabel(
+                  label: context.l10n.text('ΚΙΝΗΣΗ', 'MOVE'),
+                ),
               ),
             ),
           ),
-        const Positioned(
+        Positioned(
           right: 10,
           top: 10,
-          child: _GuidePositionLabel(label: 'ΤΕΛΟΣ'),
+          child: _GuidePositionLabel(label: context.l10n.text('ΤΕΛΟΣ', 'END')),
         ),
       ],
     );

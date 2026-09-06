@@ -180,6 +180,8 @@ class _RecommendedNutritionPageState extends State<RecommendedNutritionPage> {
             ),
           ),
           const SizedBox(height: 12),
+          const _SimplePlateGuide(),
+          const SizedBox(height: 12),
           Card(
             child: ExpansionTile(
               key: const ValueKey('nutrition-plan-options'),
@@ -408,7 +410,6 @@ class _DaySummary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
-    final calorieDelta = day.estimatedCalories - day.targets.calories;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -433,7 +434,10 @@ class _DaySummary extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  '${day.targets.calories} kcal',
+                  l.text(
+                    '${day.meals.length} γεύματα',
+                    '${day.meals.length} meals',
+                  ),
                   style: const TextStyle(fontWeight: FontWeight.w900),
                 ),
               ],
@@ -441,20 +445,18 @@ class _DaySummary extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               l.text(
-                '${day.meals.length} γεύματα • περίπου ${day.estimatedCalories} kcal • ${day.estimatedProtein.round()} g πρωτεΐνη',
-                '${day.meals.length} meals • about ${day.estimatedCalories} kcal • ${day.estimatedProtein.round()} g protein',
+                'Διάλεξε τις ιδέες που σε βολεύουν και σταμάτα όταν χορτάσεις άνετα. Δεν χρειάζεται να πετύχεις τέλειους αριθμούς.',
+                'Choose the ideas that fit your day and stop when comfortably full. You do not need perfect numbers.',
               ),
             ),
-            if (calorieDelta.abs() > day.targets.calories * .1) ...[
-              const SizedBox(height: 6),
-              Text(
-                l.text(
-                  'Ρύθμισε ελαφρά τις μερίδες σύμφωνα με την πείνα σου.',
-                  'Adjust portions slightly according to your hunger.',
-                ),
-                style: Theme.of(context).textTheme.bodySmall,
+            const SizedBox(height: 6),
+            Text(
+              l.text(
+                'Οι διατροφικές εκτιμήσεις υπάρχουν πιο κάτω μόνο αν θέλεις να τις δεις.',
+                'Nutrition estimates are available below only if you want to see them.',
               ),
-            ],
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
           ],
         ),
       ),
@@ -506,17 +508,42 @@ class _MealCard extends StatelessWidget {
               spacing: 8,
               runSpacing: 6,
               children: [
-                _MetricChip(label: '${meal.calories} kcal'),
-                _MetricChip(
-                  label: l.text(
-                    '${meal.proteinGrams.round()} g πρωτεΐνη',
-                    '${meal.proteinGrams.round()} g protein',
-                  ),
-                ),
                 _MetricChip(
                   label: l.text(
                     '${meal.prepMinutes} λεπτά',
                     '${meal.prepMinutes} min',
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            ExpansionTile(
+              key: ValueKey('meal-estimate-${meal.slotEnglish}'),
+              tilePadding: EdgeInsets.zero,
+              childrenPadding: EdgeInsets.zero,
+              dense: true,
+              title: Text(
+                l.text(
+                  'Θέλω να δω τη διατροφική εκτίμηση',
+                  'Show nutrition estimate',
+                ),
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              children: [
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    children: [
+                      _MetricChip(label: '${meal.calories} kcal'),
+                      _MetricChip(
+                        label: l.text(
+                          '${meal.proteinGrams.round()} g πρωτεΐνη',
+                          '${meal.proteinGrams.round()} g protein',
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -535,6 +562,117 @@ class _MealCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class _SimplePlateGuide extends StatelessWidget {
+  const _SimplePlateGuide();
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final colors = Theme.of(context).colorScheme;
+    return Card(
+      key: const ValueKey('simple-plate-guide'),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.pie_chart_outline_rounded, color: colors.primary),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    l.text(
+                      'Ένα πιάτο χωρίς μέτρημα',
+                      'A plate without counting',
+                    ),
+                    style: const TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              l.text(
+                'Για ένα απλό κύριο γεύμα, χρησιμοποίησε το χέρι και το πιάτο σου — όχι ζυγαριά.',
+                'For a simple main meal, use your hand and plate — not a scale.',
+              ),
+              style: TextStyle(color: colors.onSurfaceVariant),
+            ),
+            const SizedBox(height: 12),
+            _PlatePart(
+              color: const Color(0xFF79B9A1),
+              title: l.text('Μισό πιάτο', 'Half the plate'),
+              detail: l.text('Λαχανικά ή σαλάτα', 'Vegetables or salad'),
+            ),
+            _PlatePart(
+              color: const Color(0xFFE0AD73),
+              title: l.text('Μία παλάμη', 'One palm'),
+              detail: l.text(
+                'Πρωτεΐνη που σου ταιριάζει',
+                'A protein that works for you',
+              ),
+            ),
+            _PlatePart(
+              color: colors.primary,
+              title: l.text('Μία χούφτα', 'One handful'),
+              detail: l.text(
+                'Ρύζι, πατάτα, ψωμί ή όσπρια',
+                'Rice, potato, bread or legumes',
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PlatePart extends StatelessWidget {
+  const _PlatePart({
+    required this.color,
+    required this.title,
+    required this.detail,
+  });
+
+  final Color color;
+  final String title;
+  final String detail;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(top: 7),
+    child: Row(
+      children: [
+        Container(
+          width: 10,
+          height: 32,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(999),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+              Text(
+                detail,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _MetricChip extends StatelessWidget {

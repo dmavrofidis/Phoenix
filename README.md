@@ -16,7 +16,7 @@
 - Drift reliability v4 με checksums, Recovery Vault, quarantine και reversible restore
 - Provider-neutral encrypted device sync με conflict preview και safe merge
 - Local performance profiler και reviewed German/Spanish application-shell catalog
-- `flutter test` με 459 tests passing
+- `flutter test` με 461 tests passing
 
 Για συνέχεια από δεύτερο laptop, ακολούθησε το [private GitHub handoff](docs/CROSS_DEVICE_SETUP.md). Για release δες το [Phoenix 1.1 RC handoff](docs/PHOENIX_1_1_RC.md).
 
@@ -316,5 +316,5 @@ reminders, platform readiness και database reliability.
 Αναλυτική, ειλικρινής αντιστοίχιση και όρια υλοποίησης:
 [PHOENIX_289_UPGRADES.md](docs/PHOENIX_289_UPGRADES.md).
 
-Τρέχουσα επαλήθευση: **clean analysis, 459/459 tests passing, production web
+Τρέχουσα επαλήθευση: **clean analysis, 461/461 tests passing, production web
 build και successful Wasm dry-run**.

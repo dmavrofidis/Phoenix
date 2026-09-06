@@ -709,9 +709,12 @@ class FitnessStore extends ChangeNotifier {
     required int energy,
     required String location,
     String painArea = '',
+    bool confirmWithFeedback = true,
   }) async {
-    if (!const {5, 10, 20, 40}.contains(minutes)) {
-      throw const FormatException('Διάλεξε 5, 10, 20 ή 40 λεπτά.');
+    if (!const {5, 7, 10, 15, 20, 30, 40}.contains(minutes)) {
+      throw const FormatException(
+        'Διάλεξε έναν από τους διαθέσιμους χρόνους προπόνησης.',
+      );
     }
     if (energy < 1 || energy > 5) {
       throw const FormatException('Η ενέργεια πρέπει να είναι από 1 έως 5.');
@@ -731,7 +734,7 @@ class FitnessStore extends ChangeNotifier {
     );
     await _repository.save(_data);
     notifyListeners();
-    await feedback(success: true);
+    if (confirmWithFeedback) await feedback(success: true);
   }
 
   Future<void> activateHardDay() async {
