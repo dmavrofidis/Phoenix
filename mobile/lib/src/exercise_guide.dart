@@ -41,6 +41,10 @@ class ExerciseGuide {
       'ΣΠΙΤΙ • ΣΤΑΘΕΡΗ ΚΑΡΕΚΛΑ',
       'HOME • STABLE CHAIR',
     ),
+    'ΣΠΙΤΙ • ΣΤΑΘΕΡΟ ΤΡΑΠΕΖΙ' => l.text(
+      'ΣΠΙΤΙ • ΣΤΑΘΕΡΟ ΤΡΑΠΕΖΙ',
+      'HOME • STURDY TABLE',
+    ),
     'ΕΞΩ • ΧΩΡΙΣ ΕΞΟΠΛΙΣΜΟ' => l.text(
       'ΕΞΩ • ΧΩΡΙΣ ΕΞΟΠΛΙΣΜΟ',
       'OUTDOORS • NO EQUIPMENT',
@@ -425,10 +429,12 @@ class ExerciseGuideCatalog {
         'Μην πέφτεις στο κάθισμα και μη χρησιμοποιείς καρέκλα με ροδάκια.',
       );
     }
-    if (name.contains('squat') || name.contains('κάθισ')) {
-      return _homeNoEquipment(
+    if (name.contains('squat') ||
+        name.contains('κάθισ') ||
+        name.contains('καθίσ')) {
+      return _beginnerBodyweight(
         0,
-        'Χρησιμοποίησε σταθερή καρέκλα ως οδηγό και σήκω πιέζοντας όλο το πέλμα.',
+        'Βάλε μια σταθερή καρέκλα πίσω σου, πάτησε όλο το πέλμα και κάθισε με έλεγχο.',
         'Μην κατεβαίνεις βαθύτερα από όσο κρατάς έλεγχο και ισορροπία.',
       );
     }
@@ -442,7 +448,7 @@ class ExerciseGuideCatalog {
     if (name.contains('ανάστροφες προβολές') ||
         name.contains('bulgarian') ||
         name.contains('reverse lunge')) {
-      return _homeNoEquipment(
+      return _beginnerBodyweight(
         2,
         'Κράτησε ελαφρά μια σταθερή καρέκλα και κάνε μικρό ελεγχόμενο βήμα πίσω.',
         'Μην πιέζεις σε βάθος που σε κάνει να χάνεις ισορροπία.',
@@ -470,7 +476,7 @@ class ExerciseGuideCatalog {
         name.contains('incline push') ||
         name.contains('pike') ||
         name.contains('κάμψεις')) {
-      return _homeNoEquipmentB(
+      return _beginnerBodyweight(
         1,
         'Χρησιμοποίησε σταθερό τραπέζι, κράτησε το σώμα ίσιο και κατέβα αργά.',
         'Μη χρησιμοποιείς τραπεζάκι που μπορεί να μετακινηθεί ή να ανατραπεί.',
@@ -486,7 +492,7 @@ class ExerciseGuideCatalog {
     if (name.contains('dead bug') ||
         name.contains('hollow') ||
         name.contains('core')) {
-      return _homeNoEquipmentB(
+      return _beginnerBodyweight(
         3,
         'Κράτησε τη μέση ελεγχόμενη και άνοιξε αργά αντίθετο χέρι και πόδι.',
         'Μίκρυνε αμέσως το εύρος αν η μέση αρχίζει να σηκώνεται.',
@@ -562,6 +568,24 @@ class ExerciseGuideCatalog {
     execution,
     avoid,
     equipmentLabel: 'ΣΠΙΤΙ • ΑΛΤΗΡΕΣ',
+  );
+
+  static ExerciseGuide _beginnerBodyweight(
+    int index,
+    String execution,
+    String avoid,
+  ) => _guide(
+    'home-beginner-bodyweight-library-v1.png',
+    index,
+    4,
+    execution,
+    avoid,
+    equipmentLabel: switch (index) {
+      0 || 2 => 'ΣΠΙΤΙ • ΣΤΑΘΕΡΗ ΚΑΡΕΚΛΑ',
+      1 => 'ΣΠΙΤΙ • ΣΤΑΘΕΡΟ ΤΡΑΠΕΖΙ',
+      _ => 'ΣΠΙΤΙ • ΧΩΡΙΣ ΕΞΟΠΛΙΣΜΟ',
+    },
+    stageCount: 3,
   );
 
   static ExerciseGuide _homeCardio(int index, String execution, String avoid) =>

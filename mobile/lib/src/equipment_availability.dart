@@ -27,14 +27,18 @@ class EquipmentAvailability {
   static bool hasTreadmill(UserProfile? profile) =>
       _available(profile).containsAny(const ['διαδρομ', 'treadmill']);
 
-  static bool supportsExercise(String exercise, UserProfile? profile) {
-    if (profile == null) return true;
+  static List<String> missingEquipmentForExercise(
+    String exercise,
+    UserProfile? profile,
+  ) {
+    if (profile == null) return const [];
     final available = _available(profile);
     if (available.containsAny(const ['πληρεσ γυμναστηριο', 'full gym'])) {
-      return true;
+      return const [];
     }
 
     final name = _normalize(exercise);
+    final missing = <String>[];
     if (name.containsAny(const [
           'trap-bar',
           'trap bar',
@@ -65,11 +69,11 @@ class EquipmentAvailability {
           'machine',
           'μηχανημα',
         ])) {
-      return false;
+      missing.add('gym-machine');
     }
     if (name.containsAny(const ['λαστιχ', 'band', 'pallof', 'face pull']) &&
         !hasBands(profile)) {
-      return false;
+      missing.add('band');
     }
     if (name.containsAny(const [
           'αλτηρ',
@@ -81,7 +85,7 @@ class EquipmentAvailability {
           'suitcase carry',
         ]) &&
         !hasDumbbells(profile)) {
-      return false;
+      missing.add('dumbbells');
     }
     if (name.containsAny(const [
           'ελξει',
@@ -92,19 +96,19 @@ class EquipmentAvailability {
           'scapular pull',
         ]) &&
         !hasPullUpBar(profile)) {
-      return false;
+      missing.add('pull-up-bar');
     }
     if (name.containsAny(const ['διαδρομ', 'treadmill']) &&
         !hasTreadmill(profile)) {
-      return false;
+      missing.add('treadmill');
     }
     if (name.containsAny(const ['σακιδ', 'backpack']) &&
         !available.containsAny(const ['σακιδ', 'backpack'])) {
-      return false;
+      missing.add('backpack');
     }
     if (name.containsAny(const ['παγκο', 'bench']) &&
         !available.containsAny(const ['παγκο', 'bench'])) {
-      return false;
+      missing.add('bench');
     }
     if (name.containsAny(const [
           'barbell',
@@ -120,10 +124,13 @@ class EquipmentAvailability {
           'ελευθερα βαρη',
           'free weights',
         ])) {
-      return false;
+      missing.add('barbell');
     }
-    return true;
+    return missing.toSet().toList(growable: false);
   }
+
+  static bool supportsExercise(String exercise, UserProfile? profile) =>
+      missingEquipmentForExercise(exercise, profile).isEmpty;
 
   static _NormalizedText _available(UserProfile? profile) =>
       _NormalizedText(_normalize(profile?.equipment ?? ''));

@@ -571,7 +571,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                             spacing: 8,
                             runSpacing: 8,
                             children: [
-                              for (final minutes in const [20, 30, 45, 60])
+                              for (final minutes in const [10, 15, 20, 30, 45])
                                 ChoiceChip(
                                   label: Text(
                                     l.text(

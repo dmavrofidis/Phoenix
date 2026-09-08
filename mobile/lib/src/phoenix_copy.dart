@@ -14,6 +14,13 @@ abstract final class PhoenixCopy {
     return '$count ${count == 1 ? 'exercise' : 'exercises'}';
   }
 
+  static String setCount(PhoenixL10n l, int count) {
+    if (l.locale.languageCode == 'el') {
+      return '$count σετ';
+    }
+    return '$count ${count == 1 ? 'set' : 'sets'}';
+  }
+
   static String minuteCount(PhoenixL10n l, int count) {
     if (l.locale.languageCode == 'el') {
       return '$count ${count == 1 ? 'λεπτό' : 'λεπτά'}';
@@ -312,6 +319,55 @@ abstract final class PhoenixCopy {
     'Sled push': _CopyPair('Σπρώξιμο έλκηθρου', 'Sled push'),
     'Bird dog': _CopyPair('Εναλλάξ έκταση χεριού και ποδιού', 'Bird dog'),
     'Dead bug': _CopyPair('Εναλλάξ κατέβασμα χεριού και ποδιού', 'Dead bug'),
+    'Κάθισμα και σήκωμα από καρέκλα': _CopyPair(
+      'Κάθισμα και σήκωμα από καρέκλα',
+      'Chair sit-to-stand',
+    ),
+    'Κάμψεις στον τοίχο': _CopyPair('Κάμψεις στον τοίχο', 'Wall push-ups'),
+    'Γέφυρα γλουτών στο πάτωμα': _CopyPair(
+      'Γέφυρα γλουτών στο πάτωμα',
+      'Floor glute bridge',
+    ),
+    'Κάμψεις σε σταθερό τραπέζι': _CopyPair(
+      'Κάμψεις σε σταθερό τραπέζι',
+      'Incline push-ups on a sturdy table',
+    ),
+    'Ανάστροφες προβολές με στήριξη': _CopyPair(
+      'Ανάστροφες προβολές με στήριξη',
+      'Supported reverse lunges',
+    ),
+    'Ρουμανικές άρσεις με αλτήρες': _CopyPair(
+      'Ρουμανικές άρσεις με αλτήρες',
+      'Dumbbell Romanian deadlift',
+    ),
+    'Μονόχειρη κωπηλατική με αλτήρα': _CopyPair(
+      'Μονόχειρη κωπηλατική με αλτήρα',
+      'One-arm dumbbell row',
+    ),
+    'Πιέσεις ώμων με αλτήρες': _CopyPair(
+      'Πιέσεις ώμων με αλτήρες',
+      'Dumbbell shoulder press',
+    ),
+    'Κωπηλατική με λάστιχο': _CopyPair(
+      'Κωπηλατική με λάστιχο',
+      'Resistance-band row',
+    ),
+    'Πιέσεις ώμων με λάστιχο': _CopyPair(
+      'Πιέσεις ώμων με λάστιχο',
+      'Resistance-band shoulder press',
+    ),
+    'Υποβοηθούμενες έλξεις': _CopyPair(
+      'Υποβοηθούμενες έλξεις',
+      'Assisted pull-ups',
+    ),
+    'Περπάτημα σε απλό διάδρομο': _CopyPair(
+      'Περπάτημα σε απλό διάδρομο',
+      'Walking on a basic treadmill',
+    ),
+    'Περπάτημα σε εξωτερικό χώρο': _CopyPair(
+      'Περπάτημα σε εξωτερικό χώρο',
+      'Outdoor walking',
+    ),
     'Band face pulls': _CopyPair(
       'Τράβηγμα λάστιχου προς το πρόσωπο',
       'Band face pulls',

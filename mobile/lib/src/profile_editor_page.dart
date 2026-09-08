@@ -241,9 +241,9 @@ class _ProfileEditorPageState extends State<ProfileEditorPage> {
             ),
             Slider(
               value: _minutes.toDouble(),
-              min: 20,
+              min: 10,
               max: 120,
-              divisions: 10,
+              divisions: 22,
               label: '$_minutes',
               onChanged: (value) => setState(() => _minutes = value.round()),
             ),

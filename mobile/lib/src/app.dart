@@ -19,6 +19,7 @@ import 'data_validation_page.dart';
 import 'daily_companion_engine.dart';
 import 'exercise_guide.dart';
 import 'equipment_availability.dart';
+import 'exercise_library_page.dart';
 import 'exercise_intelligence_page.dart';
 import 'experience_settings_page.dart';
 import 'fitness_charts.dart';
@@ -1741,6 +1742,8 @@ class _WorkoutsPageState extends State<WorkoutsPage> {
           style: TextStyle(color: Colors.white.withValues(alpha: .6)),
         ),
         const SizedBox(height: 14),
+        _ExerciseLibraryLaunchCard(store: store),
+        const SizedBox(height: 12),
         _WeeklyScheduleCard(store: store),
         const SizedBox(height: 12),
         Card(
@@ -2053,6 +2056,73 @@ class _WorkoutsPageState extends State<WorkoutsPage> {
         ],
         if (store.hasActiveWorkout) _ActiveWorkoutCard(store: store),
       ],
+    );
+  }
+}
+
+class _ExerciseLibraryLaunchCard extends StatelessWidget {
+  const _ExerciseLibraryLaunchCard({required this.store});
+
+  final FitnessStore store;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Card(
+      color: colors.primary.withValues(alpha: .08),
+      child: InkWell(
+        key: const ValueKey('open-exercise-library'),
+        borderRadius: BorderRadius.circular(20),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => ExerciseLibraryPage(store: store),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: colors.primary.withValues(alpha: .15),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Icon(Icons.slideshow_rounded, color: colors.primary),
+              ),
+              const SizedBox(width: 13),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      context.l10n.text(
+                        'Δες πώς γίνεται κάθε άσκηση',
+                        'See how every exercise is done',
+                      ),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 17,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      context.l10n.text(
+                        'Εικόνες βήμα-βήμα, απλές οδηγίες και μόνο ο εξοπλισμός που έχεις.',
+                        'Step-by-step images, simple cues and only the equipment you have.',
+                      ),
+                      style: TextStyle(color: colors.onSurfaceVariant),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(Icons.chevron_right_rounded),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

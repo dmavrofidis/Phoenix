@@ -79,6 +79,7 @@ flutter:
 
   assets:
     - assets/exercise_guides/
+    - assets/exercise_guides/home-beginner-bodyweight-library-v1.png
     - assets/illustrations/
 
   # To add assets to your application, add an assets section, like this:

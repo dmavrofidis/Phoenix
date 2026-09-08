@@ -60,6 +60,10 @@ void main() {
   test('Greek counters use the correct singular and plural forms', () {
     expect(PhoenixCopy.exerciseCount(greek, 1), '1 άσκηση');
     expect(PhoenixCopy.exerciseCount(greek, 4), '4 ασκήσεις');
+    expect(PhoenixCopy.setCount(greek, 1), '1 σετ');
+    expect(PhoenixCopy.setCount(greek, 4), '4 σετ');
+    expect(PhoenixCopy.setCount(english, 1), '1 set');
+    expect(PhoenixCopy.setCount(english, 4), '4 sets');
     expect(PhoenixCopy.minuteCount(greek, 1), '1 λεπτό');
     expect(PhoenixCopy.minuteCount(greek, 20), '20 λεπτά');
     expect(

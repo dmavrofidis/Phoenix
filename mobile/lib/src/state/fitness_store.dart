@@ -1050,14 +1050,17 @@ class FitnessStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  List<ExerciseAlternative> alternativesForActiveExercise(String exercise) {
+  List<ExerciseAlternative> alternativesForActiveExercise(
+    String exercise, {
+    Iterable<String> additionalPainAreas = const [],
+  }) {
     final workout = _activeWorkout;
     if (workout == null) return const [];
     return ExerciseSubstitutionEngine.alternativesFor(
       exercise: exercise,
       profile: profile,
       excludedExercises: workout.exercises,
-      painAreas: recentPainAreas,
+      painAreas: {...recentPainAreas, ...additionalPainAreas},
     );
   }
 
@@ -1136,6 +1139,58 @@ class FitnessStore extends ChangeNotifier {
             ],
           ),
       ],
+    );
+    notifyListeners();
+  }
+
+  void makeActiveExerciseEasier({
+    required String exercise,
+    bool tired = false,
+  }) {
+    final workout = _activeWorkout;
+    if (workout == null || !workout.exercises.contains(exercise)) {
+      throw StateError('Δεν υπάρχει ενεργή άσκηση για προσαρμογή.');
+    }
+    final current = workout.prescriptionFor(exercise);
+    final completedSets = _activeSets
+        .where((set) => set.exerciseName == exercise)
+        .length;
+    var workingSets = current.workingSets > 1 ? current.workingSets - 1 : 1;
+    if (workingSets < completedSets) workingSets = completedSets;
+    final restIncrease = tired ? 45 : 30;
+    final minReps = current.isTimed
+        ? current.minReps
+        : (current.minReps - 2).clamp(1, current.minReps);
+    final maxReps = current.isTimed
+        ? current.maxReps
+        : (current.maxReps - 2).clamp(minReps, current.maxReps);
+    final minHold = current.isTimed
+        ? (current.minHoldSeconds - 10).clamp(5, current.minHoldSeconds)
+        : current.minHoldSeconds;
+    final maxHold = current.isTimed
+        ? (current.maxHoldSeconds - 10).clamp(minHold, current.maxHoldSeconds)
+        : current.maxHoldSeconds;
+    final note = [
+      if (current.note.trim().isNotEmpty) current.note.trim(),
+      tired
+          ? 'Σήμερα: ένα σετ λιγότερο και περισσότερο διάλειμμα.'
+          : 'Σήμερα: μικρότερος στόχος και άνετη τεχνική.',
+    ].join(' ');
+    final adjusted = ExercisePrescription(
+      workingSets: workingSets,
+      minReps: minReps,
+      maxReps: maxReps,
+      targetRir: (current.targetRir + 1).clamp(0, 5),
+      restSeconds: (current.restSeconds + restIncrease).clamp(30, 600),
+      tempo: current.tempo,
+      minHoldSeconds: minHold,
+      maxHoldSeconds: maxHold,
+      note: note,
+    );
+    _activeWorkout = workout.copyWith(
+      exercisePrescriptions: Map<String, ExercisePrescription>.from(
+        workout.exercisePrescriptions,
+      )..[exercise] = adjusted,
     );
     notifyListeners();
   }
@@ -3756,9 +3811,9 @@ class FitnessStore extends ChangeNotifier {
     if (profile.age != null && (profile.age! < 13 || profile.age! > 100)) {
       throw const FormatException('Η ηλικία πρέπει να είναι 13–100.');
     }
-    if (profile.sessionMinutes < 20 || profile.sessionMinutes > 120) {
+    if (profile.sessionMinutes < 10 || profile.sessionMinutes > 120) {
       throw const FormatException(
-        'Η διάρκεια προπόνησης πρέπει να είναι 20–120 λεπτά.',
+        'Η διάρκεια προπόνησης πρέπει να είναι 10–120 λεπτά.',
       );
     }
   }
@@ -3797,7 +3852,9 @@ class FitnessStore extends ChangeNotifier {
         'Τεχνικό stop: σταμάτα μόλις χαθεί η σταθερότητα ή το πλήρες εύρος.';
 
     List<String> fitToDuration(List<String> exercises) {
-      final count = profile.sessionMinutes <= 30
+      final count = profile.sessionMinutes <= 15
+          ? 2
+          : profile.sessionMinutes <= 30
           ? 4
           : profile.sessionMinutes < 60
           ? 5
