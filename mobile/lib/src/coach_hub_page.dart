@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'deterministic_coach_engine.dart';
 import 'nutrition_page.dart';
+import 'phoenix_copy.dart';
 import 'phoenix_l10n.dart';
 import 'recovery_lab_page.dart';
 import 'state/fitness_store.dart';
@@ -397,9 +398,12 @@ class _RescheduleCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'MISSED-WORKOUT RESCHEDULER',
-            style: TextStyle(
+          Text(
+            context.l10n.text(
+              'Μεταφορά προπόνησης που χάθηκε',
+              'Missed-workout rescheduler',
+            ),
+            style: const TextStyle(
               color: Color(0xFFFFB74D),
               fontWeight: FontWeight.w900,
               letterSpacing: .8,
@@ -407,7 +411,7 @@ class _RescheduleCard extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            '${suggestion.workout.template.name} → '
+            '${PhoenixCopy.workoutName(context.l10n, suggestion.workout.template)} → '
             '${suggestion.suggestedDate.day}/${suggestion.suggestedDate.month}',
             style: const TextStyle(fontWeight: FontWeight.w900),
           ),

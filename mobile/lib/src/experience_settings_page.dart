@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'data_validation_page.dart';
 import 'global_search_page.dart';
@@ -8,12 +9,41 @@ import 'state/fitness_store.dart';
 import 'vault_security_page.dart';
 
 class ExperienceSettingsPage extends StatelessWidget {
-  const ExperienceSettingsPage({super.key, required this.store});
+  const ExperienceSettingsPage({
+    super.key,
+    required this.store,
+    this.focusTheme = false,
+  });
 
   final FitnessStore store;
+  final bool focusTheme;
+
+  static final Uri _privacyUri = Uri.parse(
+    'https://phoenix-fitness-local.d-mavrofidis.chatgpt.site/privacy',
+  );
+  static final Uri _supportUri = Uri.parse(
+    'https://phoenix-fitness-local.d-mavrofidis.chatgpt.site/support',
+  );
 
   Future<void> _push(BuildContext context, Widget page) =>
       Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => page));
+
+  Future<void> _openExternal(BuildContext context, Uri uri) async {
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!opened && context.mounted) {
+      final l = context.l10n;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            l.text(
+              'Δεν ήταν δυνατό να ανοίξει ο σύνδεσμος.',
+              'The link could not be opened.',
+            ),
+          ),
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +54,11 @@ class ExperienceSettingsPage extends StatelessWidget {
         final preferences = store.preferences;
         return Scaffold(
           appBar: AppBar(
-            title: Text(l.text('ΕΜΠΕΙΡΙΑ PHOENIX', 'PHOENIX EXPERIENCE')),
+            title: Text(
+              focusTheme
+                  ? l.text('ΧΡΩΜΑΤΑ & ΘΕΜΑ', 'COLORS & THEME')
+                  : l.text('ΕΜΠΕΙΡΙΑ PHOENIX', 'PHOENIX EXPERIENCE'),
+            ),
           ),
           body: ListView(
             padding: const EdgeInsets.fromLTRB(18, 8, 18, 32),
@@ -46,6 +80,7 @@ class ExperienceSettingsPage extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 20),
+              if (focusTheme) ..._themeSection(context),
               _SectionTitle(label: l.text('ΓΛΩΣΣΑ', 'LANGUAGE')),
               const SizedBox(height: 8),
               SegmentedButton<String>(
@@ -59,54 +94,54 @@ class ExperienceSettingsPage extends StatelessWidget {
                 onSelectionChanged: (value) =>
                     store.updatePreferences(languageCode: value.first),
               ),
-              const SizedBox(height: 22),
-              _SectionTitle(label: l.text('ΘΕΜΑ', 'THEME')),
+              if (!focusTheme) ...[
+                const SizedBox(height: 22),
+                ..._themeSection(context),
+              ],
+              const Divider(height: 26),
+              _SectionTitle(label: l.text('ΕΥΚΟΛΟΤΕΡΗ ΧΡΗΣΗ', 'EASIER TO USE')),
+              const SizedBox(height: 8),
+              Text(
+                l.text('Γρήγορες επιλογές', 'Quick accessibility choices'),
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
               const SizedBox(height: 8),
               Wrap(
-                spacing: 9,
-                runSpacing: 9,
+                spacing: 8,
+                runSpacing: 8,
                 children: [
-                  _ThemeChoice(
-                    label: l.text('Iron', 'Iron'),
-                    value: 'iron',
-                    selected: preferences.themePreset,
-                    color: const Color(0xFFFF3D00),
-                    onTap: () => store.updatePreferences(themePreset: 'iron'),
+                  ActionChip(
+                    avatar: const Icon(Icons.text_increase, size: 18),
+                    label: Text(l.text('Μεγαλύτερα γράμματα', 'Larger text')),
+                    onPressed: () => store.updatePreferences(textScale: 1.4),
                   ),
-                  _ThemeChoice(
-                    label: l.text('Ocean', 'Ocean'),
-                    value: 'ocean',
-                    selected: preferences.themePreset,
-                    color: const Color(0xFF29B6F6),
-                    onTap: () => store.updatePreferences(themePreset: 'ocean'),
+                  ActionChip(
+                    avatar: const Icon(Icons.spa_outlined, size: 18),
+                    label: Text(l.text('Ήρεμη προβολή', 'Calm view')),
+                    onPressed: () {
+                      store.updatePreferences(
+                        themePreset: 'sage',
+                        reducedMotion: true,
+                      );
+                    },
                   ),
-                  _ThemeChoice(
-                    label: l.text('Forest', 'Forest'),
-                    value: 'forest',
-                    selected: preferences.themePreset,
-                    color: const Color(0xFF66BB6A),
-                    onTap: () => store.updatePreferences(themePreset: 'forest'),
+                  ActionChip(
+                    avatar: const Icon(Icons.contrast, size: 18),
+                    label: Text(l.text('Υψηλή αντίθεση', 'High contrast')),
+                    onPressed: () =>
+                        store.updatePreferences(highContrast: true),
+                  ),
+                  ActionChip(
+                    avatar: const Icon(Icons.touch_app_outlined, size: 18),
+                    label: Text(
+                      l.text('Μεγαλύτερα κουμπιά', 'Larger controls'),
+                    ),
+                    onPressed: () =>
+                        store.updatePreferences(touchTargetScale: 1.5),
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
-              SwitchListTile(
-                value: preferences.highContrast,
-                contentPadding: EdgeInsets.zero,
-                onChanged: (value) =>
-                    store.updatePreferences(highContrast: value),
-                secondary: const Icon(Icons.contrast),
-                title: Text(l.text('Υψηλή αντίθεση', 'High contrast')),
-                subtitle: Text(
-                  l.text(
-                    'Καθαρότερο μαύρο, φωτεινότερο κείμενο και έντονα περιγράμματα.',
-                    'Deeper black, brighter text and stronger outlines.',
-                  ),
-                ),
-              ),
-              const Divider(height: 26),
-              _SectionTitle(label: l.text('ΠΡΟΣΒΑΣΙΜΟΤΗΤΑ+', 'ACCESSIBILITY+')),
-              const SizedBox(height: 8),
+              const SizedBox(height: 18),
               Text(
                 '${l.text('Κλίμακα κειμένου', 'Text scale')} ${(preferences.textScale * 100).round()}%',
                 style: const TextStyle(fontWeight: FontWeight.w800),
@@ -128,7 +163,7 @@ class ExperienceSettingsPage extends StatelessWidget {
                 title: Text(l.text('Μειωμένη κίνηση', 'Reduced motion')),
                 subtitle: Text(
                   l.text(
-                    'Αφαιρεί τις μεταβάσεις σελίδων και δηλώνει disableAnimations.',
+                    'Περιορίζει τις κινήσεις και τις αλλαγές οθόνης που μπορεί να κουράζουν.',
                     'Removes page transitions and exposes disableAnimations.',
                   ),
                 ),
@@ -143,9 +178,9 @@ class ExperienceSettingsPage extends StatelessWidget {
                 runSpacing: 7,
                 children: [
                   for (final mode in const [
-                    ('standard', 'STANDARD'),
-                    ('deuteranopia', 'DEUTERANOPIA'),
-                    ('tritanopia', 'TRITANOPIA'),
+                    ('standard', 'Κανονική'),
+                    ('deuteranopia', 'Δυσκολία σε κόκκινο–πράσινο'),
+                    ('tritanopia', 'Δυσκολία σε μπλε–κίτρινο'),
                   ])
                     ChoiceChip(
                       label: Text(mode.$2),
@@ -162,11 +197,11 @@ class ExperienceSettingsPage extends StatelessWidget {
                     store.updatePreferences(readabilityFont: value),
                 secondary: const Icon(Icons.text_fields),
                 title: Text(
-                  l.text('Readability typography', 'Readability typography'),
+                  l.text('Πιο ευανάγνωστα γράμματα', 'Readability typography'),
                 ),
                 subtitle: Text(
                   l.text(
-                    'Χρησιμοποιεί ευανάγνωστα system-font fallbacks.',
+                    'Χρησιμοποιεί απλή γραμματοσειρά για πιο ξεκούραστη ανάγνωση.',
                     'Uses readable system-font fallbacks.',
                   ),
                 ),
@@ -180,7 +215,7 @@ class ExperienceSettingsPage extends StatelessWidget {
                 title: Text(l.text('Λειτουργία ενός χεριού', 'One-hand mode')),
                 subtitle: Text(
                   l.text(
-                    'Κρατά τις κύριες workout ενέργειες χαμηλά στην οθόνη.',
+                    'Κρατά τις βασικές ενέργειες της προπόνησης χαμηλά στην οθόνη.',
                     'Keeps primary workout actions low on the screen.',
                   ),
                 ),
@@ -192,17 +227,20 @@ class ExperienceSettingsPage extends StatelessWidget {
                     store.updatePreferences(voiceLabels: value),
                 secondary: const Icon(Icons.record_voice_over_outlined),
                 title: Text(
-                  l.text('Voice-friendly labels', 'Voice-friendly labels'),
+                  l.text(
+                    'Καθαρά ονόματα για φωνητικό έλεγχο',
+                    'Voice-friendly labels',
+                  ),
                 ),
                 subtitle: Text(
                   l.text(
-                    'Διατηρεί σαφή ονόματα ενεργειών για voice control και readers.',
+                    'Βοηθά τον φωνητικό έλεγχο και την ανάγνωση της οθόνης.',
                     'Keeps action names explicit for voice control and readers.',
                   ),
                 ),
               ),
               Text(
-                '${l.text('Μέγεθος touch targets', 'Touch-target size')} ${(preferences.touchTargetScale * 100).round()}%',
+                '${l.text('Μέγεθος κουμπιών', 'Control size')} ${(preferences.touchTargetScale * 100).round()}%',
                 style: const TextStyle(fontWeight: FontWeight.w800),
               ),
               Slider(
@@ -214,15 +252,21 @@ class ExperienceSettingsPage extends StatelessWidget {
                 onChanged: (value) =>
                     store.updatePreferences(touchTargetScale: value),
               ),
-              const Card(
+              Card(
                 child: ListTile(
-                  leading: Icon(Icons.accessibility_new),
+                  leading: const Icon(Icons.accessibility_new),
                   title: Text(
-                    'ACCESSIBILITY SELF-CHECK • 10/10 AVAILABLE',
-                    style: TextStyle(fontWeight: FontWeight.w900),
+                    l.text(
+                      'Όλες οι βοήθειες είναι διαθέσιμες',
+                      'All accessibility aids are available',
+                    ),
+                    style: const TextStyle(fontWeight: FontWeight.w900),
                   ),
                   subtitle: Text(
-                    'Large text, landmarks, keyboard traversal, reduced motion, safe palettes, readable type, one-hand controls, voice labels, touch targets and this self-check.',
+                    l.text(
+                      'Μεγάλα γράμματα και κουμπιά, λιγότερη κίνηση, ασφαλή χρώματα και υποστήριξη ανάγνωσης οθόνης.',
+                      'Large text and controls, reduced motion, safer colors and screen-reader support.',
+                    ),
                   ),
                 ),
               ),
@@ -239,17 +283,69 @@ class ExperienceSettingsPage extends StatelessWidget {
               SwitchListTile(
                 value: preferences.audioCues,
                 contentPadding: EdgeInsets.zero,
-                onChanged: (value) => store.updatePreferences(audioCues: value),
+                onChanged: (value) => store.updatePreferences(
+                  audioCues: value,
+                  audioCueStyle: value ? preferences.audioCueStyle : 'minimal',
+                ),
                 secondary: const Icon(Icons.volume_up_outlined),
                 title: Text(
-                  l.text('Ηχητική επιβεβαίωση', 'Audio confirmation'),
+                  l.text(
+                    'Ήχος και φωνητική καθοδήγηση',
+                    'Audio and voice guidance',
+                  ),
                 ),
                 subtitle: Text(
                   l.text(
-                    'Μικρός ήχος μόνο σε σημαντική επιτυχή ενέργεια.',
-                    'A short cue only after an important successful action.',
+                    'Διάλεξε απλούς ήχους ή φωνή μέσα στην προπόνηση.',
+                    'Choose simple cues or spoken workout guidance.',
                   ),
                 ),
+              ),
+              if (preferences.audioCues) ...[
+                const SizedBox(height: 6),
+                SegmentedButton<String>(
+                  key: const ValueKey('audio-guidance-style'),
+                  segments: [
+                    ButtonSegment(
+                      value: 'minimal',
+                      icon: const Icon(Icons.music_note_outlined),
+                      label: Text(l.text('Απλοί ήχοι', 'Simple cues')),
+                    ),
+                    ButtonSegment(
+                      value: 'coach',
+                      icon: const Icon(Icons.record_voice_over_outlined),
+                      label: Text(l.text('Φωνή', 'Voice')),
+                    ),
+                  ],
+                  selected: {
+                    preferences.audioCueStyle == 'coach' ? 'coach' : 'minimal',
+                  },
+                  onSelectionChanged: (value) =>
+                      store.updatePreferences(audioCueStyle: value.first),
+                ),
+              ],
+              const Divider(height: 26),
+              _SectionTitle(
+                label: l.text('ΑΠΟΡΡΗΤΟ & ΒΟΗΘΕΙΑ', 'PRIVACY & SUPPORT'),
+              ),
+              const SizedBox(height: 7),
+              _SettingsTile(
+                icon: Icons.privacy_tip_outlined,
+                title: l.text('Πολιτική απορρήτου', 'Privacy policy'),
+                subtitle: l.text(
+                  'Δες τι μένει στη συσκευή σου και τι δεν συλλέγεται.',
+                  'See what stays on your device and what is not collected.',
+                ),
+                onTap: () => _openExternal(context, _privacyUri),
+              ),
+              _SettingsTile(
+                icon: Icons.help_outline,
+                title: l.text('Υποστήριξη', 'Support'),
+                subtitle: l.text(
+                  'Οδηγίες εγκατάστασης, backup και αναφοράς προβλημάτων.',
+                  'Installation, backup, and problem-reporting guidance.',
+                ),
+                onTap: () => _openExternal(context, _supportUri),
               ),
               const Divider(height: 26),
               _SectionTitle(label: l.text('ΕΡΓΑΛΕΙΑ', 'TOOLS')),
@@ -279,7 +375,7 @@ class ExperienceSettingsPage extends StatelessWidget {
                   'Data validation center',
                 ),
                 subtitle: l.text(
-                  'Integrity score και ασφαλής επιδιόρθωση',
+                  'Έλεγχος και ασφαλής διόρθωση των τοπικών δεδομένων',
                   'Integrity score and safe repair',
                 ),
                 onTap: () => _push(context, DataValidationPage(store: store)),
@@ -288,7 +384,10 @@ class ExperienceSettingsPage extends StatelessWidget {
                 icon: store.vaultUnlocked
                     ? Icons.lock_open_outlined
                     : Icons.lock_outline,
-                title: l.text('Ασφάλεια Data Vault', 'Data Vault security'),
+                title: l.text(
+                  'Ασφάλεια ιδιωτικών δεδομένων',
+                  'Data Vault security',
+                ),
                 subtitle: store.hasVaultPin
                     ? l.text('Προστασία PIN ενεργή', 'PIN protection enabled')
                     : l.text('Πρόσθεσε τοπικό PIN', 'Add a local PIN'),
@@ -309,6 +408,121 @@ class ExperienceSettingsPage extends StatelessWidget {
         );
       },
     );
+  }
+
+  List<Widget> _themeSection(BuildContext context) {
+    final l = context.l10n;
+    final preferences = store.preferences;
+    const choices = [
+      ('sage', 'Sage', 'Ήρεμο πράσινο', 'Soft green', Color(0xFF9CB9A5), true),
+      ('sky', 'Sky', 'Απαλό γαλάζιο', 'Soft blue', Color(0xFF8DB7C8), true),
+      ('sand', 'Sand', 'Ζεστό μπεζ', 'Warm beige', Color(0xFFD2B08A), true),
+      (
+        'iron',
+        'Phoenix',
+        'Απαλό κοραλί',
+        'Soft coral',
+        Color(0xFFE4937F),
+        false,
+      ),
+      ('ocean', 'Ocean', 'Ήρεμο μπλε', 'Calm blue', Color(0xFF5CA9C9), false),
+      (
+        'forest',
+        'Forest',
+        'Βαθύ πράσινο',
+        'Deep green',
+        Color(0xFF73A97A),
+        false,
+      ),
+      (
+        'violet',
+        'Violet',
+        'Απαλό μωβ',
+        'Soft purple',
+        Color(0xFFA995D2),
+        false,
+      ),
+      ('rose', 'Rose', 'Ήρεμο ροζ', 'Muted pink', Color(0xFFD98FAE), false),
+      ('gold', 'Gold', 'Απαλό χρυσό', 'Soft gold', Color(0xFFC9A45C), false),
+    ];
+    return [
+      _SectionTitle(label: l.text('ΧΡΩΜΑΤΑ & ΘΕΜΑ', 'COLORS & THEME')),
+      const SizedBox(height: 8),
+      _LiveThemePreview(
+        title: l.text('Έτσι θα φαίνεται', 'Live preview'),
+        detail: l.text(
+          'Η αλλαγή εφαρμόζεται αμέσως και αποθηκεύεται μόνο σε αυτή τη συσκευή.',
+          'Changes apply immediately and stay only on this device.',
+        ),
+      ),
+      const SizedBox(height: 10),
+      Text(
+        l.text(
+          'Οι τρεις πρώτες επιλογές είναι σχεδιασμένες για πιο ήρεμη καθημερινή εμπειρία.',
+          'The first three options are designed for a calmer everyday experience.',
+        ),
+        style: TextStyle(
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+          fontSize: 12,
+        ),
+      ),
+      const SizedBox(height: 12),
+      LayoutBuilder(
+        builder: (context, constraints) {
+          final itemWidth = constraints.maxWidth >= 620
+              ? (constraints.maxWidth - 20) / 3
+              : (constraints.maxWidth - 10) / 2;
+          return Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              for (final choice in choices)
+                SizedBox(
+                  width: itemWidth,
+                  child: _ThemeChoice(
+                    label: choice.$2,
+                    detail: l.text(choice.$3, choice.$4),
+                    value: choice.$1,
+                    selected: preferences.themePreset,
+                    color: choice.$5,
+                    calm: choice.$6,
+                    onTap: () =>
+                        store.updatePreferences(themePreset: choice.$1),
+                  ),
+                ),
+            ],
+          );
+        },
+      ),
+      if (preferences.colorVisionMode != 'standard') ...[
+        const SizedBox(height: 10),
+        Text(
+          l.text(
+            'Η παλέτα χρωματικής όρασης παραμένει ενεργή και έχει προτεραιότητα για ασφαλή αντίθεση.',
+            'Your color-vision palette remains active and takes priority for safe contrast.',
+          ),
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+            fontSize: 12,
+          ),
+        ),
+      ],
+      const SizedBox(height: 10),
+      SwitchListTile(
+        value: preferences.highContrast,
+        contentPadding: EdgeInsets.zero,
+        onChanged: (value) => store.updatePreferences(highContrast: value),
+        secondary: const Icon(Icons.contrast),
+        title: Text(l.text('Υψηλή αντίθεση', 'High contrast')),
+        subtitle: Text(
+          l.text(
+            'Καθαρότερο μαύρο, φωτεινότερο κείμενο και έντονα περιγράμματα.',
+            'Deeper black, brighter text and stronger outlines.',
+          ),
+        ),
+      ),
+      const SizedBox(height: 22),
+    ];
   }
 }
 
@@ -332,49 +546,166 @@ class _SectionTitle extends StatelessWidget {
 class _ThemeChoice extends StatelessWidget {
   const _ThemeChoice({
     required this.label,
+    required this.detail,
     required this.value,
     required this.selected,
     required this.color,
+    required this.calm,
     required this.onTap,
   });
 
   final String label;
+  final String detail;
   final String value;
   final String selected;
   final Color color;
+  final bool calm;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final active = value == selected;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-        decoration: BoxDecoration(
-          color: active
-              ? color.withValues(alpha: .18)
-              : Colors.white.withValues(alpha: .04),
-          border: Border.all(
-            color: active ? color : Colors.white12,
-            width: active ? 2 : 1,
+    return Semantics(
+      button: true,
+      selected: active,
+      label: 'Theme $label',
+      child: InkWell(
+        key: ValueKey('theme-choice-$value'),
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          constraints: const BoxConstraints(minHeight: 94),
+          padding: const EdgeInsets.all(13),
+          decoration: BoxDecoration(
+            color: active
+                ? color.withValues(alpha: .16)
+                : Theme.of(context).colorScheme.surfaceContainer,
+            border: Border.all(
+              color: active
+                  ? color
+                  : Theme.of(context).colorScheme.outlineVariant,
+              width: active ? 2 : 1,
+            ),
+            borderRadius: BorderRadius.circular(16),
           ),
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircleAvatar(radius: 7, backgroundColor: color),
-            const SizedBox(width: 8),
-            Text(label, style: const TextStyle(fontWeight: FontWeight.w800)),
-            if (active) ...[
-              const SizedBox(width: 7),
-              Icon(Icons.check, size: 17, color: color),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: color,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: color.withValues(alpha: .3),
+                          blurRadius: 10,
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (calm) ...[
+                    const SizedBox(width: 7),
+                    Expanded(
+                      child: Text(
+                        context.l10n.text('ΗΡΕΜΟ', 'CALM'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: color,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: .7,
+                        ),
+                      ),
+                    ),
+                  ] else
+                    const Spacer(),
+                  Icon(
+                    active ? Icons.check_circle : Icons.circle_outlined,
+                    size: 21,
+                    color: active
+                        ? color
+                        : Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 9),
+              Text(label, style: const TextStyle(fontWeight: FontWeight.w900)),
+              Text(
+                detail,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontSize: 11,
+                ),
+              ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LiveThemePreview extends StatelessWidget {
+  const _LiveThemePreview({required this.title, required this.detail});
+
+  final String title;
+  final String detail;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            colors.primary.withValues(alpha: .2),
+            colors.surfaceContainer,
           ],
         ),
+        border: Border.all(color: colors.primary.withValues(alpha: .45)),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: colors.primary,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(Icons.palette_outlined, color: colors.onPrimary),
+          ),
+          const SizedBox(width: 13),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  detail,
+                  style: TextStyle(
+                    color: colors.onSurfaceVariant,
+                    fontSize: 12,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

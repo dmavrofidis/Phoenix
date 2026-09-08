@@ -23,7 +23,8 @@ if (releaseRequested && !keystorePropertiesFile.exists()) {
 
 android {
     namespace = "com.phoenix.fitness"
-    compileSdk = flutter.compileSdkVersion
+    // Google Play requires API 36 for new apps and updates from 31 August 2026.
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -33,12 +34,9 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.phoenix.fitness"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        minSdk = 24
+        targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }

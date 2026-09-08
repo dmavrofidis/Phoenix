@@ -16,22 +16,28 @@ import 'state/fitness_store.dart';
 import 'workout_notification_sync.dart';
 
 class MediaPortabilityPage extends StatelessWidget {
-  const MediaPortabilityPage({super.key, required this.store});
+  const MediaPortabilityPage({
+    super.key,
+    required this.store,
+    this.initialTab = 0,
+  });
 
   final FitnessStore store;
+  final int initialTab;
 
   @override
   Widget build(BuildContext context) => DefaultTabController(
     length: 4,
+    initialIndex: initialTab.clamp(0, 3),
     child: Scaffold(
       appBar: AppBar(
-        title: const Text('MEDIA & PORTABILITY'),
+        title: const Text('Αρχεία, μουσική & μεταφορά'),
         bottom: const TabBar(
           tabs: [
-            Tab(text: 'SHARE', icon: Icon(Icons.ios_share)),
-            Tab(text: 'VAULT', icon: Icon(Icons.photo_library_outlined)),
-            Tab(text: 'MEDIA', icon: Icon(Icons.play_circle_outline)),
-            Tab(text: 'TRANSFER', icon: Icon(Icons.qr_code_2)),
+            Tab(text: 'ΚΟΙΝΟΠΟΙΗΣΗ', icon: Icon(Icons.ios_share)),
+            Tab(text: 'ΦΩΤΟΓΡΑΦΙΕΣ', icon: Icon(Icons.photo_library_outlined)),
+            Tab(text: 'ΜΟΥΣΙΚΗ', icon: Icon(Icons.play_circle_outline)),
+            Tab(text: 'ΜΕΤΑΦΟΡΑ', icon: Icon(Icons.qr_code_2)),
           ],
         ),
       ),
@@ -596,6 +602,16 @@ class _MediaTabState extends State<_MediaTab> {
     }
   }
 
+  Future<void> _pastePlaylist() async {
+    final clipboard = await Clipboard.getData(Clipboard.kTextPlain);
+    final value = clipboard?.text?.trim() ?? '';
+    if (value.isEmpty) {
+      _message('Δεν βρέθηκε αντιγραμμένος σύνδεσμος.');
+      return;
+    }
+    setState(() => _playlist.text = value);
+  }
+
   Future<void> _saveVideo() async {
     final exercise = _videoExercise;
     if (exercise == null) return;
@@ -771,14 +787,24 @@ class _MediaTabState extends State<_MediaTab> {
           TextField(
             controller: _playlist,
             decoration: InputDecoration(
-              labelText: 'Spotify playlist / album / track URL',
+              labelText: 'Spotify ή Apple Music σύνδεσμος',
               border: const OutlineInputBorder(),
-              suffixIcon: IconButton(
-                tooltip: 'Άνοιγμα',
-                onPressed: _playlist.text.trim().isEmpty
-                    ? null
-                    : () => _open(_playlist.text.trim()),
-                icon: const Icon(Icons.open_in_new),
+              suffixIcon: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    tooltip: 'Επικόλληση',
+                    onPressed: _pastePlaylist,
+                    icon: const Icon(Icons.content_paste),
+                  ),
+                  IconButton(
+                    tooltip: 'Άνοιγμα',
+                    onPressed: _playlist.text.trim().isEmpty
+                        ? null
+                        : () => _open(_playlist.text.trim()),
+                    icon: const Icon(Icons.open_in_new),
+                  ),
+                ],
               ),
             ),
           ),
@@ -866,7 +892,7 @@ class _TransferTabState extends State<_TransferTab> {
 
   Future<void> _copyFrame() async {
     await Clipboard.setData(ClipboardData(text: _frames[_frameIndex]));
-    if (mounted) _message('Αντιγράφηκε το QR frame ${_frameIndex + 1}.');
+    if (mounted) _message('Αντιγράφηκε το τμήμα ${_frameIndex + 1} του QR.');
   }
 
   Future<void> _exportBackupFile() async {
@@ -912,7 +938,11 @@ class _TransferTabState extends State<_TransferTab> {
       return await showDialog<String>(
         context: context,
         builder: (context) => AlertDialog(
-          title: Text(confirm ? 'ENCRYPT $purpose' : 'DECRYPT $purpose'),
+          title: Text(
+            confirm
+                ? 'Προστάτευσε το αρχείο με κωδικό'
+                : 'Άνοιξε το προστατευμένο αρχείο',
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -921,7 +951,7 @@ class _TransferTabState extends State<_TransferTab> {
                 obscureText: true,
                 autofocus: true,
                 decoration: const InputDecoration(
-                  labelText: 'Password (10+ characters)',
+                  labelText: 'Κωδικός (τουλάχιστον 10 χαρακτήρες)',
                 ),
               ),
               if (confirm)
@@ -929,7 +959,7 @@ class _TransferTabState extends State<_TransferTab> {
                   controller: confirmation,
                   obscureText: true,
                   decoration: const InputDecoration(
-                    labelText: 'Confirm password',
+                    labelText: 'Γράψε ξανά τον κωδικό',
                   ),
                 ),
             ],
@@ -937,7 +967,7 @@ class _TransferTabState extends State<_TransferTab> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('CANCEL'),
+              child: const Text('ΑΚΥΡΟ'),
             ),
             FilledButton(
               onPressed: () {
@@ -947,7 +977,7 @@ class _TransferTabState extends State<_TransferTab> {
                 }
                 Navigator.pop(context, password.text);
               },
-              child: Text(confirm ? 'ENCRYPT' : 'DECRYPT'),
+              child: Text(confirm ? 'ΠΡΟΣΤΑΣΙΑ' : 'ΑΝΟΙΓΜΑ'),
             ),
           ],
         ),
@@ -974,7 +1004,7 @@ class _TransferTabState extends State<_TransferTab> {
       if (mounted) {
         _message(
           saved
-              ? 'Το AES-256-GCM encrypted backup εξήχθη.'
+              ? 'Το προστατευμένο αντίγραφο ασφαλείας αποθηκεύτηκε.'
               : 'Η εξαγωγή ακυρώθηκε ή δεν υποστηρίζεται.',
         );
       }
@@ -996,7 +1026,10 @@ class _TransferTabState extends State<_TransferTab> {
         envelope: utf8.decode(file.bytes, allowMalformed: false),
         password: password,
       );
-      await _confirmAndRestore(backup, source: 'Το encrypted backup');
+      await _confirmAndRestore(
+        backup,
+        source: 'Το προστατευμένο αντίγραφο ασφαλείας',
+      );
     } on FormatException catch (error) {
       if (mounted) _message(error.message);
     }
@@ -1025,8 +1058,8 @@ class _TransferTabState extends State<_TransferTab> {
       if (mounted) {
         _message(
           saved
-              ? 'Encrypted sync package exported. Move it with any provider you trust.'
-              : 'Sync package export was cancelled or is unsupported.',
+              ? 'Το προστατευμένο αρχείο μεταφοράς αποθηκεύτηκε. Μπορείς να το στείλεις με καλώδιο ή ιδιωτικό φάκελο.'
+              : 'Η εξαγωγή ακυρώθηκε ή δεν υποστηρίζεται.',
         );
       }
     } on FormatException catch (error) {
@@ -1056,13 +1089,13 @@ class _TransferTabState extends State<_TransferTab> {
       );
       if (!mounted) return;
       if (preview.alreadyInSync) {
-        _message('Both devices already contain the same verified data.');
+        _message('Οι δύο συσκευές έχουν ήδη τα ίδια επαληθευμένα δεδομένα.');
         return;
       }
       final resolution = await _chooseSyncResolution(preview, incoming);
       if (resolution == null || resolution == SyncResolution.keepLocal) {
         if (resolution == SyncResolution.keepLocal && mounted) {
-          _message('Local data kept unchanged.');
+          _message('Τα δεδομένα αυτής της συσκευής έμειναν όπως ήταν.');
         }
         return;
       }
@@ -1076,8 +1109,8 @@ class _TransferTabState extends State<_TransferTab> {
       if (mounted) {
         _message(
           resolution == SyncResolution.mergeSafely
-              ? 'Safe merge applied locally. Undo is available.'
-              : 'Incoming device state applied locally. Undo is available.',
+              ? 'Τα δεδομένα ενώθηκαν με ασφάλεια. Μπορείς να αναιρέσεις την αλλαγή.'
+              : 'Τα δεδομένα της άλλης συσκευής εφαρμόστηκαν. Μπορείς να αναιρέσεις την αλλαγή.',
         );
       }
     } on FormatException catch (error) {
@@ -1091,7 +1124,7 @@ class _TransferTabState extends State<_TransferTab> {
   ) => showDialog<SyncResolution>(
     context: context,
     builder: (context) => AlertDialog(
-      title: const Text('REVIEW ENCRYPTED SYNC'),
+      title: const Text('Έλεγχος πριν από τη μεταφορά'),
       content: SizedBox(
         width: 520,
         child: SingleChildScrollView(
@@ -1105,22 +1138,24 @@ class _TransferTabState extends State<_TransferTab> {
               const SizedBox(height: 8),
               Text(
                 preview.baseMatchesLocal
-                    ? 'The incoming base matches this device.'
-                    : 'The incoming package was created from a different local state.',
+                    ? 'Το αρχείο προέρχεται από τα ίδια αρχικά δεδομένα.'
+                    : 'Το αρχείο δημιουργήθηκε από διαφορετική κατάσταση δεδομένων.',
               ),
               const SizedBox(height: 12),
-              Text('Changed sections: ${preview.changedSections.join(', ')}'),
+              Text(
+                'Ενότητες που άλλαξαν: ${preview.changedSections.join(', ')}',
+              ),
               if (preview.conflicts.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 const Text(
-                  'CONFLICTS',
+                  'ΔΙΑΦΟΡΕΣ ΠΟΥ ΧΡΕΙΑΖΟΝΤΑΙ ΠΡΟΣΟΧΗ',
                   style: TextStyle(fontWeight: FontWeight.w900),
                 ),
                 for (final conflict in preview.conflicts) Text('• $conflict'),
               ],
               const SizedBox(height: 12),
               const Text(
-                'Nothing changes until you choose. Safe merge adds unique records and keeps local values on conflicts.',
+                'Τίποτα δεν αλλάζει πριν επιλέξεις. Η ασφαλής ένωση προσθέτει μόνο τις νέες εγγραφές και κρατά τα τοπικά δεδομένα όπου υπάρχει διαφορά.',
               ),
             ],
           ),
@@ -1129,19 +1164,19 @@ class _TransferTabState extends State<_TransferTab> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('CANCEL'),
+          child: const Text('ΑΚΥΡΟ'),
         ),
         TextButton(
           onPressed: () => Navigator.pop(context, SyncResolution.keepLocal),
-          child: const Text('KEEP LOCAL'),
+          child: const Text('ΚΡΑΤΗΣΕ ΤΑ ΤΟΠΙΚΑ'),
         ),
         FilledButton.tonal(
           onPressed: () => Navigator.pop(context, SyncResolution.mergeSafely),
-          child: const Text('SAFE MERGE'),
+          child: const Text('ΑΣΦΑΛΗΣ ΕΝΩΣΗ'),
         ),
         FilledButton(
           onPressed: () => Navigator.pop(context, SyncResolution.useIncoming),
-          child: const Text('USE INCOMING'),
+          child: const Text('ΧΡΗΣΗ ΤΟΥ ΑΡΧΕΙΟΥ'),
         ),
       ],
     ),
@@ -1155,9 +1190,9 @@ class _TransferTabState extends State<_TransferTab> {
     final accepted = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('ΕΠΑΝΑΦΟΡΑ BACKUP;'),
+        title: const Text('Επαναφορά αντιγράφου ασφαλείας;'),
         content: const Text(
-          'Τα τρέχοντα δεδομένα θα αντικατασταθούν. Κράτησε πρώτα δικό σου backup.',
+          'Τα τρέχοντα δεδομένα θα αντικατασταθούν. Αποθήκευσε πρώτα ένα δικό σου αντίγραφο ασφαλείας.',
         ),
         actions: [
           TextButton(
@@ -1219,49 +1254,63 @@ class _TransferTabState extends State<_TransferTab> {
         padding: const EdgeInsets.fromLTRB(18, 16, 18, 32),
         children: [
           Text(
-            'BACKUP FILE TRANSFER',
+            'Μεταφορά με αρχείο',
             style: Theme.of(
               context,
             ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
           ),
           const SizedBox(height: 5),
           const Text(
-            'Μετέφερε ολόκληρο το local-first προφίλ σου σε άλλη συσκευή, χωρίς λογαριασμό ή cloud.',
+            'Μετέφερε ολόκληρο το Phoenix σου σε άλλη συσκευή, χωρίς λογαριασμό ή cloud.',
           ),
           const SizedBox(height: 10),
+          const Card(
+            child: Padding(
+              padding: EdgeInsets.all(14),
+              child: Text(
+                '1. Δημιούργησε το προστατευμένο αρχείο.\n'
+                '2. Στείλε το στο άλλο κινητό ή laptop.\n'
+                '3. Άνοιξέ το εκεί με τον ίδιο κωδικό.',
+                style: TextStyle(height: 1.55, fontWeight: FontWeight.w700),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
           FilledButton.icon(
+            key: const ValueKey('export-encrypted-phoenix'),
+            onPressed: _exportEncryptedBackup,
+            icon: const Icon(Icons.enhanced_encryption_outlined),
+            label: const Text('Δημιουργία προστατευμένου αρχείου'),
+          ),
+          const SizedBox(height: 6),
+          OutlinedButton.icon(
+            key: const ValueKey('import-encrypted-phoenix'),
+            onPressed: _importEncryptedBackup,
+            icon: const Icon(Icons.lock_open_outlined),
+            label: const Text('Άνοιγμα προστατευμένου αρχείου'),
+          ),
+          const SizedBox(height: 6),
+          OutlinedButton.icon(
             onPressed: _exportBackupFile,
             icon: const Icon(Icons.download_outlined),
-            label: const Text('EXPORT BACKUP FILE'),
+            label: const Text('Αποθήκευση αντιγράφου ασφαλείας'),
           ),
           const SizedBox(height: 6),
           OutlinedButton.icon(
             onPressed: _importBackupFile,
             icon: const Icon(Icons.upload_file_outlined),
-            label: const Text('IMPORT BACKUP FILE'),
-          ),
-          const SizedBox(height: 6),
-          OutlinedButton.icon(
-            onPressed: _exportEncryptedBackup,
-            icon: const Icon(Icons.enhanced_encryption_outlined),
-            label: const Text('EXPORT ENCRYPTED BACKUP'),
-          ),
-          const SizedBox(height: 6),
-          OutlinedButton.icon(
-            onPressed: _importEncryptedBackup,
-            icon: const Icon(Icons.lock_open_outlined),
-            label: const Text('IMPORT ENCRYPTED BACKUP'),
+            label: const Text('Επαναφορά από αρχείο'),
           ),
           const SizedBox(height: 24),
           Text(
-            'QR BACKUP TRANSFER',
+            'Μεταφορά με QR',
             style: Theme.of(
               context,
             ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
           ),
           const SizedBox(height: 5),
           Text(
-            'Το κρυπτογραφικά ελεγμένο backup χωρίζεται σε ${frames.length} QR frames.',
+            'Το αντίγραφο χωρίζεται σε ${frames.length} τμήματα QR. Σκάναρέ τα όλα στη δεύτερη συσκευή.',
           ),
           const SizedBox(height: 14),
           Center(
@@ -1278,7 +1327,7 @@ class _TransferTabState extends State<_TransferTab> {
           const SizedBox(height: 8),
           Center(
             child: Text(
-              'FRAME ${_frameIndex + 1} / ${frames.length}',
+              'ΤΜΗΜΑ ${_frameIndex + 1} ΑΠΟ ${frames.length}',
               style: const TextStyle(fontWeight: FontWeight.w900),
             ),
           ),
@@ -1294,13 +1343,13 @@ class _TransferTabState extends State<_TransferTab> {
           OutlinedButton.icon(
             onPressed: _copyFrame,
             icon: const Icon(Icons.copy),
-            label: const Text('COPY CURRENT FRAME'),
+            label: const Text('Αντιγραφή αυτού του τμήματος'),
           ),
           const SizedBox(height: 14),
           ExpansionTile(
             tilePadding: EdgeInsets.zero,
             title: const Text(
-              'Restore scanned frames',
+              'Επαναφορά σαρωμένων τμημάτων',
               style: TextStyle(fontWeight: FontWeight.w900),
             ),
             subtitle: const Text(
@@ -1320,7 +1369,7 @@ class _TransferTabState extends State<_TransferTab> {
               FilledButton.icon(
                 onPressed: _restoreFrames,
                 icon: const Icon(Icons.restore),
-                label: const Text('VERIFY & RESTORE'),
+                label: const Text('Έλεγχος και επαναφορά'),
               ),
             ],
           ),
@@ -1329,25 +1378,27 @@ class _TransferTabState extends State<_TransferTab> {
             child: ListTile(
               leading: Icon(Icons.sync_lock_outlined),
               title: Text(
-                'PROVIDER-NEUTRAL DEVICE SYNC',
+                'Ασφαλής ένωση δεδομένων δύο συσκευών',
                 style: TextStyle(fontWeight: FontWeight.w900),
               ),
               subtitle: Text(
-                'Manual encrypted package with conflict preview. Transport it through a private folder, drive or cable; Phoenix never contacts that provider.',
+                'Δημιουργεί ένα προστατευμένο αρχείο και σου δείχνει τις διαφορές πριν αλλάξει οτιδήποτε. Το Phoenix δεν επικοινωνεί με κανέναν πάροχο.',
               ),
             ),
           ),
           const SizedBox(height: 6),
           OutlinedButton.icon(
+            key: const ValueKey('export-encrypted-sync'),
             onPressed: _exportEncryptedSync,
             icon: const Icon(Icons.sync_lock_outlined),
-            label: const Text('EXPORT ENCRYPTED SYNC'),
+            label: const Text('Δημιουργία αρχείου μεταφοράς'),
           ),
           const SizedBox(height: 6),
           OutlinedButton.icon(
+            key: const ValueKey('import-encrypted-sync'),
             onPressed: _importEncryptedSync,
             icon: const Icon(Icons.rule_folder_outlined),
-            label: const Text('IMPORT & REVIEW SYNC'),
+            label: const Text('Άνοιγμα και έλεγχος αρχείου'),
           ),
           const SizedBox(height: 22),
           Text(

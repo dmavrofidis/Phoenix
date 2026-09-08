@@ -4,9 +4,11 @@
 .flutter-plugins-dependencies
 .packages
 .pub-cache/
-build/
+/build/
+mobile/build/
 coverage/
 *.iml
+*.dart.js.deps
 
 # Android
 mobile/android/.gradle/
@@ -19,6 +21,10 @@ mobile/android/key.properties
 mobile/ios/Pods/
 mobile/ios/.symlinks/
 mobile/ios/Flutter/ephemeral/
+*.p12
+*.mobileprovision
+*.cer
+AuthKey_*.p8
 
 # Python
 __pycache__/
@@ -41,3 +47,9 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Generated Phoenix hosting artifacts
+hosting/phoenix-pwa/public/app/
+hosting/phoenix-pwa/dist/
+hosting/phoenix-pwa/outputs/
+hosting/phoenix-pwa/node_modules/

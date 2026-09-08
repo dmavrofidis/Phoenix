@@ -30,6 +30,10 @@ jobs:
         shell: pwsh
         run: ./scripts/verify_repository_safety.ps1
 
+      - name: Store readiness
+        shell: pwsh
+        run: ./scripts/verify_store_readiness.ps1
+
       - name: Resolve dependencies
         working-directory: mobile
         run: flutter pub get

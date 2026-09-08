@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -14,10 +16,14 @@ import 'cycling_rowing_lab_page.dart';
 import 'coach_hub_page.dart';
 import 'calisthenics_lab_page.dart';
 import 'data_validation_page.dart';
+import 'daily_companion_engine.dart';
 import 'exercise_guide.dart';
+import 'equipment_availability.dart';
+import 'exercise_library_page.dart';
 import 'exercise_intelligence_page.dart';
 import 'experience_settings_page.dart';
 import 'fitness_charts.dart';
+import 'form_check_page.dart';
 import 'global_search_page.dart';
 import 'habit_builder_page.dart';
 import 'hypertrophy_lab_page.dart';
@@ -28,7 +34,9 @@ import 'mobility_intelligence_page.dart';
 import 'mobility_page.dart';
 import 'nutrition_page.dart';
 import 'nutrition_planner_page.dart';
+import 'recommended_nutrition_page.dart';
 import 'onboarding_page.dart';
+import 'phoenix_copy.dart';
 import 'phoenix_l10n.dart';
 import 'phoenix_toolbox_page.dart';
 import 'photo_meal_scan_page.dart';
@@ -36,6 +44,7 @@ import 'profile_editor_page.dart';
 import 'program_architecture_page.dart';
 import 'program_editor_page.dart';
 import 'program_history_page.dart';
+import 'private_health_page.dart';
 import 'recovery_engine.dart';
 import 'recovery_intelligence_page.dart';
 import 'recovery_lab_page.dart';
@@ -44,6 +53,7 @@ import 'reliability_center_page.dart';
 import 'reports_studio_page.dart';
 import 'running_lab_page.dart';
 import 'sleep_stress_page.dart';
+import 'simple_equipment_page.dart';
 import 'state/fitness_store.dart';
 import 'spotify_card.dart';
 import 'training_history.dart';
@@ -114,6 +124,7 @@ class _PhoenixAppState extends State<PhoenixApp> with WidgetsBindingObserver {
             ? Uri.base.queryParameters['screen']
             : null;
         final home = switch (previewScreen) {
+          'today' => DashboardPage(store: store),
           'control' => ControlCenterPage(store: store),
           'builder' => ProgramEditorPage(
             store: store,
@@ -129,6 +140,7 @@ class _PhoenixAppState extends State<PhoenixApp> with WidgetsBindingObserver {
           'recovery' => RecoveryLabPage(store: store),
           'recovery-intelligence' => RecoveryIntelligencePage(store: store),
           'nutrition-planner' => NutritionPlannerPage(store: store),
+          'recommended-nutrition' => RecommendedNutritionPage(store: store),
           'meal-intelligence' => MealIntelligencePage(store: store),
           'body-composition' => BodyCompositionPage(store: store),
           'habit-builder' => HabitBuilderPage(store: store),
@@ -137,6 +149,7 @@ class _PhoenixAppState extends State<PhoenixApp> with WidgetsBindingObserver {
           'analytics-studio' => AnalyticsStudioPage(store: store),
           'reports' => ReportsStudioPage(store: store),
           'settings' => ExperienceSettingsPage(store: store),
+          'theme' => ExperienceSettingsPage(store: store, focusTheme: true),
           'search' => GlobalSearchPage(store: store),
           'validation' => DataValidationPage(store: store),
           'profile' => ProfileEditorPage(store: store),
@@ -213,30 +226,83 @@ class _PrivacyShield extends StatelessWidget {
 }
 
 ThemeData _phoenixTheme(AppPreferences preferences) {
-  final themeSeed = switch (preferences.themePreset) {
-    'ocean' => const Color(0xFF29B6F6),
-    'forest' => const Color(0xFF66BB6A),
-    _ => const Color(0xFFFF3D00),
-  };
+  final palette = _phoenixPalette(preferences.themePreset);
+  final themeSeed = palette.seed;
   final seed = switch (preferences.colorVisionMode) {
     'deuteranopia' => const Color(0xFF4D9DE0),
     'tritanopia' => const Color(0xFFE1559A),
     _ => themeSeed,
   };
   final highContrast = preferences.highContrast;
-  final scheme =
-      ColorScheme.fromSeed(
-        seedColor: seed,
-        brightness: Brightness.dark,
-      ).copyWith(
-        surface: highContrast ? Colors.black : const Color(0xFF141210),
-        onSurface: highContrast ? Colors.white : null,
-        outline: highContrast ? Colors.white70 : null,
-      );
+  final generated = ColorScheme.fromSeed(
+    seedColor: seed,
+    brightness: Brightness.dark,
+  );
+  final scheme = generated.copyWith(
+    primary: seed,
+    onPrimary: Colors.black,
+    surface: highContrast ? Colors.black : palette.surface,
+    surfaceContainerLowest: highContrast ? Colors.black : palette.background,
+    surfaceContainerLow: highContrast
+        ? const Color(0xFF050505)
+        : palette.surfaceLow,
+    surfaceContainer: highContrast ? const Color(0xFF080808) : palette.surface,
+    surfaceContainerHigh: highContrast
+        ? const Color(0xFF111111)
+        : palette.surfaceHigh,
+    onSurface: highContrast ? Colors.white : palette.onSurface,
+    onSurfaceVariant: highContrast ? Colors.white : palette.onSurfaceVariant,
+    secondaryContainer: highContrast ? Colors.black : palette.secondary,
+    onSecondaryContainer: highContrast ? Colors.white : palette.onSurface,
+    outline: highContrast ? Colors.white70 : palette.outline,
+    outlineVariant: highContrast ? Colors.white38 : palette.outlineVariant,
+  );
+  final baseTextTheme = Typography.material2021().white;
   return ThemeData(
     useMaterial3: true,
     brightness: Brightness.dark,
     colorScheme: scheme,
+    textTheme: baseTextTheme.copyWith(
+      headlineLarge: baseTextTheme.headlineLarge?.copyWith(
+        color: scheme.onSurface,
+        fontWeight: FontWeight.w800,
+        letterSpacing: -.8,
+        height: 1.08,
+      ),
+      headlineMedium: baseTextTheme.headlineMedium?.copyWith(
+        color: scheme.onSurface,
+        fontWeight: FontWeight.w800,
+        letterSpacing: -.5,
+        height: 1.12,
+      ),
+      headlineSmall: baseTextTheme.headlineSmall?.copyWith(
+        color: scheme.onSurface,
+        fontWeight: FontWeight.w800,
+        letterSpacing: -.25,
+        height: 1.18,
+      ),
+      titleLarge: baseTextTheme.titleLarge?.copyWith(
+        color: scheme.onSurface,
+        fontWeight: FontWeight.w800,
+        letterSpacing: -.2,
+      ),
+      titleMedium: baseTextTheme.titleMedium?.copyWith(
+        color: scheme.onSurface,
+        fontWeight: FontWeight.w700,
+      ),
+      bodyLarge: baseTextTheme.bodyLarge?.copyWith(
+        color: scheme.onSurface,
+        height: 1.45,
+      ),
+      bodyMedium: baseTextTheme.bodyMedium?.copyWith(
+        color: scheme.onSurface,
+        height: 1.42,
+      ),
+      bodySmall: baseTextTheme.bodySmall?.copyWith(
+        color: scheme.onSurfaceVariant,
+        height: 1.35,
+      ),
+    ),
     fontFamilyFallback: preferences.readabilityFont
         ? const ['Verdana', 'Arial', 'sans-serif']
         : null,
@@ -256,49 +322,250 @@ ThemeData _phoenixTheme(AppPreferences preferences) {
             },
           )
         : const PageTransitionsTheme(),
-    scaffoldBackgroundColor: highContrast
-        ? Colors.black
-        : const Color(0xFF080808),
+    scaffoldBackgroundColor: highContrast ? Colors.black : palette.background,
+    appBarTheme: AppBarTheme(
+      elevation: 0,
+      centerTitle: false,
+      backgroundColor: highContrast ? Colors.black : palette.background,
+      surfaceTintColor: Colors.transparent,
+      titleTextStyle: const TextStyle(
+        color: Color(0xFFF3F6F5),
+        fontSize: 20,
+        fontWeight: FontWeight.w900,
+        letterSpacing: -.2,
+      ),
+    ),
     cardTheme: CardThemeData(
-      color: highContrast ? const Color(0xFF050505) : const Color(0xFF141210),
+      elevation: 0,
+      color: highContrast
+          ? const Color(0xFF050505)
+          : palette.surface.withValues(alpha: .93),
+      surfaceTintColor: Colors.transparent,
       margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
         side: BorderSide(
-          color: highContrast ? Colors.white54 : seed.withValues(alpha: .12),
+          color: highContrast ? Colors.white54 : scheme.outlineVariant,
           width: highContrast ? 1.4 : 1,
         ),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(24),
       ),
     ),
     navigationBarTheme: NavigationBarThemeData(
-      backgroundColor: highContrast ? Colors.black : const Color(0xFF100E0D),
-      indicatorColor: seed.withValues(alpha: highContrast ? .45 : .28),
+      height: 72,
+      elevation: 0,
+      backgroundColor: highContrast
+          ? Colors.black
+          : palette.surfaceLow.withValues(alpha: .95),
+      indicatorColor: seed.withValues(alpha: highContrast ? .45 : .2),
+      iconTheme: WidgetStateProperty.resolveWith((states) {
+        final selected = states.contains(WidgetState.selected);
+        return IconThemeData(
+          color: selected ? seed : scheme.onSurfaceVariant,
+          size: selected ? 25 : 23,
+        );
+      }),
       labelTextStyle: WidgetStatePropertyAll(
         TextStyle(
           color: highContrast ? Colors.white : null,
-          fontWeight: highContrast ? FontWeight.w800 : null,
+          fontWeight: FontWeight.w800,
+          fontSize: 12,
         ),
+      ),
+    ),
+    navigationRailTheme: NavigationRailThemeData(
+      elevation: 0,
+      backgroundColor: highContrast ? Colors.black : palette.surfaceLow,
+      indicatorColor: seed.withValues(alpha: highContrast ? .45 : .2),
+      selectedIconTheme: IconThemeData(color: seed, size: 25),
+      unselectedIconTheme: IconThemeData(
+        color: scheme.onSurfaceVariant,
+        size: 23,
+      ),
+      selectedLabelTextStyle: TextStyle(
+        color: scheme.onSurface,
+        fontWeight: FontWeight.w900,
+      ),
+      unselectedLabelTextStyle: TextStyle(
+        color: scheme.onSurfaceVariant,
+        fontWeight: FontWeight.w700,
       ),
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
         backgroundColor: seed,
         foregroundColor: Colors.black,
-        textStyle: const TextStyle(fontWeight: FontWeight.w900),
+        minimumSize: const Size(48, 48),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        textStyle: const TextStyle(
+          fontWeight: FontWeight.w900,
+          letterSpacing: .15,
+        ),
       ),
     ),
+    iconButtonTheme: IconButtonThemeData(
+      style: IconButton.styleFrom(
+        minimumSize: const Size(46, 46),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
+    ),
+    chipTheme: ChipThemeData(
+      backgroundColor: scheme.surfaceContainerHigh,
+      side: BorderSide(color: scheme.outlineVariant),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      labelStyle: TextStyle(
+        color: scheme.onSurface,
+        fontWeight: FontWeight.w700,
+      ),
+    ),
+    dividerTheme: DividerThemeData(
+      color: highContrast ? Colors.white38 : scheme.outlineVariant,
+      thickness: 1,
+      space: 1,
+    ),
     inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: highContrast ? Colors.black : palette.surfaceLow,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
       enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
         borderSide: BorderSide(
-          color: highContrast ? Colors.white70 : Colors.white24,
+          color: highContrast ? Colors.white70 : scheme.outlineVariant,
         ),
       ),
       focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
         borderSide: BorderSide(color: seed, width: 2),
       ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: scheme.error),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: scheme.error, width: 2),
+      ),
+    ),
+    snackBarTheme: SnackBarThemeData(
+      behavior: SnackBarBehavior.floating,
+      backgroundColor: highContrast ? Colors.black : palette.surfaceHigh,
+      contentTextStyle: TextStyle(
+        color: scheme.onSurface,
+        fontWeight: FontWeight.w700,
+      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    ),
+    bottomSheetTheme: BottomSheetThemeData(
+      backgroundColor: highContrast ? Colors.black : palette.surface,
+      modalBackgroundColor: highContrast ? Colors.black : palette.surface,
+      surfaceTintColor: Colors.transparent,
+      showDragHandle: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+    ),
+    dialogTheme: DialogThemeData(
+      backgroundColor: highContrast ? Colors.black : palette.surface,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
     ),
   );
 }
+
+class _PhoenixPalette {
+  const _PhoenixPalette({
+    required this.seed,
+    required this.background,
+    required this.surfaceLow,
+    required this.surface,
+    required this.surfaceHigh,
+    required this.secondary,
+    required this.onSurface,
+    required this.onSurfaceVariant,
+    required this.outline,
+    required this.outlineVariant,
+  });
+
+  final Color seed;
+  final Color background;
+  final Color surfaceLow;
+  final Color surface;
+  final Color surfaceHigh;
+  final Color secondary;
+  final Color onSurface;
+  final Color onSurfaceVariant;
+  final Color outline;
+  final Color outlineVariant;
+}
+
+_PhoenixPalette _phoenixPalette(String preset) => switch (preset) {
+  'sage' => const _PhoenixPalette(
+    seed: Color(0xFF9CB9A5),
+    background: Color(0xFF0D1411),
+    surfaceLow: Color(0xFF111A16),
+    surface: Color(0xFF17221C),
+    surfaceHigh: Color(0xFF213129),
+    secondary: Color(0xFF293A31),
+    onSurface: Color(0xFFF1F5F2),
+    onSurfaceVariant: Color(0xFFB7C4BB),
+    outline: Color(0xFF52665A),
+    outlineVariant: Color(0xFF2B3B32),
+  ),
+  'sky' => const _PhoenixPalette(
+    seed: Color(0xFF8DB7C8),
+    background: Color(0xFF0B1216),
+    surfaceLow: Color(0xFF10191E),
+    surface: Color(0xFF162229),
+    surfaceHigh: Color(0xFF20313A),
+    secondary: Color(0xFF293B45),
+    onSurface: Color(0xFFF0F5F7),
+    onSurfaceVariant: Color(0xFFB4C4CA),
+    outline: Color(0xFF506672),
+    outlineVariant: Color(0xFF293A43),
+  ),
+  'sand' => const _PhoenixPalette(
+    seed: Color(0xFFD2B08A),
+    background: Color(0xFF15110D),
+    surfaceLow: Color(0xFF1B1611),
+    surface: Color(0xFF241C15),
+    surfaceHigh: Color(0xFF30261D),
+    secondary: Color(0xFF3A2D22),
+    onSurface: Color(0xFFF7F2EB),
+    onSurfaceVariant: Color(0xFFCBBEAF),
+    outline: Color(0xFF705F4D),
+    outlineVariant: Color(0xFF403329),
+  ),
+  'ocean' => _boldPalette(const Color(0xFF5CA9C9)),
+  'forest' => _boldPalette(const Color(0xFF73A97A)),
+  'violet' => _boldPalette(const Color(0xFFA995D2)),
+  'rose' => _boldPalette(const Color(0xFFD98FAE)),
+  'gold' => _boldPalette(const Color(0xFFC9A45C)),
+  _ => const _PhoenixPalette(
+    seed: Color(0xFFE4937F),
+    background: Color(0xFF14100F),
+    surfaceLow: Color(0xFF1A1513),
+    surface: Color(0xFF221B19),
+    surfaceHigh: Color(0xFF2E2522),
+    secondary: Color(0xFF392C29),
+    onSurface: Color(0xFFF7F2F0),
+    onSurfaceVariant: Color(0xFFC8BBB7),
+    outline: Color(0xFF6B5B56),
+    outlineVariant: Color(0xFF3D302D),
+  ),
+};
+
+_PhoenixPalette _boldPalette(Color seed) => _PhoenixPalette(
+  seed: seed,
+  background: const Color(0xFF090D0F),
+  surfaceLow: const Color(0xFF101619),
+  surface: const Color(0xFF171E22),
+  surfaceHigh: const Color(0xFF20292E),
+  secondary: const Color(0xFF263036),
+  onSurface: const Color(0xFFF3F6F5),
+  onSurfaceVariant: const Color(0xFFB4C0BE),
+  outline: const Color(0xFF53615F),
+  outlineVariant: const Color(0xFF293438),
+);
 
 class _NoPageTransitionsBuilder extends PageTransitionsBuilder {
   const _NoPageTransitionsBuilder();
@@ -351,7 +618,7 @@ void _openWorkout(
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text(
-          'Οι προπονήσεις είναι σε pause mode. Άνοιξε το Recovery Lab.',
+          'Οι προπονήσεις έχουν τεθεί σε παύση. Άνοιξε την ενότητα αποκατάστασης.',
         ),
       ),
     );
@@ -376,6 +643,217 @@ void _openProgramEditor(
   );
 }
 
+Future<void> _showGentleMovementPlan(
+  BuildContext context,
+  FitnessStore store,
+) => showModalBottomSheet<void>(
+  context: context,
+  isScrollControlled: true,
+  showDragHandle: true,
+  builder: (_) => _GentleMovementSheet(store: store),
+);
+
+class _GentleMovementSheet extends StatefulWidget {
+  const _GentleMovementSheet({required this.store});
+
+  final FitnessStore store;
+
+  @override
+  State<_GentleMovementSheet> createState() => _GentleMovementSheetState();
+}
+
+class _GentleMovementSheetState extends State<_GentleMovementSheet> {
+  static const _totalSeconds = 600;
+  Timer? _timer;
+  int _remainingSeconds = _totalSeconds;
+
+  bool get _running => _timer?.isActive ?? false;
+
+  String get _timeLabel {
+    final minutes = _remainingSeconds ~/ 60;
+    final seconds = _remainingSeconds % 60;
+    return '$minutes:${seconds.toString().padLeft(2, '0')}';
+  }
+
+  String get _phaseLabel {
+    final elapsed = _totalSeconds - _remainingSeconds;
+    if (elapsed < 120) return 'Ήρεμο ξεκίνημα';
+    if (elapsed < 480) return 'Άνετος, σταθερός ρυθμός';
+    return 'Σταδιακή χαλάρωση';
+  }
+
+  void _toggleTimer() {
+    if (_running) {
+      _timer?.cancel();
+      setState(() {});
+      return;
+    }
+    if (_remainingSeconds == 0) _remainingSeconds = _totalSeconds;
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) async {
+      if (!mounted) return;
+      if (_remainingSeconds <= 1) {
+        timer.cancel();
+        setState(() => _remainingSeconds = 0);
+        await widget.store.feedback(success: true);
+        return;
+      }
+      setState(() => _remainingSeconds--);
+    });
+    setState(() {});
+  }
+
+  void _resetTimer() {
+    _timer?.cancel();
+    setState(() => _remainingSeconds = _totalSeconds);
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final hasTreadmill =
+        widget.store.profile?.equipment.toLowerCase().contains('διάδρομ') ??
+        false;
+    final activity = hasTreadmill
+        ? l.text('στον διάδρομο ή επιτόπου', 'on the treadmill or in place')
+        : l.text('επιτόπου ή έξω', 'in place or outside');
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              l.text('Κίνηση για 10 λεπτά', '10 minutes of movement'),
+              style: Theme.of(
+                context,
+              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              l.text(
+                'Περπάτησε $activity. Δεν χρειάζεσαι συγκεκριμένη ταχύτητα ή εξοπλισμό.',
+                'Walk $activity. No speed or equipment required.',
+              ),
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 18),
+            Center(
+              child: Column(
+                children: [
+                  Text(
+                    _timeLabel,
+                    key: const ValueKey('gentle-movement-timer'),
+                    style: Theme.of(context).textTheme.displayMedium?.copyWith(
+                      fontWeight: FontWeight.w900,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _remainingSeconds == 0
+                        ? l.text(
+                            'Το έκανες. Αυτό μετράει.',
+                            'You did it. It counts.',
+                          )
+                        : l.text(_phaseLabel, switch (_phaseLabel) {
+                            'Ήρεμο ξεκίνημα' => 'Easy start',
+                            'Άνετος, σταθερός ρυθμός' =>
+                              'Comfortable steady pace',
+                            _ => 'Ease down gradually',
+                          }),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.primary,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 18),
+            _GentleMovementStep(
+              minutes: '2′',
+              text: l.text('Ξεκίνα πολύ ήρεμα', 'Start very easy'),
+            ),
+            _GentleMovementStep(
+              minutes: '6′',
+              text: l.text('Κράτησε άνετο ρυθμό', 'Keep a comfortable pace'),
+            ),
+            _GentleMovementStep(
+              minutes: '2′',
+              text: l.text('Χαλάρωσε σταδιακά', 'Ease down gradually'),
+            ),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                Expanded(
+                  child: FilledButton.icon(
+                    key: const ValueKey('gentle-movement-start'),
+                    onPressed: _toggleTimer,
+                    icon: Icon(
+                      _running ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                    ),
+                    label: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 13),
+                      child: Text(
+                        _running
+                            ? l.text('Παύση', 'Pause')
+                            : l.text('Ξεκίνα τώρα', 'Start now'),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                IconButton.filledTonal(
+                  tooltip: l.text('Επαναφορά', 'Reset'),
+                  onPressed: _resetTimer,
+                  icon: const Icon(Icons.replay_rounded),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _GentleMovementStep extends StatelessWidget {
+  const _GentleMovementStep({required this.minutes, required this.text});
+
+  final String minutes;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 4),
+    child: Row(
+      children: [
+        SizedBox(
+          width: 38,
+          child: Text(
+            minutes,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.primary,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+        Expanded(child: Text(text)),
+      ],
+    ),
+  );
+}
+
 class _PhoenixShellState extends State<PhoenixShell> {
   late int _index = switch (Uri.base.queryParameters['screen']) {
     'workouts' => 1,
@@ -393,19 +871,19 @@ class _PhoenixShellState extends State<PhoenixShell> {
           DashboardPage(store: widget.store),
           WorkoutsPage(store: widget.store),
           NutritionPage(store: widget.store),
-          ProgressPage(store: widget.store),
+          _MorePage(store: widget.store),
         ];
         final labels = [
-          context.l10n.text('Αρχική', 'Home'),
-          context.l10n.text('Προπόνηση', 'Training'),
-          context.l10n.text('Διατροφή', 'Nutrition'),
-          context.l10n.text('Πρόοδος', 'Progress'),
+          context.l10n.text('Σήμερα', 'Today'),
+          context.l10n.text('Κίνηση', 'Move'),
+          context.l10n.text('Φαγητό', 'Food'),
+          context.l10n.text('Εγώ', 'Me'),
         ];
         const icons = [
-          Icons.space_dashboard_outlined,
+          Icons.today_outlined,
           Icons.fitness_center_outlined,
           Icons.restaurant_outlined,
-          Icons.show_chart,
+          Icons.grid_view_rounded,
         ];
         return CallbackShortcuts(
           bindings: {
@@ -424,49 +902,85 @@ class _PhoenixShellState extends State<PhoenixShell> {
               builder: (context, constraints) {
                 final desktop = constraints.maxWidth >= 900;
                 return Scaffold(
-                  body: SafeArea(
-                    child: desktop
-                        ? Row(
-                            children: [
-                              NavigationRail(
-                                extended: constraints.maxWidth >= 1200,
+                  body: _PhoenixShellBackground(
+                    highContrast: widget.store.preferences.highContrast,
+                    child: SafeArea(
+                      child: desktop
+                          ? Row(
+                              children: [
+                                NavigationRail(
+                                  leading: Padding(
+                                    padding: const EdgeInsets.only(bottom: 18),
+                                    child: _PhoenixMark(
+                                      compact: constraints.maxWidth < 1200,
+                                    ),
+                                  ),
+                                  extended: constraints.maxWidth >= 1200,
+                                  selectedIndex: _index,
+                                  onDestinationSelected: (value) =>
+                                      setState(() => _index = value),
+                                  labelType: constraints.maxWidth >= 1200
+                                      ? NavigationRailLabelType.none
+                                      : NavigationRailLabelType.all,
+                                  destinations: [
+                                    for (
+                                      var index = 0;
+                                      index < labels.length;
+                                      index++
+                                    )
+                                      NavigationRailDestination(
+                                        icon: Icon(icons[index]),
+                                        label: Text(labels[index]),
+                                      ),
+                                  ],
+                                ),
+                                const VerticalDivider(width: 1),
+                                Expanded(child: pages[_index]),
+                              ],
+                            )
+                          : pages[_index],
+                    ),
+                  ),
+                  bottomNavigationBar: desktop
+                      ? null
+                      : SafeArea(
+                          minimum: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(24),
+                              border: Border.all(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.outlineVariant,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: .32),
+                                  blurRadius: 26,
+                                  offset: const Offset(0, 12),
+                                ),
+                              ],
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(23),
+                              child: NavigationBar(
                                 selectedIndex: _index,
                                 onDestinationSelected: (value) =>
                                     setState(() => _index = value),
-                                labelType: constraints.maxWidth >= 1200
-                                    ? NavigationRailLabelType.none
-                                    : NavigationRailLabelType.all,
                                 destinations: [
                                   for (
                                     var index = 0;
                                     index < labels.length;
                                     index++
                                   )
-                                    NavigationRailDestination(
+                                    NavigationDestination(
                                       icon: Icon(icons[index]),
-                                      label: Text(labels[index]),
+                                      label: labels[index],
                                     ),
                                 ],
                               ),
-                              const VerticalDivider(width: 1),
-                              Expanded(child: pages[_index]),
-                            ],
-                          )
-                        : pages[_index],
-                  ),
-                  bottomNavigationBar: desktop
-                      ? null
-                      : NavigationBar(
-                          selectedIndex: _index,
-                          onDestinationSelected: (value) =>
-                              setState(() => _index = value),
-                          destinations: [
-                            for (var index = 0; index < labels.length; index++)
-                              NavigationDestination(
-                                icon: Icon(icons[index]),
-                                label: labels[index],
-                              ),
-                          ],
+                            ),
+                          ),
                         ),
                 );
               },
@@ -478,6 +992,248 @@ class _PhoenixShellState extends State<PhoenixShell> {
   }
 }
 
+class _PhoenixShellBackground extends StatelessWidget {
+  const _PhoenixShellBackground({
+    required this.highContrast,
+    required this.child,
+  });
+
+  final bool highContrast;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (highContrast) {
+      return ColoredBox(color: Colors.black, child: child);
+    }
+    final theme = Theme.of(context);
+    final base = theme.scaffoldBackgroundColor;
+    final primaryGlow = Color.alphaBlend(
+      theme.colorScheme.primary.withValues(alpha: .085),
+      base,
+    );
+    final secondaryGlow = Color.alphaBlend(
+      theme.colorScheme.secondary.withValues(alpha: .045),
+      base,
+    );
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [primaryGlow, base, base, secondaryGlow],
+          stops: const [0, .3, .72, 1],
+        ),
+      ),
+      child: child,
+    );
+  }
+}
+
+class _PhoenixMark extends StatelessWidget {
+  const _PhoenixMark({required this.compact});
+
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 10 : 14,
+        vertical: 10,
+      ),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            colors.primary.withValues(alpha: .24),
+            colors.primary.withValues(alpha: .08),
+          ],
+        ),
+        border: Border.all(color: colors.primary.withValues(alpha: .28)),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: colors.primary.withValues(alpha: .1),
+            blurRadius: 22,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.local_fire_department_rounded, color: colors.primary),
+          if (!compact) ...[
+            const SizedBox(width: 9),
+            const Text(
+              'PHOENIX',
+              style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 2),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _DashboardHeader extends StatelessWidget {
+  const _DashboardHeader({required this.store});
+
+  final FitnessStore store;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final l = context.l10n;
+    final now = DateTime.now();
+    final wide = MediaQuery.sizeOf(context).width >= 430;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: colors.primary.withValues(alpha: .12),
+                borderRadius: BorderRadius.circular(13),
+                border: Border.all(color: colors.primary.withValues(alpha: .2)),
+              ),
+              child: Icon(
+                Icons.local_fire_department_rounded,
+                color: colors.primary,
+                size: 21,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'PHOENIX',
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: colors.primary,
+                  letterSpacing: 2.2,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+            if (wide) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 7,
+                ),
+                decoration: BoxDecoration(
+                  color: colors.surfaceContainerHigh.withValues(alpha: .72),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: colors.outlineVariant),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.lock_outline_rounded,
+                      size: 13,
+                      color: colors.primary,
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      context.l10n.text('ΜΟΝΟ ΣΤΗ ΣΥΣΚΕΥΗ', 'ON DEVICE'),
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: colors.onSurfaceVariant,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: .8,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+            ],
+            Semantics(
+              label: l.text('Αναζήτηση', 'Search'),
+              button: true,
+              child: ExcludeSemantics(
+                child: IconButton.filledTonal(
+                  tooltip: l.text('Αναζήτηση', 'Search'),
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (context) => GlobalSearchPage(store: store),
+                    ),
+                  ),
+                  icon: const Icon(Icons.search_rounded),
+                ),
+              ),
+            ),
+            const SizedBox(width: 7),
+            Semantics(
+              label: l.text(
+                'Αλλαγή χρωμάτων και θέματος',
+                'Change colors and theme',
+              ),
+              button: true,
+              child: ExcludeSemantics(
+                child: IconButton.filledTonal(
+                  key: const ValueKey('quick-theme-settings'),
+                  tooltip: l.text('Χρώματα & θέμα', 'Colors & theme'),
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (context) => ExperienceSettingsPage(
+                        store: store,
+                        focusTheme: true,
+                      ),
+                    ),
+                  ),
+                  icon: const Icon(Icons.palette_outlined),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+          decoration: BoxDecoration(
+            color: colors.primary.withValues(alpha: .1),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Text(
+            l.text(
+              'ΣΗΜΕΡΑ • ${now.day}/${now.month}',
+              'TODAY • ${now.day}/${now.month}',
+            ),
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: colors.primary,
+              fontWeight: FontWeight.w900,
+              letterSpacing: .9,
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          l.text(
+            'Τι θέλεις να κάνεις σήμερα;',
+            'What do you want to do today?',
+          ),
+          style: theme.textTheme.headlineLarge,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          l.text(
+            'Διάλεξε μόνο ένα πράγμα. Ακόμη και το μικρότερο βήμα μετράει.',
+            'Choose just one thing. Even the smallest step counts.',
+          ),
+          style: theme.textTheme.bodyLarge?.copyWith(
+            color: colors.onSurfaceVariant,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key, required this.store});
 
@@ -485,182 +1241,67 @@ class DashboardPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final latestWeight = store.data.weights.isEmpty
-        ? null
-        : store.data.weights.first.kilograms;
-    return ListView(
-      padding: const EdgeInsets.all(20),
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                'PHOENIX  //  TODAY',
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  color: Theme.of(context).colorScheme.primary,
-                  letterSpacing: 3,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-            Semantics(
-              label: context.l10n.text('Αναζήτηση', 'Search'),
-              button: true,
-              child: ExcludeSemantics(
-                child: IconButton.filledTonal(
-                  tooltip: context.l10n.text('Αναζήτηση', 'Search'),
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (context) => GlobalSearchPage(store: store),
-                    ),
-                  ),
-                  icon: const Icon(Icons.search),
-                ),
-              ),
-            ),
-            const SizedBox(width: 7),
-            Semantics(
-              label: context.l10n.text('Κέντρο ελέγχου', 'Control Center'),
-              button: true,
-              child: ExcludeSemantics(
-                child: IconButton.filledTonal(
-                  tooltip: context.l10n.text(
-                    'Κέντρο ελέγχου',
-                    'Control Center',
-                  ),
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (context) => ControlCenterPage(store: store),
-                    ),
-                  ),
-                  icon: const Icon(Icons.settings_outlined),
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Text(
-          context.l10n.text('Καλώς επέστρεψες', 'Welcome back'),
-          style: Theme.of(
-            context,
-          ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          context.l10n.text(
-            'Μικρά βήματα. Μεγάλη αλλαγή.',
-            'Small steps. Serious progress.',
+    final horizontalPadding = MediaQuery.sizeOf(context).width >= 900
+        ? 28.0
+        : 20.0;
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 1040),
+        child: ListView(
+          padding: EdgeInsets.fromLTRB(
+            horizontalPadding,
+            20,
+            horizontalPadding,
+            28,
           ),
-          style: TextStyle(color: Colors.white.withValues(alpha: .6)),
-        ),
-        const SizedBox(height: 20),
-        RecoveryCheckInCard(store: store),
-        const SizedBox(height: 8),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: TextButton.icon(
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (context) => RecoveryLabPage(store: store),
-              ),
-            ),
-            icon: const Icon(Icons.monitor_heart_outlined),
-            label: Text(
-              context.l10n.text('Άνοιγμα Recovery Lab', 'Open Recovery Lab'),
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
-        _DailyMissionCard(
-          store: store,
-          template: store.recommendedWorkout,
-          active: store.hasActiveWorkout,
-          onStart: () => _openWorkout(context, store, store.recommendedWorkout),
-        ),
-        if (store.hasActiveWorkout) ...[
-          const SizedBox(height: 12),
-          _ActiveWorkoutCard(store: store),
-        ],
-        if (store.dueWorkoutReminders(DateTime.now()).isNotEmpty) ...[
-          const SizedBox(height: 12),
-          _DueReminderCard(store: store),
-        ],
-        const SizedBox(height: 12),
-        _TodayActionsCard(store: store),
-        const SizedBox(height: 12),
-        _PhoenixBriefCard(store: store),
-        const SizedBox(height: 12),
-        PeriodizationCard(store: store),
-        const SizedBox(height: 12),
-        _DailyExercisesCard(template: store.recommendedWorkout),
-        const SizedBox(height: 24),
-        Row(
           children: [
-            Expanded(
-              child: _MetricCard(
-                value: '${store.workoutsThisWeek}',
-                label: 'Προπονήσεις\n7 ημερών',
-                icon: Icons.local_fire_department,
+            _DashboardHeader(store: store),
+            const SizedBox(height: 20),
+            _DailyCompanionCard(store: store),
+            const SizedBox(height: 12),
+            _GentleWeeklyReviewCard(store: store),
+            if (store.hasActiveWorkout) ...[
+              const SizedBox(height: 12),
+              _ActiveWorkoutCard(store: store),
+            ],
+            if (store.dueWorkoutReminders(DateTime.now()).isNotEmpty) ...[
+              const SizedBox(height: 12),
+              _DueReminderCard(store: store),
+            ],
+            const SizedBox(height: 12),
+            _TodayActionsCard(store: store),
+            const SizedBox(height: 24),
+            Text(
+              context.l10n.text(
+                'Πώς νιώθεις σήμερα;',
+                'How do you feel today?',
               ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _MetricCard(
-                value: latestWeight == null
-                    ? '—'
-                    : '${latestWeight.toStringAsFixed(1)} kg',
-                label: 'Τελευταίο\nβάρος',
-                icon: Icons.monitor_weight_outlined,
+            const SizedBox(height: 6),
+            Text(
+              context.l10n.text(
+                'Απάντησε ειλικρινά, για να προσαρμοστεί το πλάνο σου.',
+                'Answer honestly so your plan can adapt.',
               ),
+              style: TextStyle(color: Colors.white.withValues(alpha: .52)),
             ),
+            const SizedBox(height: 12),
+            RecoveryCheckInCard(store: store),
+            const SizedBox(height: 20),
+            _DailyExercisesCard(
+              template: store.hasTodayCompanionCheckIn
+                  ? store.dailyCompanionPlan.workout
+                  : store.recommendedWorkout,
+              profile: store.profile,
+            ),
+            const SizedBox(height: 20),
+            _GentleProgressCard(store: store),
           ],
         ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _MetricCard(
-                value: '${store.lifetimeSets}',
-                label: 'Συνολικά\nσετ',
-                icon: Icons.layers_outlined,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _MetricCard(
-                value: store.bestEstimatedOneRepMax == 0
-                    ? '—'
-                    : '${store.bestEstimatedOneRepMax.toStringAsFixed(1)} kg',
-                label: 'Καλύτερο\ne1RM',
-                icon: Icons.military_tech_outlined,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _MetricCard(
-                value: '${store.caloriesToday}',
-                label: 'Θερμίδες\nσήμερα',
-                icon: Icons.local_dining_outlined,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _MetricCard(
-                value: '${store.proteinToday.toStringAsFixed(1)} g',
-                label: 'Πρωτεΐνη\nσήμερα',
-                icon: Icons.egg_alt_outlined,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        SpotifyCard(store: store),
-      ],
+      ),
     );
   }
 }
@@ -680,7 +1321,7 @@ class _TodayActionsCard extends StatelessWidget {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            l.text('+250 ml νερό καταγράφηκαν.', '+250 ml water logged.'),
+            l.text('Προστέθηκαν 250 ml νερού.', '250 ml of water added.'),
           ),
         ),
       );
@@ -688,66 +1329,58 @@ class _TodayActionsCard extends StatelessWidget {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              l.text('ΣΗΜΕΡΙΝΕΣ ΕΝΕΡΓΕΙΕΣ', 'TODAY ACTIONS'),
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.primary,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 1,
-                fontSize: 11,
-              ),
+              l.text('Ένα μικρό βήμα αρκεί', 'One small step is enough'),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
             ),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                _QuickAction(
-                  icon: Icons.photo_camera_outlined,
-                  label: l.text('Photo meal', 'Photo meal'),
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => PhotoMealScanPage(store: store),
+            const SizedBox(height: 4),
+            Text(
+              l.text(
+                'Δεν χρειάζεται να τα κάνεις όλα σήμερα.',
+                'You do not need to do everything today.',
+              ),
+              style: TextStyle(color: Colors.white.withValues(alpha: .5)),
+            ),
+            const SizedBox(height: 14),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final columns = constraints.maxWidth >= 620 ? 2 : 2;
+                final width =
+                    (constraints.maxWidth - (columns - 1) * 10) / columns;
+                return Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    _QuickAction(
+                      width: width,
+                      icon: Icons.photo_camera_outlined,
+                      label: l.text(
+                        'Φωτογράφισε το γεύμα',
+                        'Photograph a meal',
+                      ),
+                      color: const Color(0xFF7EA9D4),
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => PhotoMealScanPage(store: store),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-                _QuickAction(
-                  icon: Icons.lunch_dining_outlined,
-                  label: l.text('Γεύμα', 'Meal'),
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => NutritionPage(store: store),
+                    _QuickAction(
+                      width: width,
+                      icon: Icons.water_drop_outlined,
+                      label: l.text('Κατάγραψε νερό', 'Log water'),
+                      color: const Color(0xFF65B9D8),
+                      onTap: addWater,
                     ),
-                  ),
-                ),
-                _QuickAction(
-                  icon: Icons.water_drop_outlined,
-                  label: '+250 ml',
-                  onTap: addWater,
-                ),
-                _QuickAction(
-                  icon: Icons.psychology_alt_outlined,
-                  label: l.text('Coach', 'Coach'),
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => CoachHubPage(store: store),
-                    ),
-                  ),
-                ),
-                _QuickAction(
-                  icon: Icons.grid_view_rounded,
-                  label: l.text('Όλα τα εργαλεία', 'All tools'),
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => PhoenixToolboxPage(store: store),
-                    ),
-                  ),
-                ),
-              ],
+                  ],
+                );
+              },
             ),
           ],
         ),
@@ -763,6 +1396,7 @@ class _DueReminderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     final reminders = store.dueWorkoutReminders(DateTime.now());
     final reminder = reminders.first;
     final template = reminder.templateId.isEmpty
@@ -779,13 +1413,16 @@ class _DueReminderCard extends StatelessWidget {
           color: Theme.of(context).colorScheme.primary,
         ),
         title: Text(
-          'WORKOUT REMINDER • ${reminder.timeLabel}',
+          l.text(
+            'ΥΠΕΝΘΥΜΙΣΗ ΠΡΟΠΟΝΗΣΗΣ • ${reminder.timeLabel}',
+            'WORKOUT REMINDER • ${reminder.timeLabel}',
+          ),
           style: const TextStyle(fontWeight: FontWeight.w900),
         ),
-        subtitle: Text(template.name),
+        subtitle: Text(PhoenixCopy.workoutName(l, template)),
         trailing: FilledButton(
           onPressed: () => _openWorkout(context, store, template),
-          child: const Text('START'),
+          child: Text(l.text('ΕΝΑΡΞΗ', 'START')),
         ),
       ),
     );
@@ -794,24 +1431,56 @@ class _DueReminderCard extends StatelessWidget {
 
 class _QuickAction extends StatelessWidget {
   const _QuickAction({
+    required this.width,
     required this.icon,
     required this.label,
+    required this.color,
     required this.onTap,
   });
 
+  final double width;
   final IconData icon;
   final String label;
+  final Color color;
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => ActionChip(
-    avatar: Icon(icon, size: 18),
-    label: Text(label, style: const TextStyle(fontWeight: FontWeight.w800)),
-    onPressed: onTap,
-    side: BorderSide(
-      color: Theme.of(context).colorScheme.primary.withValues(alpha: .35),
-    ),
-  );
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: width,
+      height: 98,
+      child: Material(
+        color: color.withValues(alpha: .075),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+          side: BorderSide(color: color.withValues(alpha: .24)),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(13),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Icon(icon, size: 25, color: color),
+                Text(
+                  label,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    height: 1.15,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _PhoenixBriefCard extends StatelessWidget {
@@ -824,6 +1493,9 @@ class _PhoenixBriefCard extends StatelessWidget {
     final l = context.l10n;
     final now = DateTime.now();
     final next = store.weeklySchedule.nextEntry(now);
+    final nextName = next == null
+        ? ''
+        : PhoenixCopy.workoutName(l, next.template, short: true);
     final recovery = store.todaysRecoveryPlan;
     final nutrition = store.nutritionCoach;
     final trainingText = next == null
@@ -833,16 +1505,16 @@ class _PhoenixBriefCard extends StatelessWidget {
           )
         : next.isOverdue(now)
         ? l.text(
-            '${next.template.name.split(' — ').first} παραμένει σε εκκρεμότητα.',
-            '${next.template.name.split(' — ').first} is still pending.',
+            'Το πρόγραμμα «$nextName» εκκρεμεί.',
+            '$nextName is still pending.',
           )
         : next.isToday(now)
         ? l.text(
-            '${next.template.name.split(' — ').first} είναι η σημερινή αποστολή.',
-            '${next.template.name.split(' — ').first} is today’s mission.',
+            'Σήμερα μπορείς να κάνεις το πρόγραμμα «$nextName».',
+            '$nextName is today’s next step.',
           )
         : l.text(
-            'Επόμενη προπόνηση ${next.date.day}/${next.date.month}.',
+            'Η επόμενη προπόνηση είναι στις ${next.date.day}/${next.date.month}.',
             'Next workout: ${next.date.day}/${next.date.month}.',
           );
 
@@ -852,13 +1524,17 @@ class _PhoenixBriefCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Row(
+            Row(
               children: [
-                Icon(Icons.auto_awesome, color: Color(0xFFFF6E40), size: 20),
-                SizedBox(width: 9),
+                const Icon(
+                  Icons.auto_awesome,
+                  color: Color(0xFFFF6E40),
+                  size: 20,
+                ),
+                const SizedBox(width: 9),
                 Text(
-                  'PHOENIX BRIEF',
-                  style: TextStyle(
+                  l.text('ΣΥΝΟΨΗ PHOENIX', 'PHOENIX BRIEF'),
+                  style: const TextStyle(
                     fontWeight: FontWeight.w900,
                     letterSpacing: 1,
                   ),
@@ -872,8 +1548,8 @@ class _PhoenixBriefCard extends StatelessWidget {
               icon: Icons.battery_charging_full,
               text: recovery == null
                   ? l.text(
-                      'Κάνε readiness check-in πριν από βαριά προπόνηση.',
-                      'Complete a readiness check-in before heavy training.',
+                      'Έλεγξε πώς νιώθεις πριν από μια απαιτητική προπόνηση.',
+                      'Check how you feel before a demanding workout.',
                     )
                   : l.isEnglish
                   ? '${switch (recovery.mode) {
@@ -1009,7 +1685,7 @@ class _WorkoutsPageState extends State<WorkoutsPage> {
       builder: (context) => AlertDialog(
         title: const Text('Διαγραφή προγράμματος;'),
         content: Text(
-          'Το “${template.name}” και το ιστορικό του θα αφαιρεθούν από τη '
+          'Το “${PhoenixCopy.workoutName(context.l10n, template)}” και το ιστορικό του θα αφαιρεθούν από τη '
           'συσκευή.',
         ),
         actions: [
@@ -1032,7 +1708,7 @@ class _WorkoutsPageState extends State<WorkoutsPage> {
         SnackBar(
           content: const Text('Το πρόγραμμα διαγράφηκε.'),
           action: SnackBarAction(
-            label: 'UNDO',
+            label: context.l10n.text('ΑΝΑΙΡΕΣΗ', 'UNDO'),
             onPressed: store.undoLastMutation,
           ),
         ),
@@ -1066,137 +1742,213 @@ class _WorkoutsPageState extends State<WorkoutsPage> {
           style: TextStyle(color: Colors.white.withValues(alpha: .6)),
         ),
         const SizedBox(height: 14),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: Wrap(
-            spacing: 8,
-            runSpacing: 8,
+        _ExerciseLibraryLaunchCard(store: store),
+        const SizedBox(height: 12),
+        _WeeklyScheduleCard(store: store),
+        const SizedBox(height: 12),
+        Card(
+          child: ExpansionTile(
+            key: const ValueKey('advanced-training-tools'),
+            leading: const Icon(Icons.tune_rounded),
+            title: Text(
+              context.l10n.text('Ειδικά εργαλεία', 'Special tools'),
+              style: const TextStyle(fontWeight: FontWeight.w900),
+            ),
+            subtitle: Text(
+              context.l10n.text(
+                'Για όταν θέλεις περισσότερη λεπτομέρεια',
+                'For when you want more detail',
+              ),
+            ),
+            childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 16),
             children: [
-              FilledButton.tonalIcon(
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (context) => ProgramArchitecturePage(store: store),
-                  ),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    FilledButton.tonalIcon(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (context) =>
+                              ProgramArchitecturePage(store: store),
+                        ),
+                      ),
+                      icon: const Icon(Icons.architecture_outlined),
+                      label: Text(
+                        context.l10n.text(
+                          'Σχεδιασμός προγράμματος',
+                          'Program architecture',
+                        ),
+                      ),
+                    ),
+                    FilledButton.tonalIcon(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (context) => StrengthLabPage(store: store),
+                        ),
+                      ),
+                      icon: const Icon(Icons.speed),
+                      label: Text(context.l10n.text('Δύναμη', 'Strength lab')),
+                    ),
+                    FilledButton.tonalIcon(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (context) =>
+                              HypertrophyLabPage(store: store),
+                        ),
+                      ),
+                      icon: const Icon(Icons.equalizer),
+                      label: Text(
+                        context.l10n.text('Μυϊκή ανάπτυξη', 'Hypertrophy lab'),
+                      ),
+                    ),
+                    FilledButton.tonalIcon(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (context) =>
+                              ConditioningLabPage(store: store),
+                        ),
+                      ),
+                      icon: const Icon(Icons.favorite_outline),
+                      label: Text(
+                        context.l10n.text(
+                          'Φυσική κατάσταση',
+                          'Conditioning lab',
+                        ),
+                      ),
+                    ),
+                    FilledButton.tonalIcon(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (context) => RunningLabPage(store: store),
+                        ),
+                      ),
+                      icon: const Icon(Icons.directions_run),
+                      label: Text(context.l10n.text('Τρέξιμο', 'Running lab')),
+                    ),
+                    FilledButton.tonalIcon(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (context) =>
+                              CyclingRowingLabPage(store: store),
+                        ),
+                      ),
+                      icon: const Icon(Icons.pedal_bike),
+                      label: Text(
+                        context.l10n.text(
+                          'Ποδήλατο και κωπηλατική',
+                          'Cycling and rowing lab',
+                        ),
+                      ),
+                    ),
+                    FilledButton.tonalIcon(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (context) =>
+                              ExerciseIntelligencePage(store: store),
+                        ),
+                      ),
+                      icon: const Icon(Icons.hub_outlined),
+                      label: Text(
+                        context.l10n.text(
+                          'Ανάλυση ασκήσεων',
+                          'Exercise intelligence',
+                        ),
+                      ),
+                    ),
+                    FilledButton.tonalIcon(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (context) => MobilityPage(store: store),
+                        ),
+                      ),
+                      icon: const Icon(Icons.self_improvement),
+                      label: Text(
+                        context.l10n.text('Κινητικότητα', 'Mobility lab'),
+                      ),
+                    ),
+                    FilledButton.tonalIcon(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (context) =>
+                              MobilityIntelligencePage(store: store),
+                        ),
+                      ),
+                      icon: const Icon(Icons.accessibility_new),
+                      label: Text(
+                        context.l10n.text(
+                          'Ανάλυση κινητικότητας',
+                          'Mobility intelligence',
+                        ),
+                      ),
+                    ),
+                    FilledButton.tonalIcon(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (context) => WeeklyPlannerPage(store: store),
+                        ),
+                      ),
+                      icon: const Icon(Icons.edit_calendar_outlined),
+                      label: Text(
+                        context.l10n.text(
+                          'Εβδομαδιαίος προγραμματισμός',
+                          'Weekly planner',
+                        ),
+                      ),
+                    ),
+                    FilledButton.tonalIcon(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (context) =>
+                              CalisthenicsLabPage(store: store),
+                        ),
+                      ),
+                      icon: const Icon(Icons.sports_gymnastics),
+                      label: Text(
+                        context.l10n.text(
+                          'Ασκήσεις με το βάρος του σώματος',
+                          'Bodyweight training lab',
+                        ),
+                      ),
+                    ),
+                    FilledButton.tonalIcon(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (context) =>
+                              AdvancedCalisthenicsPage(store: store),
+                        ),
+                      ),
+                      icon: const Icon(Icons.sports_martial_arts),
+                      label: Text(
+                        context.l10n.text(
+                          'Προχωρημένες ασκήσεις σώματος',
+                          'Advanced bodyweight training',
+                        ),
+                      ),
+                    ),
+                    FilledButton.tonalIcon(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (context) =>
+                              MediaPortabilityPage(store: store),
+                        ),
+                      ),
+                      icon: const Icon(Icons.ios_share),
+                      label: Text(
+                        context.l10n.text(
+                          'Μουσική και αρχεία',
+                          'Music and files',
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                icon: const Icon(Icons.architecture_outlined),
-                label: const Text('Program Architecture'),
-              ),
-              FilledButton.tonalIcon(
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (context) => StrengthLabPage(store: store),
-                  ),
-                ),
-                icon: const Icon(Icons.speed),
-                label: const Text('Strength Lab'),
-              ),
-              FilledButton.tonalIcon(
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (context) => HypertrophyLabPage(store: store),
-                  ),
-                ),
-                icon: const Icon(Icons.equalizer),
-                label: const Text('Hypertrophy Lab'),
-              ),
-              FilledButton.tonalIcon(
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (context) => ConditioningLabPage(store: store),
-                  ),
-                ),
-                icon: const Icon(Icons.favorite_outline),
-                label: const Text('Conditioning Lab'),
-              ),
-              FilledButton.tonalIcon(
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (context) => RunningLabPage(store: store),
-                  ),
-                ),
-                icon: const Icon(Icons.directions_run),
-                label: const Text('Running Lab'),
-              ),
-              FilledButton.tonalIcon(
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (context) => CyclingRowingLabPage(store: store),
-                  ),
-                ),
-                icon: const Icon(Icons.pedal_bike),
-                label: const Text('Cycling & Rowing Lab'),
-              ),
-              FilledButton.tonalIcon(
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (context) =>
-                        ExerciseIntelligencePage(store: store),
-                  ),
-                ),
-                icon: const Icon(Icons.hub_outlined),
-                label: const Text('Exercise Intelligence'),
-              ),
-              FilledButton.tonalIcon(
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (context) => MobilityPage(store: store),
-                  ),
-                ),
-                icon: const Icon(Icons.self_improvement),
-                label: const Text('Mobility Lab'),
-              ),
-              FilledButton.tonalIcon(
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (context) =>
-                        MobilityIntelligencePage(store: store),
-                  ),
-                ),
-                icon: const Icon(Icons.accessibility_new),
-                label: const Text('Mobility Intelligence'),
-              ),
-              FilledButton.tonalIcon(
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (context) => WeeklyPlannerPage(store: store),
-                  ),
-                ),
-                icon: const Icon(Icons.edit_calendar_outlined),
-                label: const Text('Weekly Planner'),
-              ),
-              FilledButton.tonalIcon(
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (context) => CalisthenicsLabPage(store: store),
-                  ),
-                ),
-                icon: const Icon(Icons.sports_gymnastics),
-                label: const Text('Calisthenics Lab'),
-              ),
-              FilledButton.tonalIcon(
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (context) =>
-                        AdvancedCalisthenicsPage(store: store),
-                  ),
-                ),
-                icon: const Icon(Icons.sports_martial_arts),
-                label: const Text('Advanced Calisthenics'),
-              ),
-              FilledButton.tonalIcon(
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (context) => MediaPortabilityPage(store: store),
-                  ),
-                ),
-                icon: const Icon(Icons.ios_share),
-                label: const Text('Media & Portability'),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 18),
-        _WeeklyScheduleCard(store: store),
         const SizedBox(height: 28),
         Text(
           context.l10n.text('ΟΛΑ ΤΑ ΠΡΟΓΡΑΜΜΑΤΑ', 'ALL PROGRAMS'),
@@ -1230,7 +1982,12 @@ class _WorkoutsPageState extends State<WorkoutsPage> {
                       store.createRestDayDraft(),
                     ),
               icon: const Icon(Icons.spa_outlined),
-              label: const Text('Rest-day template'),
+              label: Text(
+                context.l10n.text(
+                  'Πρόγραμμα ημέρας ξεκούρασης',
+                  'Rest-day program',
+                ),
+              ),
             ),
           ],
         ),
@@ -1263,7 +2020,8 @@ class _WorkoutsPageState extends State<WorkoutsPage> {
                 ChoiceChip(
                   selected: _selectedTag == tag,
                   label: Text(tag),
-                  onSelected: (_) => setState(() => _selectedTag = tag),
+                  onSelected: (selected) =>
+                      setState(() => _selectedTag = selected ? tag : 'Όλα'),
                 ),
                 const SizedBox(width: 7),
               ],
@@ -1302,6 +2060,73 @@ class _WorkoutsPageState extends State<WorkoutsPage> {
   }
 }
 
+class _ExerciseLibraryLaunchCard extends StatelessWidget {
+  const _ExerciseLibraryLaunchCard({required this.store});
+
+  final FitnessStore store;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Card(
+      color: colors.primary.withValues(alpha: .08),
+      child: InkWell(
+        key: const ValueKey('open-exercise-library'),
+        borderRadius: BorderRadius.circular(20),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => ExerciseLibraryPage(store: store),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: colors.primary.withValues(alpha: .15),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Icon(Icons.slideshow_rounded, color: colors.primary),
+              ),
+              const SizedBox(width: 13),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      context.l10n.text(
+                        'Δες πώς γίνεται κάθε άσκηση',
+                        'See how every exercise is done',
+                      ),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 17,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      context.l10n.text(
+                        'Εικόνες βήμα-βήμα, απλές οδηγίες και μόνο ο εξοπλισμός που έχεις.',
+                        'Step-by-step images, simple cues and only the equipment you have.',
+                      ),
+                      style: TextStyle(color: colors.onSurfaceVariant),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(Icons.chevron_right_rounded),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _WeeklyScheduleCard extends StatelessWidget {
   const _WeeklyScheduleCard({required this.store});
 
@@ -1327,6 +2152,16 @@ class _WeeklyScheduleCard extends StatelessWidget {
     'Κυριακή',
   ];
 
+  static const _fromDayNames = [
+    'ΑΠΟ ΤΗ ΔΕΥΤΕΡΑ',
+    'ΑΠΟ ΤΗΝ ΤΡΙΤΗ',
+    'ΑΠΟ ΤΗΝ ΤΕΤΑΡΤΗ',
+    'ΑΠΟ ΤΗΝ ΠΕΜΠΤΗ',
+    'ΑΠΟ ΤΗΝ ΠΑΡΑΣΚΕΥΗ',
+    'ΑΠΟ ΤΟ ΣΑΒΒΑΤΟ',
+    'ΑΠΟ ΤΗΝ ΚΥΡΙΑΚΗ',
+  ];
+
   String _shortDate(DateTime date) => '${date.day}/${date.month}';
 
   String _weekRange(TrainingSchedule schedule) =>
@@ -1334,6 +2169,7 @@ class _WeeklyScheduleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     final now = DateTime.now();
     final schedule = store.weeklySchedule;
     final entriesByWeekday = {
@@ -1344,12 +2180,12 @@ class _WeeklyScheduleCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF21100C), Color(0xFF12100F)],
+        gradient: LinearGradient(
+          colors: [colors.surfaceContainerHigh, colors.surfaceContainerLow],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        border: Border.all(color: const Color(0x55FF3D00)),
+        border: Border.all(color: colors.outlineVariant),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
@@ -1357,7 +2193,7 @@ class _WeeklyScheduleCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.calendar_month, color: Color(0xFFFF6E40)),
+              Icon(Icons.calendar_month, color: colors.primary),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
@@ -1382,8 +2218,8 @@ class _WeeklyScheduleCard extends StatelessWidget {
               ),
               Text(
                 '${schedule.completedCount}/${schedule.entries.length}',
-                style: const TextStyle(
-                  color: Color(0xFFFF9E80),
+                style: TextStyle(
+                  color: colors.primary,
                   fontWeight: FontWeight.w900,
                   fontSize: 18,
                 ),
@@ -1397,7 +2233,7 @@ class _WeeklyScheduleCard extends StatelessWidget {
               value: schedule.progress,
               minHeight: 7,
               backgroundColor: Colors.white.withValues(alpha: .08),
-              color: const Color(0xFFFF3D00),
+              color: colors.primary,
             ),
           ),
           const SizedBox(height: 16),
@@ -1422,10 +2258,10 @@ class _WeeklyScheduleCard extends StatelessWidget {
           else
             Text(
               next.isOverdue(now)
-                  ? 'ΕΚΚΡΕΜΕΙ ΑΠΟ ${_dayNames[next.date.weekday - 1].toUpperCase()}'
+                  ? 'ΕΚΚΡΕΜΕΙ ${_fromDayNames[next.date.weekday - 1]}'
                   : next.isToday(now)
                   ? 'ΣΗΜΕΡΙΝΗ ΠΡΟΠΟΝΗΣΗ'
-                  : 'ΕΠΟΜΕΝΗ • ${_dayNames[next.date.weekday - 1].toUpperCase()}',
+                  : 'ΕΠΟΜΕΝΗ ΠΡΟΠΟΝΗΣΗ • ${_dayNames[next.date.weekday - 1].toUpperCase()}',
               style: const TextStyle(
                 color: Color(0xFFFF9E80),
                 fontSize: 11,
@@ -1436,7 +2272,7 @@ class _WeeklyScheduleCard extends StatelessWidget {
           if (next != null) ...[
             const SizedBox(height: 6),
             Text(
-              next.template.name,
+              PhoenixCopy.workoutName(context.l10n, next.template),
               style: Theme.of(
                 context,
               ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
@@ -1597,7 +2433,11 @@ class _ScheduledWorkoutRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  entry.template.name.split(' — ').first,
+                  PhoenixCopy.workoutName(
+                    context.l10n,
+                    entry.template,
+                    short: true,
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(fontWeight: FontWeight.w800),
@@ -1621,7 +2461,10 @@ class _ScheduledWorkoutRow extends StatelessWidget {
           else
             IconButton.filledTonal(
               onPressed: active ? null : onStart,
-              tooltip: 'Έναρξη ${entry.template.name}',
+              tooltip: context.l10n.text(
+                'Έναρξη ${PhoenixCopy.workoutName(context.l10n, entry.template)}',
+                'Start ${PhoenixCopy.workoutName(context.l10n, entry.template)}',
+              ),
               icon: const Icon(Icons.play_arrow, size: 20),
             ),
         ],
@@ -1648,11 +2491,411 @@ class _ScheduleCompleteBanner extends StatelessWidget {
           SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Η εβδομάδα ολοκληρώθηκε. Αποκατάσταση και επιστροφή δυνατότερος.',
+              'Ολοκλήρωσες το εβδομαδιαίο πλάνο. Ξεκουράσου και συνέχισε με δύναμη.',
               style: TextStyle(fontWeight: FontWeight.w700),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _MorePage extends StatelessWidget {
+  const _MorePage({required this.store});
+
+  final FitnessStore store;
+
+  void _open(BuildContext context, Widget page) {
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute<void>(builder: (context) => page));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final latestWeight = store.data.weights.isEmpty
+        ? null
+        : store.data.weights.first.kilograms;
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 900),
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
+          children: [
+            Text(
+              context.l10n.text('Εγώ', 'Me'),
+              style: Theme.of(
+                context,
+              ).textTheme.headlineLarge?.copyWith(fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              context.l10n.text(
+                'Όλα είναι εδώ όταν τα χρειαστείς. Δεν χρειάζεται να τα χρησιμοποιήσεις όλα.',
+                'Everything is here when you need it. You do not have to use it all.',
+              ),
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: .58),
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Card(
+              clipBehavior: Clip.antiAlias,
+              child: Column(
+                children: [
+                  _MoreDestination(
+                    icon: Icons.show_chart_rounded,
+                    title: context.l10n.text('Η πρόοδός μου', 'My progress'),
+                    subtitle: context.l10n.text(
+                      'Προπονήσεις, βάρος και προσωπικά ρεκόρ',
+                      'Workouts, weight and personal records',
+                    ),
+                    onTap: () => _open(context, ProgressPage(store: store)),
+                  ),
+                  const Divider(height: 1),
+                  _MoreDestination(
+                    icon: Icons.psychology_alt_outlined,
+                    title: context.l10n.text(
+                      'Βοήθεια & καθοδήγηση',
+                      'Help & guidance',
+                    ),
+                    subtitle: context.l10n.text(
+                      'Ο coach και οι προτάσεις του Phoenix',
+                      'Your coach and Phoenix suggestions',
+                    ),
+                    onTap: () => _open(context, CoachHubPage(store: store)),
+                  ),
+                  const Divider(height: 1),
+                  _MoreDestination(
+                    icon: Icons.home_repair_service_outlined,
+                    title: context.l10n.text(
+                      'Τι έχω διαθέσιμο',
+                      'My available equipment',
+                    ),
+                    subtitle: context.l10n.text(
+                      'Καρέκλα, αλτήρες, διάδρομος ή τίποτα — χωρίς λάθος ασκήσεις',
+                      'Chair, dumbbells, treadmill or nothing — no mismatched exercises',
+                    ),
+                    onTap: () =>
+                        _open(context, SimpleEquipmentPage(store: store)),
+                  ),
+                  const Divider(height: 1),
+                  _MoreDestination(
+                    icon: Icons.accessibility_new_rounded,
+                    title: context.l10n.text(
+                      'Τοπικός έλεγχος στάσης',
+                      'Local form check',
+                    ),
+                    subtitle: context.l10n.text(
+                      'Σύγκρινε μια φωτογραφία με τις οδηγίες — χωρίς αποθήκευση ή αποστολή',
+                      'Compare a photo with guidance — no saving or upload',
+                    ),
+                    onTap: () => _open(context, FormCheckPage(store: store)),
+                  ),
+                  const Divider(height: 1),
+                  _MoreDestination(
+                    icon: Icons.watch_outlined,
+                    title: context.l10n.text(
+                      'Βήματα & Apple Health',
+                      'Steps & Apple Health',
+                    ),
+                    subtitle: context.l10n.text(
+                      'Προαιρετικά δεδομένα κίνησης που μένουν στη συσκευή',
+                      'Optional movement data that stays on the device',
+                    ),
+                    onTap: () =>
+                        _open(context, PrivateHealthPage(store: store)),
+                  ),
+                  const Divider(height: 1),
+                  _MoreDestination(
+                    icon: Icons.phonelink_outlined,
+                    title: context.l10n.text(
+                      'Μεταφορά σε άλλη συσκευή',
+                      'Move to another device',
+                    ),
+                    subtitle: context.l10n.text(
+                      'Κρυπτογραφημένο αρχείο — χωρίς λογαριασμό ή cloud',
+                      'Encrypted file — no account or cloud required',
+                    ),
+                    onTap: () => _open(
+                      context,
+                      MediaPortabilityPage(store: store, initialTab: 3),
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  _MoreDestination(
+                    icon: Icons.headphones_outlined,
+                    title: context.l10n.text(
+                      'Μουσική & φωτογραφίες',
+                      'Music & photos',
+                    ),
+                    subtitle: context.l10n.text(
+                      'Spotify, Apple Music και τοπικά αρχεία',
+                      'Spotify, Apple Music and local files',
+                    ),
+                    onTap: () =>
+                        _open(context, MediaPortabilityPage(store: store)),
+                  ),
+                  const Divider(height: 1),
+                  _MoreDestination(
+                    icon: Icons.palette_outlined,
+                    title: context.l10n.text(
+                      'Χρώματα & εμφάνιση',
+                      'Colors & appearance',
+                    ),
+                    subtitle: context.l10n.text(
+                      'Διάλεξε το θέμα που σου ταιριάζει',
+                      'Choose the theme that feels right',
+                    ),
+                    onTap: () => _open(
+                      context,
+                      ExperienceSettingsPage(store: store, focusTheme: true),
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  _MoreDestination(
+                    icon: Icons.grid_view_rounded,
+                    title: context.l10n.text(
+                      'Studio για προχωρημένους',
+                      'Advanced Studio',
+                    ),
+                    subtitle: context.l10n.text(
+                      'Όλα τα ειδικά εργαλεία, όταν τα χρειαστείς',
+                      'All specialist tools, when you need them',
+                    ),
+                    onTap: () =>
+                        _open(context, PhoenixToolboxPage(store: store)),
+                  ),
+                  const Divider(height: 1),
+                  _MoreDestination(
+                    icon: Icons.manage_accounts_outlined,
+                    title: context.l10n.text(
+                      'Προφίλ, δεδομένα & ρυθμίσεις',
+                      'Profile, data & settings',
+                    ),
+                    subtitle: context.l10n.text(
+                      'Όλα παραμένουν τοπικά στη συσκευή',
+                      'Everything stays locally on your device',
+                    ),
+                    onTap: () =>
+                        _open(context, ControlCenterPage(store: store)),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              context.l10n.text(
+                'Οι αριθμοί σου, όταν τους θέλεις',
+                'Your numbers, when you want them',
+              ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _MetricCard(
+                    value: '${store.workoutsThisWeek}',
+                    label: context.l10n.text(
+                      'Προπονήσεις\n7 ημερών',
+                      'Workouts\n7 days',
+                    ),
+                    icon: Icons.local_fire_department,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _MetricCard(
+                    value: latestWeight == null
+                        ? '—'
+                        : '${latestWeight.toStringAsFixed(1)} kg',
+                    label: context.l10n.text(
+                      'Τελευταίο\nβάρος',
+                      'Latest\nweight',
+                    ),
+                    icon: Icons.monitor_weight_outlined,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ExpansionTile(
+              tilePadding: const EdgeInsets.symmetric(horizontal: 16),
+              childrenPadding: const EdgeInsets.fromLTRB(0, 0, 0, 12),
+              leading: const Icon(Icons.insights_outlined),
+              title: Text(
+                context.l10n.text(
+                  'Προχωρημένες πληροφορίες',
+                  'Advanced insights',
+                ),
+                style: const TextStyle(fontWeight: FontWeight.w900),
+              ),
+              subtitle: Text(
+                context.l10n.text(
+                  'Άνοιξέ τες μόνο αν σε βοηθούν',
+                  'Open them only if they help you',
+                ),
+              ),
+              children: [
+                _PhoenixBriefCard(store: store),
+                const SizedBox(height: 12),
+                PeriodizationCard(store: store),
+              ],
+            ),
+            const SizedBox(height: 12),
+            SpotifyCard(store: store),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MoreDestination extends StatelessWidget {
+  const _MoreDestination({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = Theme.of(context).colorScheme.primary;
+    return ListTile(
+      minTileHeight: 76,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+      leading: Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: .1),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Icon(icon, color: color),
+      ),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w900)),
+      subtitle: Text(subtitle, maxLines: 2, overflow: TextOverflow.ellipsis),
+      trailing: const Icon(Icons.chevron_right_rounded),
+      onTap: onTap,
+    );
+  }
+}
+
+class _GentleProgressCard extends StatelessWidget {
+  const _GentleProgressCard({required this.store});
+
+  final FitnessStore store;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final completed = store.workoutsInCurrentWeek;
+    final target = store.weeklyWorkoutTarget;
+    final message = completed == 0
+        ? context.l10n.text(
+            'Το ξεκίνημα μετράει περισσότερο από την τελειότητα.',
+            'Starting matters more than being perfect.',
+          )
+        : completed >= target
+        ? context.l10n.text(
+            'Τα κατάφερες αυτή την εβδομάδα. Μπράβο σου.',
+            'You made it this week. Well done.',
+          )
+        : context.l10n.text(
+            'Έχεις ήδη κάνει κάτι καλό για τον εαυτό σου.',
+            'You have already done something good for yourself.',
+          );
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 66,
+              height: 66,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  CircularProgressIndicator(
+                    value: store.weeklyWorkoutProgress,
+                    strokeWidth: 7,
+                    backgroundColor: colors.primary.withValues(alpha: .1),
+                  ),
+                  Text(
+                    '$completed/$target',
+                    style: const TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    context.l10n.text('Η εβδομάδα σου', 'Your week'),
+                    style: const TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    message,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: .58),
+                      height: 1.3,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => ProgressPage(store: store),
+                      ),
+                    ),
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.zero,
+                      minimumSize: const Size(0, 36),
+                    ),
+                    child: Text(
+                      context.l10n.text(
+                        'Δες την πρόοδό σου',
+                        'See my progress',
+                      ),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => WeeklyPlannerPage(store: store),
+                      ),
+                    ),
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.zero,
+                      minimumSize: const Size(0, 36),
+                    ),
+                    child: Text(
+                      context.l10n.text(
+                        'Άλλαξε τις ημέρες σου',
+                        'Change my workout days',
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1736,7 +2979,9 @@ class _ProgressPageState extends State<ProgressPage> {
               ),
             ),
             icon: const Icon(Icons.query_stats),
-            label: const Text('Advanced Analytics'),
+            label: Text(
+              context.l10n.text('Αναλυτικά στοιχεία', 'Advanced analytics'),
+            ),
           ),
         ),
         const SizedBox(height: 24),
@@ -1821,101 +3066,1034 @@ class _ProgressPageState extends State<ProgressPage> {
   }
 }
 
-class _DailyMissionCard extends StatelessWidget {
-  const _DailyMissionCard({
-    required this.store,
-    required this.template,
-    required this.active,
-    required this.onStart,
-  });
+Future<void> _quickStartDailyPlan(
+  BuildContext context,
+  FitnessStore store,
+  int minutes,
+) async {
+  final navigator = Navigator.of(context);
+  final location = EquipmentAvailability.isHome(store.profile) ? 'home' : 'gym';
+  await store.saveDailyCompanionCheckIn(
+    minutes: minutes,
+    energy: 3,
+    location: location,
+    confirmWithFeedback: false,
+  );
+  if (!navigator.mounted) return;
+  _openWorkout(navigator.context, store, store.dailyCompanionPlan.workout);
+}
+
+class _DailyCompanionCard extends StatelessWidget {
+  const _DailyCompanionCard({required this.store});
 
   final FitnessStore store;
-  final WorkoutTemplate template;
-  final bool active;
-  final VoidCallback onStart;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final l = context.l10n;
+    if (!store.hasTodayCompanionCheckIn) {
+      return Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: colors.surfaceContainer,
+          borderRadius: BorderRadius.circular(26),
+          border: Border.all(color: colors.primary.withValues(alpha: .28)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              l.text('Ξεκίνα από εκεί που είσαι', 'Start where you are'),
+              style: Theme.of(
+                context,
+              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 7),
+            Text(
+              l.text(
+                'Χωρίς ενόχληση; Διάλεξε χρόνο. Το πλάνο χρησιμοποιεί μόνο τον εξοπλισμό σου.',
+                'No discomfort? Choose a duration. The plan uses only your equipment.',
+              ),
+              style: TextStyle(color: colors.onSurfaceVariant, height: 1.45),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                for (final minutes in const [7, 15, 30]) ...[
+                  Expanded(
+                    child: OutlinedButton(
+                      key: ValueKey('quick-start-$minutes'),
+                      onPressed: () =>
+                          _quickStartDailyPlan(context, store, minutes),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 11),
+                        child: Text(
+                          '$minutes′',
+                          style: const TextStyle(fontWeight: FontWeight.w900),
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (minutes != 30) const SizedBox(width: 8),
+                ],
+              ],
+            ),
+            const SizedBox(height: 10),
+            TextButton.icon(
+              key: const ValueKey('daily-check-in-action'),
+              onPressed: () => _showDailyCompanionCheckIn(context, store),
+              icon: const Icon(Icons.tune_outlined),
+              label: Text(
+                l.text(
+                  'Έχω ενόχληση ή θέλω προσαρμογή',
+                  'I have discomfort or need adjustments',
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final checkIn = store.dailyCompanionCheckIn!;
+    final plan = store.dailyCompanionPlan;
+    final path = DailyCompanionEngine.pathFor(store.preferences.starterPath);
+    final overdue = store.weeklySchedule.entries
+        .where((entry) => entry.isOverdue(DateTime.now()))
+        .length;
+    final accent = switch (plan.kind) {
+      DailyCompanionKind.recovery => const Color(0xFF9DA7C8),
+      DailyCompanionKind.walk => const Color(0xFF79B9A1),
+      DailyCompanionKind.shortWorkout => const Color(0xFFE0AD73),
+      DailyCompanionKind.fullWorkout => colors.primary,
+    };
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF3B120B), Color(0xFF15110F)],
+        gradient: LinearGradient(
+          colors: [
+            Color.alphaBlend(
+              accent.withValues(alpha: .13),
+              colors.surfaceContainer,
+            ),
+            colors.surfaceContainerLow,
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        border: Border.all(color: const Color(0x66FF3D00)),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(color: accent.withValues(alpha: .35)),
+        boxShadow: [
+          BoxShadow(
+            color: accent.withValues(alpha: .08),
+            blurRadius: 30,
+            offset: const Offset(0, 14),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.my_location, color: Color(0xFFFF6E40), size: 20),
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: .15),
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: Icon(_dailyPlanIcon(plan.kind), color: accent),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l.text('ΕΝΑ ΒΗΜΑ ΓΙΑ ΣΗΜΕΡΑ', 'ONE STEP FOR TODAY'),
+                      style: TextStyle(
+                        color: accent,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: .7,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      l.text(plan.titleGreek, plan.titleEnglish),
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Text(
+            l.text(plan.reasonGreek, plan.reasonEnglish),
+            style: TextStyle(color: colors.onSurfaceVariant, height: 1.45),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _DailyFact(
+                icon: Icons.schedule_outlined,
+                label: l.text(
+                  '${checkIn.minutes} λεπτά',
+                  '${checkIn.minutes} min',
+                ),
+              ),
+              _DailyFact(
+                icon: Icons.battery_4_bar_outlined,
+                label: l.text(
+                  'Ενέργεια ${checkIn.energy}/5',
+                  'Energy ${checkIn.energy}/5',
+                ),
+              ),
+              _DailyFact(
+                icon: Icons.route_outlined,
+                label: l.text(path.titleGreek, path.titleEnglish),
+              ),
+              if (store.preferences.healthConnectionEnabled &&
+                  store.todayWearableSummary != null)
+                _DailyFact(
+                  icon: Icons.directions_walk_outlined,
+                  label: l.text(
+                    '${store.todayWearableSummary!.steps} βήματα στη συσκευή',
+                    '${store.todayWearableSummary!.steps} on-device steps',
+                  ),
+                ),
+            ],
+          ),
+          if (store.preferences.starterPath == 'restart14') ...[
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    l.text(
+                      'Ημέρα ${store.restart14CurrentDay} από 14',
+                      'Day ${store.restart14CurrentDay} of 14',
+                    ),
+                    style: const TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                ),
+                Text(
+                  '${store.restart14CompletedDays}/14',
+                  style: TextStyle(color: accent, fontWeight: FontWeight.w900),
+                ),
+              ],
+            ),
+            const SizedBox(height: 7),
+            LinearProgressIndicator(
+              value: store.restart14CompletedDays / 14,
+              minHeight: 7,
+              borderRadius: BorderRadius.circular(999),
+              color: accent,
+              backgroundColor: accent.withValues(alpha: .13),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              l.text(
+                'Δεν υπάρχει χαμένο σερί. Η επόμενη ημέρα περιμένει μέχρι να επιστρέψεις.',
+                'There is no broken streak. The next day waits until you return.',
+              ),
+              style: TextStyle(color: colors.onSurfaceVariant, fontSize: 12),
+            ),
+          ],
+          const SizedBox(height: 14),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: accent.withValues(alpha: .08),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Text(
+              l.text(plan.encouragementGreek, plan.encouragementEnglish),
+              style: const TextStyle(fontWeight: FontWeight.w700, height: 1.35),
+            ),
+          ),
+          const SizedBox(height: 16),
+          if (plan.kind != DailyCompanionKind.recovery) ...[
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                key: const ValueKey('hard-day-action'),
+                onPressed: () async {
+                  await store.activateHardDay();
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        l.text(
+                          'Το σημερινό πλάνο έγινε πέντε λεπτά ήπιας φροντίδας.',
+                          'Today is now five minutes of gentle care.',
+                        ),
+                      ),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.favorite_outline_rounded),
+                label: Text(
+                  l.text('Δεν είμαι καλά σήμερα', 'I am not doing well today'),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              key: const ValueKey('daily-plan-start-action'),
+              onPressed: () => _openWorkout(context, store, plan.workout),
+              icon: Icon(
+                store.hasActiveWorkout
+                    ? Icons.play_arrow_rounded
+                    : Icons.arrow_forward_rounded,
+              ),
+              label: Text(
+                store.hasActiveWorkout
+                    ? l.text(
+                        'Συνέχισε από εκεί που έμεινες',
+                        'Continue where you left off',
+                      )
+                    : l.text('Κάνε αυτό το ένα βήμα', 'Take this one step'),
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Expanded(
+                child: TextButton.icon(
+                  key: const ValueKey('change-daily-check-in'),
+                  onPressed: () => _showDailyCompanionCheckIn(context, store),
+                  icon: const Icon(Icons.tune_outlined),
+                  label: Text(l.text('Άλλαξε απαντήσεις', 'Change answers')),
+                ),
+              ),
+              Expanded(
+                child: TextButton.icon(
+                  key: const ValueKey('starter-path-action'),
+                  onPressed: () => _showStarterPathPicker(context, store),
+                  icon: const Icon(Icons.route_outlined),
+                  label: Text(l.text('Άλλαξε διαδρομή', 'Change path')),
+                ),
+              ),
+            ],
+          ),
+          if (overdue > 0) ...[
+            const Divider(height: 24),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.event_repeat_outlined),
+              title: Text(
+                l.text(
+                  'Χάθηκε μια μέρα; Δεν χάθηκε το πλάνο.',
+                  'Missed a day? The plan is not lost.',
+                ),
+              ),
+              subtitle: Text(
+                l.text(
+                  'Μετέφερε αυτόματα ${overdue == 1 ? 'την προπόνηση' : 'τις προπονήσεις'} στις επόμενες ελεύθερες ημέρες.',
+                  'Move missed workouts to the next available days.',
+                ),
+              ),
+              trailing: FilledButton.tonal(
+                key: const ValueKey('auto-reschedule-action'),
+                onPressed: () async {
+                  final moved = await store.autoRescheduleMissedWorkouts();
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        l.text(
+                          'Το πλάνο ηρέμησε: μεταφέρθηκαν $moved προπονήσεις.',
+                          'Plan adjusted: $moved workouts moved.',
+                        ),
+                      ),
+                    ),
+                  );
+                },
+                child: Text(l.text('Διόρθωσέ το', 'Fix it')),
+              ),
+            ),
+          ],
+          const Divider(height: 24),
+          Row(
+            children: [
+              Icon(Icons.restart_alt_rounded, color: accent),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  context.l10n.text('ΣΗΜΕΡΙΝΗ ΑΠΟΣΤΟΛΗ', 'TODAY’S MISSION'),
-                  style: const TextStyle(
-                    color: Color(0xFFFF9E80),
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 1.2,
-                    fontSize: 12,
+                  l.text(
+                    '${store.returnMoments} ξεκινήματα ή επιστροφές • κάθε επιστροφή μετράει',
+                    '${store.returnMoments} starts or returns • every return counts',
                   ),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 5,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: .28),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  '${store.workoutsInCurrentWeek}/${store.weeklyWorkoutTarget} '
-                  '${context.l10n.text('αυτή την εβδομάδα', 'this week')}',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
+                  style: TextStyle(
+                    color: colors.onSurfaceVariant,
                     fontSize: 12,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 18),
+        ],
+      ),
+    );
+  }
+}
+
+class _DailyFact extends StatelessWidget {
+  const _DailyFact({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+    decoration: BoxDecoration(
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      borderRadius: BorderRadius.circular(999),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 15),
+        const SizedBox(width: 6),
+        Flexible(
+          child: Text(
+            label,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _GentleWeeklyReviewCard extends StatelessWidget {
+  const _GentleWeeklyReviewCard({required this.store});
+
+  final FitnessStore store;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final colors = Theme.of(context).colorScheme;
+    final due = store.weeklyReviewDue;
+    return Card(
+      color: colors.surfaceContainerLow,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: colors.secondary.withValues(alpha: .12),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(Icons.auto_awesome_outlined, color: colors.secondary),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    due
+                        ? l.text(
+                            'Μια ήρεμη ματιά στην εβδομάδα',
+                            'A gentle look at your week',
+                          )
+                        : l.text(
+                            'Η επόμενη εβδομάδα έγινε πιο απλή',
+                            'Next week is now simpler',
+                          ),
+                    style: const TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    due
+                        ? l.text(
+                            'Τρεις μικρές απαντήσεις. Χωρίς βαθμολογία και χωρίς ενοχές.',
+                            'Three small answers. No score and no guilt.',
+                          )
+                        : l.text(
+                            'Το Phoenix θα ξεκινά από ${store.preferences.weeklyReviewMinutes} λεπτά. Κέρδος: ${store.preferences.weeklyReviewWin}',
+                            'Phoenix will start from ${store.preferences.weeklyReviewMinutes} minutes. Win: ${store.preferences.weeklyReviewWin}',
+                          ),
+                    style: TextStyle(
+                      color: colors.onSurfaceVariant,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: FilledButton.tonalIcon(
+                      key: const ValueKey('gentle-weekly-review-action'),
+                      onPressed: () => _showGentleWeeklyReview(context, store),
+                      icon: const Icon(Icons.edit_note_rounded),
+                      label: Text(
+                        due
+                            ? l.text('Κάνε την ανασκόπηση', 'Review the week')
+                            : l.text(
+                                'Άλλαξε την προσαρμογή',
+                                'Change adjustment',
+                              ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _GentleWeeklyReviewInput {
+  const _GentleWeeklyReviewInput({
+    required this.win,
+    required this.barrier,
+    required this.minutes,
+  });
+
+  final String win;
+  final String barrier;
+  final int minutes;
+}
+
+Future<void> _showGentleWeeklyReview(
+  BuildContext context,
+  FitnessStore store,
+) async {
+  final win = TextEditingController(text: store.preferences.weeklyReviewWin);
+  final barrier = TextEditingController(
+    text: store.preferences.weeklyReviewBarrier,
+  );
+  var minutes = store.preferences.weeklyReviewMinutes;
+  try {
+    final input = await showModalBottomSheet<_GentleWeeklyReviewInput>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (context, setState) {
+          final l = context.l10n;
+          return SafeArea(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(
+                20,
+                4,
+                20,
+                MediaQuery.viewInsetsOf(context).bottom + 20,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    l.text('Η εβδομάδα σου', 'Your week'),
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    l.text(
+                      'Δεν ψάχνουμε το τέλειο. Ψάχνουμε τι μπορεί να γίνει λίγο ευκολότερο.',
+                      'We are not looking for perfect. We are looking for what can feel a little easier.',
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  TextField(
+                    controller: win,
+                    maxLength: 240,
+                    minLines: 2,
+                    maxLines: 3,
+                    decoration: InputDecoration(
+                      labelText: l.text(
+                        'Τι κατάφερες, όσο μικρό κι αν ήταν;',
+                        'What did you manage, however small?',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: barrier,
+                    maxLength: 240,
+                    minLines: 2,
+                    maxLines: 3,
+                    decoration: InputDecoration(
+                      labelText: l.text(
+                        'Τι σε δυσκόλεψε περισσότερο;',
+                        'What made things hardest?',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    l.text(
+                      'Με πόσο χρόνο να ξεκινά η επόμενη εβδομάδα;',
+                      'How much time should next week start with?',
+                    ),
+                    style: const TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(height: 8),
+                  SegmentedButton<int>(
+                    segments: const [
+                      ButtonSegment(value: 5, label: Text('5′')),
+                      ButtonSegment(value: 10, label: Text('10′')),
+                      ButtonSegment(value: 20, label: Text('20′')),
+                    ],
+                    selected: {minutes},
+                    onSelectionChanged: (value) =>
+                        setState(() => minutes = value.first),
+                  ),
+                  const SizedBox(height: 18),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      key: const ValueKey('save-gentle-weekly-review'),
+                      onPressed: () => Navigator.of(sheetContext).pop(
+                        _GentleWeeklyReviewInput(
+                          win: win.text,
+                          barrier: barrier.text,
+                          minutes: minutes,
+                        ),
+                      ),
+                      icon: const Icon(Icons.check_rounded),
+                      label: Text(
+                        l.text(
+                          'Κάνε την επόμενη εβδομάδα πιο εύκολη',
+                          'Make next week easier',
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+    if (input == null) return;
+    try {
+      await store.saveGentleWeeklyReview(
+        win: input.win,
+        barrier: input.barrier,
+        easierMinutes: input.minutes,
+      );
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.l10n.text(
+              'Η επόμενη εβδομάδα θα ξεκινά από ${input.minutes} λεπτά.',
+              'Next week will start from ${input.minutes} minutes.',
+            ),
+          ),
+        ),
+      );
+    } on FormatException catch (error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    }
+  } finally {
+    win.dispose();
+    barrier.dispose();
+  }
+}
+
+IconData _dailyPlanIcon(DailyCompanionKind kind) => switch (kind) {
+  DailyCompanionKind.recovery => Icons.self_improvement_outlined,
+  DailyCompanionKind.walk => Icons.directions_walk_rounded,
+  DailyCompanionKind.shortWorkout => Icons.bolt_outlined,
+  DailyCompanionKind.fullWorkout => Icons.fitness_center_rounded,
+};
+
+class _DailyCompanionInput {
+  const _DailyCompanionInput({
+    required this.minutes,
+    required this.energy,
+    required this.location,
+    required this.painArea,
+  });
+
+  final int minutes;
+  final int energy;
+  final String location;
+  final String painArea;
+}
+
+Future<void> _showDailyCompanionCheckIn(
+  BuildContext context,
+  FitnessStore store,
+) async {
+  final current = store.dailyCompanionCheckIn;
+  var minutes = current?.minutes ?? 10;
+  var energy = current?.energy ?? 3;
+  var location =
+      current?.location ??
+      (EquipmentAvailability.isHome(store.profile) ? 'home' : 'gym');
+  var painArea = current?.painArea ?? '';
+  final input = await showModalBottomSheet<_DailyCompanionInput>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    builder: (sheetContext) => StatefulBuilder(
+      builder: (context, setState) {
+        final l = context.l10n;
+        String locationLabel(String value) => switch (value) {
+          'gym' => l.text('Γυμναστήριο', 'Gym'),
+          'outside' => l.text('Έξω', 'Outside'),
+          _ => l.text('Σπίτι', 'Home'),
+        };
+        String painLabel(String value) => switch (value) {
+          'shoulder' => l.text('Ώμος', 'Shoulder'),
+          'back' => l.text('Μέση/πλάτη', 'Back'),
+          'knee' => l.text('Γόνατο', 'Knee'),
+          'other' => l.text('Κάπου αλλού', 'Somewhere else'),
+          _ => l.text('Δεν πονάω', 'No pain'),
+        };
+        return SafeArea(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(
+              20,
+              4,
+              20,
+              24 + MediaQuery.viewInsetsOf(context).bottom,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l.text('Πώς είναι η μέρα σου;', 'How is your day?'),
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  l.text(
+                    'Δεν υπάρχει σωστή απάντηση. Το πλάνο μικραίνει όταν το χρειάζεσαι.',
+                    'There is no right answer. The plan gets smaller when you need it.',
+                  ),
+                ),
+                const SizedBox(height: 22),
+                Text(
+                  l.text('Πόσο χρόνο έχεις;', 'How much time do you have?'),
+                  style: const TextStyle(fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    for (final value in const [5, 10, 20, 40])
+                      ChoiceChip(
+                        key: ValueKey('daily-minutes-$value'),
+                        label: Text('$value′'),
+                        selected: minutes == value,
+                        onSelected: (_) => setState(() => minutes = value),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  l.text(
+                    'Πόση ενέργεια έχεις;',
+                    'How much energy do you have?',
+                  ),
+                  style: const TextStyle(fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    for (final value in const [1, 2, 3, 4, 5])
+                      ChoiceChip(
+                        key: ValueKey('daily-energy-$value'),
+                        label: Text('$value'),
+                        selected: energy == value,
+                        onSelected: (_) => setState(() => energy = value),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  l.text('Πού θα κινηθείς;', 'Where will you move?'),
+                  style: const TextStyle(fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    for (final value in const ['home', 'gym', 'outside'])
+                      ChoiceChip(
+                        key: ValueKey('daily-location-$value'),
+                        label: Text(locationLabel(value)),
+                        selected: location == value,
+                        onSelected: (_) => setState(() => location = value),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  l.text('Υπάρχει ενόχληση σήμερα;', 'Any discomfort today?'),
+                  style: const TextStyle(fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final value in const [
+                      '',
+                      'shoulder',
+                      'back',
+                      'knee',
+                      'other',
+                    ])
+                      ChoiceChip(
+                        key: ValueKey(
+                          'daily-pain-${value.isEmpty ? 'none' : value}',
+                        ),
+                        label: Text(painLabel(value)),
+                        selected: painArea == value,
+                        onSelected: (selected) =>
+                            setState(() => painArea = selected ? value : ''),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    key: const ValueKey('save-daily-check-in'),
+                    onPressed: () => Navigator.of(sheetContext).pop(
+                      _DailyCompanionInput(
+                        minutes: minutes,
+                        energy: energy,
+                        location: location,
+                        painArea: painArea,
+                      ),
+                    ),
+                    child: Text(
+                      l.text('Βρες το ένα βήμα μου', 'Find my one step'),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    ),
+  );
+  if (input == null) return;
+  await store.saveDailyCompanionCheckIn(
+    minutes: input.minutes,
+    energy: input.energy,
+    location: input.location,
+    painArea: input.painArea,
+  );
+}
+
+Future<void> _showStarterPathPicker(
+  BuildContext context,
+  FitnessStore store,
+) async {
+  await showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    builder: (sheetContext) => SafeArea(
+      child: ListView(
+        shrinkWrap: true,
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+        children: [
           Text(
-            template.name,
+            context.l10n.text('Διάλεξε τη διαδρομή σου', 'Choose your path'),
             style: Theme.of(
               context,
             ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
-            template.exercises.take(4).join('  •  '),
+            context.l10n.text(
+              'Μπορείς να την αλλάξεις οποιαδήποτε στιγμή.',
+              'You can change it at any time.',
+            ),
+          ),
+          const SizedBox(height: 14),
+          for (final path in DailyCompanionEngine.paths)
+            Card(
+              child: ListTile(
+                leading: Icon(
+                  store.preferences.starterPath == path.id
+                      ? Icons.radio_button_checked_rounded
+                      : Icons.radio_button_unchecked_rounded,
+                ),
+                title: Text(
+                  context.l10n.text(path.titleGreek, path.titleEnglish),
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+                subtitle: Text(
+                  context.l10n.text(path.subtitleGreek, path.subtitleEnglish),
+                ),
+                onTap: () async {
+                  await store.selectStarterPath(path.id);
+                  if (sheetContext.mounted) Navigator.pop(sheetContext);
+                },
+              ),
+            ),
+        ],
+      ),
+    ),
+  );
+}
+
+// Kept as an internal fallback while older deep links finish migrating.
+// ignore: unused_element
+class _TodayChoicePanel extends StatelessWidget {
+  const _TodayChoicePanel({
+    required this.store,
+    required this.template,
+    required this.active,
+  });
+
+  final FitnessStore store;
+  final WorkoutTemplate template;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final missionSurface = Color.alphaBlend(
+      colors.primary.withValues(alpha: .055),
+      colors.surfaceContainer,
+    );
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [missionSurface, colors.surfaceContainerLow],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        border: Border.all(color: colors.outlineVariant),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: colors.primary.withValues(alpha: .045),
+            blurRadius: 34,
+            spreadRadius: -12,
+            offset: const Offset(0, 16),
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: .3),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            context.l10n.text(
+              'Τι ταιριάζει στη μέρα σου;',
+              'What fits your day?',
+            ),
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            context.l10n.text(
+              'Διάλεξε αυτό που μπορείς να κάνεις σήμερα. Δεν υπάρχει λάθος επιλογή.',
+              'Choose what you can do today. There is no wrong choice.',
+            ),
             style: TextStyle(
               color: Colors.white.withValues(alpha: .65),
               height: 1.45,
             ),
           ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              const Icon(Icons.bolt, color: Color(0xFFFF6E40), size: 18),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  template.prescription,
-                  style: const TextStyle(
-                    color: Color(0xFFFFAB91),
-                    fontWeight: FontWeight.w800,
+          const SizedBox(height: 16),
+          _TodayChoice(
+            actionKey: const ValueKey('gentle-movement-action'),
+            icon: Icons.timer_outlined,
+            title: context.l10n.text(
+              'Έχω μόνο 10 λεπτά',
+              'I only have 10 minutes',
+            ),
+            subtitle: context.l10n.text(
+              'Ήπια κίνηση με χρονόμετρο και χωρίς εξοπλισμό',
+              'Gentle timed movement with no equipment',
+            ),
+            color: const Color(0xFF8FC5A8),
+            onTap: () => _showGentleMovementPlan(context, store),
+          ),
+          const SizedBox(height: 10),
+          _TodayChoice(
+            actionKey: const ValueKey('recommended-workout-action'),
+            icon: active ? Icons.play_arrow_rounded : Icons.fitness_center,
+            title: active
+                ? context.l10n.text(
+                    'Συνέχισε την προπόνησή σου',
+                    'Continue your workout',
+                  )
+                : context.l10n.text(
+                    'Θέλω κανονική προπόνηση',
+                    'I want a full workout',
                   ),
-                ),
-              ),
-            ],
+            subtitle: context.l10n.text(
+              '${PhoenixCopy.workoutName(context.l10n, template, short: true)} • ${PhoenixCopy.exerciseCount(context.l10n, template.exercises.length)} • περίπου ${PhoenixCopy.minuteCount(context.l10n, store.profile?.sessionMinutes ?? 45)}',
+              '${template.name} • ${template.exercises.length} exercises • about ${store.profile?.sessionMinutes ?? 45} minutes',
+            ),
+            color: colors.primary,
+            emphasized: true,
+            onTap: () => _openWorkout(context, store, template),
+          ),
+          const SizedBox(height: 10),
+          _TodayChoice(
+            actionKey: const ValueKey('recovery-workout-action'),
+            icon: Icons.self_improvement_outlined,
+            title: context.l10n.text(
+              'Σήμερα χρειάζομαι κάτι ήπιο',
+              'I need something gentle today',
+            ),
+            subtitle: context.l10n.text(
+              'Αναπνοές και απλές κινήσεις αποκατάστασης',
+              'Breathing and simple recovery movements',
+            ),
+            color: const Color(0xFF9DA7C8),
+            onTap: () =>
+                _openWorkout(context, store, store.createRestDayDraft()),
           ),
           const SizedBox(height: 18),
           ClipRRect(
@@ -1929,35 +4107,17 @@ class _DailyMissionCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            '${context.l10n.text('Σειρά προγράμματος', 'Program rotation')}: '
-            '${store.rotationSummary}',
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: .45),
-              fontSize: 12,
-            ),
-          ),
-          const SizedBox(height: 18),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: active ? null : onStart,
-              icon: Icon(active ? Icons.hourglass_top : Icons.play_arrow),
-              label: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                child: Text(
-                  active
-                      ? context.l10n.text(
-                          'ΥΠΑΡΧΕΙ ΕΝΕΡΓΗ ΠΡΟΠΟΝΗΣΗ',
-                          'WORKOUT IN PROGRESS',
-                        )
-                      : context.l10n.text(
-                          'ΞΕΚΙΝΑ ΤΗ ΣΗΜΕΡΙΝΗ',
-                          'START TODAY’S SESSION',
-                        ),
-                ),
+            context.l10n.text(
+              PhoenixCopy.weeklyWorkoutProgress(
+                context.l10n,
+                completed: store.workoutsInCurrentWeek,
+                target: store.weeklyWorkoutTarget,
               ),
+              '${store.workoutsInCurrentWeek} of ${store.weeklyWorkoutTarget} workouts this week',
+            ),
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: .55),
+              fontSize: 12,
             ),
           ),
         ],
@@ -1966,13 +4126,80 @@ class _DailyMissionCard extends StatelessWidget {
   }
 }
 
+class _TodayChoice extends StatelessWidget {
+  const _TodayChoice({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.color,
+    required this.onTap,
+    this.actionKey,
+    this.emphasized = false,
+  });
+
+  final Key? actionKey;
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Color color;
+  final VoidCallback onTap;
+  final bool emphasized;
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: color.withValues(alpha: emphasized ? .15 : .075),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(18),
+      side: BorderSide(color: color.withValues(alpha: emphasized ? .5 : .24)),
+    ),
+    clipBehavior: Clip.antiAlias,
+    child: InkWell(
+      key: actionKey,
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          children: [
+            Icon(icon, color: color, size: 27),
+            const SizedBox(width: 13),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontSize: 12,
+                      height: 1.25,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(Icons.chevron_right_rounded),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
 class _DailyExercisesCard extends StatelessWidget {
-  const _DailyExercisesCard({required this.template});
+  const _DailyExercisesCard({required this.template, required this.profile});
 
   final WorkoutTemplate template;
+  final UserProfile? profile;
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(18),
@@ -1981,20 +4208,21 @@ class _DailyExercisesCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                const Icon(
-                  Icons.format_list_numbered,
-                  color: Color(0xFFFF6E40),
-                ),
+                Icon(Icons.format_list_numbered, color: colors.primary),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    context.l10n.text(
-                      'ΟΙ ΣΗΜΕΡΙΝΕΣ ΑΣΚΗΣΕΙΣ',
-                      'TODAY’S EXERCISES',
-                    ),
+                    template.exercises.length == 1
+                        ? context.l10n.text(
+                            'Η σημερινή άσκηση',
+                            'Today’s exercise',
+                          )
+                        : context.l10n.text(
+                            'Οι σημερινές ασκήσεις',
+                            'Today’s exercises',
+                          ),
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w900,
-                      letterSpacing: .7,
                     ),
                   ),
                 ),
@@ -2010,19 +4238,36 @@ class _DailyExercisesCard extends StatelessWidget {
             const SizedBox(height: 6),
             Text(
               context.l10n.text(
-                'Πάτησε σε άσκηση για εικόνα και οδηγίες τεχνικής.',
-                'Tap an exercise for a visual and technique guide.',
+                'Πάτησε μια άσκηση, αν θέλεις να δεις οδηγίες εκτέλεσης.',
+                'Tap an exercise to see instructions.',
               ),
               style: TextStyle(
                 color: Colors.white.withValues(alpha: .48),
                 fontSize: 12,
               ),
             ),
+            if (profile != null) ...[
+              const SizedBox(height: 10),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Chip(
+                  avatar: const Icon(Icons.verified_outlined, size: 17),
+                  label: Text(
+                    context.l10n.text(
+                      'Ταιριάζει στον εξοπλισμό σου',
+                      'Matches your equipment',
+                    ),
+                  ),
+                  visualDensity: VisualDensity.compact,
+                ),
+              ),
+            ],
             const SizedBox(height: 12),
             for (var index = 0; index < template.exercises.length; index++)
               _DailyExerciseRow(
                 index: index + 1,
                 exercise: template.exercises[index],
+                atHome: EquipmentAvailability.isHome(profile),
                 prescription: template.prescriptionFor(
                   template.exercises[index],
                 ),
@@ -2038,17 +4283,22 @@ class _DailyExerciseRow extends StatelessWidget {
   const _DailyExerciseRow({
     required this.index,
     required this.exercise,
+    required this.atHome,
     required this.prescription,
   });
 
   final int index;
   final String exercise;
+  final bool atHome;
   final ExercisePrescription prescription;
 
   @override
   Widget build(BuildContext context) {
-    final guide = ExerciseGuideCatalog.forExercise(exercise);
+    final colors = Theme.of(context).colorScheme;
+    final guide = ExerciseGuideCatalog.forExercise(exercise, atHome: atHome);
+    final equipmentLabel = guide?.localizedEquipmentLabel(context.l10n) ?? '';
     return InkWell(
+      key: ValueKey('daily-exercise-row-$exercise'),
       borderRadius: BorderRadius.circular(12),
       onTap: guide == null
           ? null
@@ -2057,48 +4307,115 @@ class _DailyExerciseRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 10),
         child: Row(
           children: [
-            Container(
-              width: 30,
-              height: 30,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: const Color(0xFFFF3D00).withValues(alpha: .12),
-                borderRadius: BorderRadius.circular(9),
-              ),
-              child: Text(
-                '$index',
-                style: const TextStyle(
-                  color: Color(0xFFFF6E40),
-                  fontWeight: FontWeight.w900,
+            if (guide != null)
+              SizedBox(
+                key: ValueKey('daily-exercise-guide-$exercise'),
+                width: 104,
+                height: 62,
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: ExerciseGuidePreview(
+                        guide: guide,
+                        semanticLabel: context.l10n.text(
+                          'Οπτικός οδηγός για την άσκηση ${PhoenixCopy.exerciseName(context.l10n, exercise)}',
+                          'Visual guide for ${PhoenixCopy.exerciseName(context.l10n, exercise)}',
+                        ),
+                        height: 62,
+                        borderRadius: BorderRadius.circular(11),
+                      ),
+                    ),
+                    Positioned(
+                      left: 5,
+                      top: 5,
+                      child: Container(
+                        width: 24,
+                        height: 24,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: colors.surface.withValues(alpha: .86),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          '$index',
+                          style: TextStyle(
+                            color: colors.primary,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              Container(
+                width: 30,
+                height: 30,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: colors.primary.withValues(alpha: .1),
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: Text(
+                  '$index',
+                  style: TextStyle(
+                    color: colors.primary,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
               ),
-            ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    exercise,
+                    PhoenixCopy.exerciseName(context.l10n, exercise),
                     style: const TextStyle(fontWeight: FontWeight.w800),
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    '${prescription.summary}  •  Tempo ${prescription.tempo}',
+                    PhoenixCopy.compactExerciseTarget(
+                      context.l10n,
+                      prescription,
+                    ),
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: .48),
                       fontSize: 12,
                     ),
                   ),
+                  if (guide != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      context.l10n.text(
+                        'Δες την εκτέλεση',
+                        'See how to perform it',
+                      ),
+                      style: const TextStyle(
+                        color: Color(0xFFFF9E80),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    if (equipmentLabel.isNotEmpty) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        equipmentLabel,
+                        style: TextStyle(
+                          color: colors.primary.withValues(alpha: .78),
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: .35,
+                        ),
+                      ),
+                    ],
+                  ],
                 ],
               ),
             ),
             if (guide != null)
-              const Icon(
-                Icons.photo_library_outlined,
-                color: Color(0xFFFF9E80),
-                size: 19,
-              ),
+              const Icon(Icons.chevron_right, color: Color(0xFFFF9E80)),
           ],
         ),
       ),
@@ -2168,6 +4485,7 @@ class _WorkoutCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(18),
@@ -2181,17 +4499,20 @@ class _WorkoutCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        template.name,
+                        PhoenixCopy.workoutName(context.l10n, template),
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.w700,
                         ),
                       ),
                       if (template.isRecoveryDay)
-                        const Padding(
+                        Padding(
                           padding: EdgeInsets.only(top: 3),
                           child: Text(
-                            'REST-DAY SESSION',
-                            style: TextStyle(
+                            context.l10n.text(
+                              'ΗΜΕΡΑ ΞΕΚΟΥΡΑΣΗΣ',
+                              'REST-DAY SESSION',
+                            ),
+                            style: const TextStyle(
                               color: Color(0xFF81C784),
                               fontSize: 10,
                               fontWeight: FontWeight.w900,
@@ -2278,20 +4599,28 @@ class _WorkoutCard extends StatelessWidget {
             ],
             const SizedBox(height: 12),
             Text(
-              template.exercises.join('  •  '),
+              template.exercises
+                  .map(
+                    (exercise) =>
+                        PhoenixCopy.exerciseName(context.l10n, exercise),
+                  )
+                  .join('  •  '),
               style: TextStyle(color: Colors.white.withValues(alpha: .65)),
             ),
             const SizedBox(height: 14),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.bolt, size: 18, color: Color(0xFFFF3D00)),
+                Icon(Icons.bolt, size: 18, color: colors.primary),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    template.prescription,
-                    style: const TextStyle(
-                      color: Color(0xFFFF9E80),
+                    PhoenixCopy.trainingText(
+                      context.l10n,
+                      template.prescription,
+                    ),
+                    style: TextStyle(
+                      color: colors.onSurfaceVariant,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -2300,7 +4629,7 @@ class _WorkoutCard extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              template.coachingCue,
+              PhoenixCopy.trainingText(context.l10n, template.coachingCue),
               style: TextStyle(
                 color: Colors.white.withValues(alpha: .52),
                 fontSize: 12,

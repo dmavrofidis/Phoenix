@@ -1,0 +1,363 @@
+@import "tailwindcss";
+
+:root {
+  --background: #090d0f;
+  --surface: #171e22;
+  --surface-strong: #20292e;
+  --foreground: #f3f6f5;
+  --muted: #b4c0be;
+  --outline: #293438;
+  --accent: #ff6b4a;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+  margin: 0;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans, Arial), Helvetica, sans-serif;
+}
+
+body {
+  background:
+    radial-gradient(circle at 50% -20%, rgb(255 107 74 / 10%), transparent 46%),
+    var(--background);
+}
+
+.installer-shell {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px 18px;
+}
+
+.installer-card {
+  width: min(100%, 540px);
+  padding: clamp(24px, 6vw, 40px);
+  border: 1px solid var(--outline);
+  border-radius: 28px;
+  background: rgb(23 30 34 / 94%);
+  box-shadow: 0 24px 80px rgb(0 0 0 / 34%);
+}
+
+.brand-row {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.app-icon {
+  flex: 0 0 auto;
+  border-radius: 22px;
+  box-shadow: 0 10px 28px rgb(0 0 0 / 34%);
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.15em;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(1.8rem, 7vw, 2.65rem);
+  line-height: 1.02;
+  letter-spacing: -0.045em;
+}
+
+.lead {
+  margin: 26px 0 22px;
+  color: var(--muted);
+  font-size: 1.02rem;
+  line-height: 1.62;
+}
+
+.primary-action {
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 20px;
+  border-radius: 17px;
+  background: var(--accent);
+  color: #090d0f;
+  font-weight: 900;
+  text-decoration: none;
+  box-shadow: 0 12px 34px rgb(255 107 74 / 18%);
+  transition:
+    transform 160ms ease,
+    filter 160ms ease;
+}
+
+.primary-action:hover {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+}
+
+.primary-action:focus-visible {
+  outline: 3px solid #f3f6f5;
+  outline-offset: 3px;
+}
+
+.steps {
+  margin-top: 22px;
+  padding: 18px;
+  border: 1px solid var(--outline);
+  border-radius: 18px;
+  background: var(--surface-strong);
+}
+
+.steps-title {
+  margin: 0 0 10px;
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+.steps ol {
+  margin: 0;
+  padding-left: 22px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.steps li + li {
+  margin-top: 8px;
+}
+
+.steps strong {
+  color: var(--foreground);
+}
+
+.privacy-note {
+  margin: 18px 0 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.legal-links {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.legal-links a,
+.legal-card a {
+  color: var(--foreground);
+  text-underline-offset: 3px;
+}
+
+.legal-shell {
+  min-height: 100vh;
+  padding: 32px 18px 64px;
+}
+
+.legal-card {
+  width: min(100%, 820px);
+  margin: 0 auto;
+  padding: clamp(24px, 6vw, 48px);
+  border: 1px solid var(--outline);
+  border-radius: 28px;
+  background: rgb(23 30 34 / 96%);
+  box-shadow: 0 24px 80px rgb(0 0 0 / 26%);
+}
+
+.legal-topbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 34px;
+}
+
+.legal-brand {
+  color: var(--accent);
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.15em;
+  white-space: nowrap;
+}
+
+.legal-back {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 0.9rem;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.legal-card h1 {
+  margin-bottom: 12px;
+}
+
+.legal-intro {
+  margin: 0 0 22px;
+  color: var(--muted);
+  font-size: 1.02rem;
+  line-height: 1.65;
+}
+
+.language-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin: 0 0 34px;
+}
+
+.language-links a {
+  padding: 9px 13px;
+  border: 1px solid var(--outline);
+  border-radius: 999px;
+  background: var(--surface-strong);
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.legal-section {
+  padding-top: 30px;
+  border-top: 1px solid var(--outline);
+  scroll-margin-top: 24px;
+}
+
+.legal-section + .legal-section {
+  margin-top: 38px;
+}
+
+.legal-section h2 {
+  margin: 0 0 8px;
+  font-size: clamp(1.45rem, 5vw, 2rem);
+  letter-spacing: -0.03em;
+}
+
+.legal-section h3 {
+  margin: 26px 0 8px;
+  font-size: 1rem;
+}
+
+.legal-section p,
+.legal-section li {
+  color: var(--muted);
+  line-height: 1.68;
+}
+
+.legal-section ul {
+  margin: 10px 0 0;
+  padding-left: 22px;
+}
+
+.legal-date {
+  margin: 0 0 20px;
+  color: var(--accent);
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.support-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin: 26px 0 34px;
+}
+
+.support-action {
+  min-height: 112px;
+  padding: 18px;
+  border: 1px solid var(--outline);
+  border-radius: 18px;
+  background: var(--surface-strong);
+  text-decoration: none;
+}
+
+.support-action strong,
+.support-action span {
+  display: block;
+}
+
+.support-action span {
+  margin-top: 7px;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.support-action.primary {
+  border-color: rgb(255 107 74 / 42%);
+  background: rgb(255 107 74 / 9%);
+}
+
+.faq-item {
+  padding: 20px 0;
+  border-top: 1px solid var(--outline);
+}
+
+.faq-item h3 {
+  margin: 0 0 8px;
+}
+
+.faq-item p {
+  margin: 0;
+}
+
+@media (max-width: 420px) {
+  .installer-shell {
+    padding: 0;
+    place-items: stretch;
+  }
+
+  .installer-card {
+    min-height: 100dvh;
+    border: 0;
+    border-radius: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .app-icon {
+    width: 76px;
+    height: 76px;
+    border-radius: 19px;
+  }
+
+  .legal-shell {
+    padding: 0;
+  }
+
+  .legal-card {
+    min-height: 100dvh;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .support-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .primary-action {
+    transition: none;
+  }
+}

@@ -58,6 +58,7 @@ class TrainingScheduleEngine {
     required List<WorkoutLog> logs,
     Map<String, String> assignments = const {},
     Map<String, String> dateAssignments = const {},
+    Set<String> skippedDates = const {},
     List<WorkoutTemplate>? catalog,
   }) {
     final today = _dateOnly(now);
@@ -115,6 +116,7 @@ class TrainingScheduleEngine {
     for (var index = 0; index < weekdays.length; index++) {
       final weekday = weekdays[index];
       final date = weekStart.add(Duration(days: weekday - 1));
+      if (skippedDates.contains(_dateKey(date))) continue;
       final assignedId =
           dateAssignments[_dateKey(date)] ?? assignments['$weekday'];
       final assignedTemplate = assignedId == null

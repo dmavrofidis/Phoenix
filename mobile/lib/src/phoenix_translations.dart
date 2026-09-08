@@ -9,6 +9,7 @@ class PhoenixTranslations {
     'Training': {'de': 'Training', 'es': 'Entrenamiento'},
     'Nutrition': {'de': 'Ernährung', 'es': 'Nutrición'},
     'Progress': {'de': 'Fortschritt', 'es': 'Progreso'},
+    'More': {'de': 'Mehr', 'es': 'Más'},
     'Search': {'de': 'Suchen', 'es': 'Buscar'},
     'Welcome back': {'de': 'Willkommen zurück', 'es': 'Bienvenido de nuevo'},
     'Small steps. Serious progress.': {
@@ -150,6 +151,27 @@ class PhoenixTranslations {
     'Recovery': {'de': 'Erholung', 'es': 'Recuperación'},
     'Settings': {'de': 'Einstellungen', 'es': 'Ajustes'},
     'Offline': {'de': 'Offline', 'es': 'Sin conexión'},
+    'PRIVACY & SUPPORT': {
+      'de': 'DATENSCHUTZ & HILFE',
+      'es': 'PRIVACIDAD Y AYUDA',
+    },
+    'Privacy policy': {
+      'de': 'Datenschutzerklärung',
+      'es': 'Política de privacidad',
+    },
+    'See what stays on your device and what is not collected.': {
+      'de': 'Sieh, was auf deinem Gerät bleibt und was nicht erhoben wird.',
+      'es': 'Consulta qué permanece en tu dispositivo y qué no se recopila.',
+    },
+    'Support': {'de': 'Hilfe', 'es': 'Ayuda'},
+    'Installation, backup, and problem-reporting guidance.': {
+      'de': 'Hilfe zu Installation, Sicherungen und Fehlermeldungen.',
+      'es': 'Ayuda sobre instalación, copias y notificación de problemas.',
+    },
+    'The link could not be opened.': {
+      'de': 'Der Link konnte nicht geöffnet werden.',
+      'es': 'No se pudo abrir el enlace.',
+    },
   };
 
   static String translate(String english, String languageCode) =>

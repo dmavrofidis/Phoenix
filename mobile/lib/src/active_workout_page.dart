@@ -4,15 +4,65 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'exercise_substitution_engine.dart';
+import 'equipment_availability.dart';
 import 'exercise_guide.dart';
 import 'deterministic_coach_engine.dart';
 import 'models/fitness_models.dart';
+import 'phoenix_copy.dart';
+import 'phoenix_l10n.dart';
 import 'recovery_widgets.dart';
 import 'session_preparation_engine.dart';
 import 'state/fitness_store.dart';
 import 'spotify_card.dart';
 import 'training_insights.dart';
 import 'training_intelligence_widgets.dart';
+import 'voice_coach.dart';
+
+enum _ExerciseSupportMode { discomfort, tired, easier }
+
+enum _ExerciseSupportAction { adapt, stop }
+
+String _painAreaLabel(BuildContext context, String value) {
+  return switch (value) {
+    'Δεν προσδιορίστηκε' => context.l10n.text(
+      'Δεν προσδιορίστηκε',
+      'Not specified',
+    ),
+    'Δεν είμαι σίγουρος' => context.l10n.text(
+      'Δεν είμαι σίγουρος',
+      'I am not sure',
+    ),
+    'Ώμος' => context.l10n.text('Ώμος', 'Shoulder'),
+    'Αγκώνας' => context.l10n.text('Αγκώνας', 'Elbow'),
+    'Καρπός' => context.l10n.text('Καρπός', 'Wrist'),
+    'Μέση' => context.l10n.text('Μέση', 'Lower back'),
+    'Ισχίο' => context.l10n.text('Ισχίο', 'Hip'),
+    'Γόνατο' => context.l10n.text('Γόνατο', 'Knee'),
+    'Αστράγαλος' => context.l10n.text('Αστράγαλος', 'Ankle'),
+    _ => value,
+  };
+}
+
+class _ExerciseSupportResult {
+  const _ExerciseSupportResult._({
+    this.action,
+    this.replacement,
+    this.tired = false,
+  });
+
+  const _ExerciseSupportResult.adapt({required bool tired})
+    : this._(action: _ExerciseSupportAction.adapt, tired: tired);
+
+  const _ExerciseSupportResult.stop()
+    : this._(action: _ExerciseSupportAction.stop);
+
+  const _ExerciseSupportResult.replace(String exercise)
+    : this._(replacement: exercise);
+
+  final _ExerciseSupportAction? action;
+  final String? replacement;
+  final bool tired;
+}
 
 class ActiveWorkoutPage extends StatefulWidget {
   const ActiveWorkoutPage({super.key, required this.store});
@@ -26,22 +76,71 @@ class ActiveWorkoutPage extends StatefulWidget {
 class _ActiveWorkoutPageState extends State<ActiveWorkoutPage> {
   Timer? _timer;
   int _remainingSeconds = 0;
+  final VoiceCoach _voiceCoach = VoiceCoach();
   final Set<int> _completedWarmupSteps = {};
   final Set<int> _completedCooldownSteps = {};
+  final Set<String> _stoppedExercises = {};
 
   @override
   void dispose() {
     _timer?.cancel();
+    unawaited(_voiceCoach.stop());
     super.dispose();
+  }
+
+  bool get _voiceEnabled =>
+      widget.store.preferences.audioCues &&
+      widget.store.preferences.audioCueStyle == 'coach';
+
+  Future<void> _toggleVoice() async {
+    final enabled = !_voiceEnabled;
+    await widget.store.updatePreferences(
+      audioCues: enabled,
+      audioCueStyle: enabled ? 'coach' : 'minimal',
+    );
+    if (!mounted) return;
+    if (enabled) {
+      await _voiceCoach.speak(
+        text: context.l10n.text(
+          'Η φωνητική καθοδήγηση ενεργοποιήθηκε. Θα σου λέω πότε τελειώνει η ξεκούραση.',
+          'Voice guidance is on. I will tell you when rest ends.',
+        ),
+        languageCode: widget.store.preferences.languageCode,
+      );
+    } else {
+      await _voiceCoach.stop();
+    }
   }
 
   void _startRest(int seconds) {
     _timer?.cancel();
     setState(() => _remainingSeconds = seconds);
+    if (_voiceEnabled) {
+      unawaited(
+        _voiceCoach.speak(
+          text: context.l10n.text(
+            'Ξεκουράσου για $seconds δευτερόλεπτα.',
+            'Rest for $seconds seconds.',
+          ),
+          languageCode: widget.store.preferences.languageCode,
+        ),
+      );
+    }
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted || _remainingSeconds <= 1) {
         timer.cancel();
         unawaited(widget.store.playCountdownCue(finalCue: true));
+        if (_voiceEnabled) {
+          unawaited(
+            _voiceCoach.speak(
+              text: context.l10n.text(
+                'Η ξεκούραση τελείωσε. Πάμε στο επόμενο σετ.',
+                'Rest is over. Let us do the next set.',
+              ),
+              languageCode: widget.store.preferences.languageCode,
+            ),
+          );
+        }
         if (mounted) setState(() => _remainingSeconds = 0);
         return;
       }
@@ -109,15 +208,97 @@ class _ActiveWorkoutPageState extends State<ActiveWorkoutPage> {
         replacement: replacement,
       );
       if (!mounted) return;
+      final l = context.l10n;
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text('$exercise → $replacement')));
+        ..showSnackBar(
+          SnackBar(
+            content: Text(
+              '${PhoenixCopy.exerciseName(l, exercise)} → '
+              '${PhoenixCopy.exerciseName(l, replacement)}',
+            ),
+          ),
+        );
     } on FormatException catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(error.message)));
     }
+  }
+
+  Future<void> _supportExercise(
+    String exercise,
+    _ExerciseSupportMode initialMode,
+  ) async {
+    final workout = widget.store.activeWorkout;
+    if (workout == null) return;
+    final result = await showModalBottomSheet<_ExerciseSupportResult>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (context) => _ExerciseSupportSheet(
+        exercise: exercise,
+        initialMode: initialMode,
+        profile: widget.store.profile,
+        excludedExercises: workout.exercises,
+        recentPainAreas: widget.store.recentPainAreas,
+      ),
+    );
+    if (result == null) return;
+    try {
+      if (result.replacement != null) {
+        widget.store.replaceActiveExercise(
+          exercise: exercise,
+          replacement: result.replacement!,
+        );
+        _stoppedExercises.remove(exercise);
+      } else if (result.action == _ExerciseSupportAction.adapt) {
+        widget.store.makeActiveExerciseEasier(
+          exercise: exercise,
+          tired: result.tired,
+        );
+        _stoppedExercises.remove(exercise);
+      } else if (result.action == _ExerciseSupportAction.stop) {
+        setState(() => _stoppedExercises.add(exercise));
+      }
+      if (!mounted) return;
+      final message = result.replacement != null
+          ? context.l10n.text(
+              'Η άσκηση άλλαξε σε ασφαλέστερη επιλογή.',
+              'The exercise was changed to a safer option.',
+            )
+          : result.action == _ExerciseSupportAction.stop
+          ? context.l10n.text(
+              'Η άσκηση σταμάτησε για σήμερα. Δεν χρειάζεται να πιεστείς.',
+              'This exercise is stopped for today. You do not need to push through.',
+            )
+          : context.l10n.text(
+              'Ο σημερινός στόχος έγινε πιο εύκολος.',
+              'Today’s target is now easier.',
+            );
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(message)));
+    } on FormatException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
+    }
+  }
+
+  Future<void> _speakExercise(String exercise, bool atHome) async {
+    final guide = ExerciseGuideCatalog.forExercise(exercise, atHome: atHome);
+    if (guide == null) return;
+    final displayName = PhoenixCopy.exerciseName(context.l10n, exercise);
+    await _voiceCoach.speak(
+      text: context.l10n.text(
+        '$displayName. ${guide.execution} Πρόσεξε: ${guide.avoid}',
+        '$displayName. Move slowly, stay in a comfortable range and keep your breathing relaxed. Stop if you feel pain or lose control.',
+      ),
+      languageCode: widget.store.preferences.languageCode,
+    );
   }
 
   Future<void> _finish() async {
@@ -146,13 +327,39 @@ class _ActiveWorkoutPageState extends State<ActiveWorkoutPage> {
         if (workout == null) {
           return const Scaffold(body: SizedBox.shrink());
         }
-        final preparation = SessionPreparationEngine.forWorkout(workout);
+        final isHome = EquipmentAvailability.isHome(widget.store.profile);
+        final preparation = SessionPreparationEngine.forWorkout(
+          workout,
+          profile: widget.store.profile,
+        );
         return Scaffold(
           appBar: AppBar(
-            title: const Text('IRON SESSION'),
+            title: Text(
+              isHome
+                  ? context.l10n.text('ΠΡΟΠΟΝΗΣΗ ΣΤΟ ΣΠΙΤΙ', 'HOME WORKOUT')
+                  : context.l10n.text('ΠΡΟΠΟΝΗΣΗ ΜΕ ΒΑΡΗ', 'STRENGTH WORKOUT'),
+            ),
             actions: [
               IconButton(
-                tooltip: 'Ακύρωση προπόνησης',
+                key: const ValueKey('workout-voice-coach'),
+                tooltip: context.l10n.text(
+                  _voiceEnabled
+                      ? 'Κλείσιμο φωνητικής καθοδήγησης'
+                      : 'Φωνητική καθοδήγηση',
+                  _voiceEnabled ? 'Turn off voice guidance' : 'Voice guidance',
+                ),
+                onPressed: _toggleVoice,
+                icon: Icon(
+                  _voiceEnabled
+                      ? Icons.record_voice_over_rounded
+                      : Icons.voice_over_off_outlined,
+                ),
+              ),
+              IconButton(
+                tooltip: context.l10n.text(
+                  'Ακύρωση προπόνησης',
+                  'Cancel workout',
+                ),
                 onPressed: () {
                   widget.store.cancelWorkout();
                   Navigator.of(context).pop();
@@ -169,12 +376,26 @@ class _ActiveWorkoutPageState extends State<ActiveWorkoutPage> {
                 setCount: widget.store.activeSets.length,
               ),
               const SizedBox(height: 12),
+              _WorkoutVoiceCard(
+                enabled: _voiceEnabled,
+                onChanged: (_) => _toggleVoice(),
+              ),
+              const SizedBox(height: 12),
               PeriodizationCard(store: widget.store),
               const SizedBox(height: 12),
               _ProtocolChecklistCard(
-                title: 'WARM-UP PROTOCOL',
-                subtitle:
-                    '${preparation.warmupMinutes}′ πριν από τα working sets',
+                title: isHome
+                    ? context.l10n.text('ΑΠΛΗ ΠΡΟΘΕΡΜΑΝΣΗ', 'SIMPLE WARM-UP')
+                    : context.l10n.text('ΠΡΟΘΕΡΜΑΝΣΗ', 'WARM-UP'),
+                subtitle: isHome
+                    ? context.l10n.text(
+                        '${preparation.warmupMinutes}′ πριν ξεκινήσεις',
+                        '${preparation.warmupMinutes} min before you start',
+                      )
+                    : context.l10n.text(
+                        '${preparation.warmupMinutes}′ πριν από τα βασικά σετ',
+                        '${preparation.warmupMinutes} min before your working sets',
+                      ),
                 icon: Icons.whatshot_outlined,
                 steps: preparation.warmup,
                 completed: _completedWarmupSteps,
@@ -214,7 +435,11 @@ class _ActiveWorkoutPageState extends State<ActiveWorkoutPage> {
                       .toList(),
                   suggestion: widget.store.progressionFor(exercise),
                   videoUrl: widget.store.exerciseVideoFor(exercise),
+                  atHome: isHome,
+                  stopped: _stoppedExercises.contains(exercise),
                   onAdd: () => _addSet(exercise),
+                  onSpeak: () => _speakExercise(exercise, isHome),
+                  onSupport: (mode) => _supportExercise(exercise, mode),
                   onReplace:
                       widget.store.activeSets.any(
                             (set) => set.exerciseName == exercise,
@@ -229,9 +454,11 @@ class _ActiveWorkoutPageState extends State<ActiveWorkoutPage> {
                 const SizedBox(height: 12),
               ],
               _ProtocolChecklistCard(
-                title: 'COOLDOWN PROTOCOL',
-                subtitle:
-                    '${preparation.cooldownMinutes}′ για σταδιακή επαναφορά',
+                title: context.l10n.text('ΑΠΟΘΕΡΑΠΕΙΑ', 'COOL-DOWN'),
+                subtitle: context.l10n.text(
+                  '${preparation.cooldownMinutes}′ για να επανέλθει ήρεμα το σώμα',
+                  '${preparation.cooldownMinutes} min to wind down gradually',
+                ),
                 icon: Icons.air,
                 steps: preparation.cooldown,
                 completed: _completedCooldownSteps,
@@ -252,14 +479,69 @@ class _ActiveWorkoutPageState extends State<ActiveWorkoutPage> {
                 padding: const EdgeInsets.symmetric(vertical: 15),
                 child: Text(
                   widget.store.activeSets.isEmpty
-                      ? 'Κατάγραψε το πρώτο σετ'
-                      : 'Ολοκλήρωση — ${widget.store.activeSets.length} σετ',
+                      ? context.l10n.text(
+                          'Κατάγραψε πρώτα ένα σετ',
+                          'Log your first set',
+                        )
+                      : context.l10n.text(
+                          'Ολοκλήρωση — ${PhoenixCopy.setCount(context.l10n, widget.store.activeSets.length)}',
+                          'Finish — ${PhoenixCopy.setCount(context.l10n, widget.store.activeSets.length)}',
+                        ),
                 ),
               ),
             ),
           ),
         );
       },
+    );
+  }
+}
+
+class _WorkoutVoiceCard extends StatelessWidget {
+  const _WorkoutVoiceCard({required this.enabled, required this.onChanged});
+
+  final bool enabled;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Card(
+      color: colors.secondary.withValues(alpha: .08),
+      child: SwitchListTile(
+        key: const ValueKey('workout-voice-guidance-switch'),
+        minTileHeight: 72,
+        value: enabled,
+        onChanged: onChanged,
+        secondary: Container(
+          width: 46,
+          height: 46,
+          decoration: BoxDecoration(
+            color: colors.secondary.withValues(alpha: .14),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Icon(
+            enabled
+                ? Icons.record_voice_over_rounded
+                : Icons.voice_over_off_outlined,
+            color: colors.secondary,
+          ),
+        ),
+        title: Text(
+          context.l10n.text('Φωνητική καθοδήγηση', 'Voice guidance'),
+          style: const TextStyle(fontWeight: FontWeight.w900),
+        ),
+        subtitle: Text(
+          context.l10n.text(
+            enabled
+                ? 'Θα ακούς πότε τελειώνει το διάλειμμα. Σε κάθε άσκηση μπορείς να πατήσεις «Άκουσε οδηγίες».'
+                : 'Άκουσε οδηγίες χωρίς να κοιτάζεις συνέχεια την οθόνη.',
+            enabled
+                ? 'You will hear when rest ends. You can also tap “Hear instructions” on every exercise.'
+                : 'Hear guidance without watching the screen all the time.',
+          ),
+        ),
+      ),
     );
   }
 }
@@ -285,7 +567,7 @@ class _ProtocolChecklistCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       child: ExpansionTile(
-        initiallyExpanded: title.startsWith('WARM'),
+        initiallyExpanded: icon == Icons.whatshot_outlined,
         leading: Icon(icon, color: const Color(0xFFFF6E40)),
         title: Text(
           title,
@@ -372,23 +654,34 @@ class _SessionReviewSheetState extends State<_SessionReviewSheet> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Session review',
+              context.l10n.text(
+                'Πώς πήγε η προπόνησή σου;',
+                'How did your workout go?',
+              ),
               style: Theme.of(
                 context,
               ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
             ),
             const SizedBox(height: 5),
             Text(
-              'Η αναφορά αυτή τροφοδοτεί το deload και το εβδομαδιαίο report.',
-              style: TextStyle(color: Colors.white.withValues(alpha: .5)),
+              context.l10n.text(
+                'Η απάντησή σου βοηθά το Phoenix να προσαρμόσει καλύτερα την επόμενη προπόνησή σου.',
+                'Your answer helps Phoenix adapt your next workout.',
+              ),
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
             const SizedBox(height: 20),
             Row(
               children: [
-                const Expanded(
+                Expanded(
                   child: Text(
-                    'Session RPE',
-                    style: TextStyle(fontWeight: FontWeight.w900),
+                    context.l10n.text(
+                      'Πόσο δύσκολη σου φάνηκε συνολικά;',
+                      'How hard did it feel overall?',
+                    ),
+                    style: const TextStyle(fontWeight: FontWeight.w900),
                   ),
                 ),
                 Text(
@@ -411,10 +704,13 @@ class _SessionReviewSheetState extends State<_SessionReviewSheet> {
             const SizedBox(height: 10),
             Row(
               children: [
-                const Expanded(
+                Expanded(
                   child: Text(
-                    'Ενόχληση ή πόνος',
-                    style: TextStyle(fontWeight: FontWeight.w900),
+                    context.l10n.text(
+                      'Ένιωσες ενόχληση ή πόνο;',
+                      'Did you feel discomfort or pain?',
+                    ),
+                    style: const TextStyle(fontWeight: FontWeight.w900),
                   ),
                 ),
                 Text(
@@ -441,9 +737,9 @@ class _SessionReviewSheetState extends State<_SessionReviewSheet> {
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
                 initialValue: _painArea,
-                decoration: const InputDecoration(
-                  labelText: 'Περιοχή',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: context.l10n.text('Περιοχή', 'Area'),
+                  border: const OutlineInputBorder(),
                 ),
                 items:
                     const [
@@ -457,8 +753,10 @@ class _SessionReviewSheetState extends State<_SessionReviewSheet> {
                           'Αστράγαλος',
                         ]
                         .map(
-                          (area) =>
-                              DropdownMenuItem(value: area, child: Text(area)),
+                          (area) => DropdownMenuItem(
+                            value: area,
+                            child: Text(_painAreaLabel(context, area)),
+                          ),
                         )
                         .toList(),
                 onChanged: (value) =>
@@ -467,11 +765,13 @@ class _SessionReviewSheetState extends State<_SessionReviewSheet> {
             ],
             if (_painSeverity >= 3) ...[
               const SizedBox(height: 10),
-              const Text(
-                'Pain flag: απόφυγε φόρτιση της περιοχής. Επίμονος ή οξύς '
-                'πόνος χρειάζεται επαγγελματική αξιολόγηση.',
+              Text(
+                context.l10n.text(
+                  'Μην επιβαρύνεις την περιοχή. Αν ο πόνος είναι έντονος, επιμένει ή χειροτερεύει, απευθύνσου σε επαγγελματία υγείας.',
+                  'Do not load the area. If pain is sharp, persistent or worsening, contact a health professional.',
+                ),
                 style: TextStyle(
-                  color: Color(0xFFEF9A9A),
+                  color: Theme.of(context).colorScheme.error,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -481,10 +781,16 @@ class _SessionReviewSheetState extends State<_SessionReviewSheet> {
               controller: _notes,
               minLines: 2,
               maxLines: 4,
-              decoration: const InputDecoration(
-                labelText: 'Σημειώσεις συνεδρίας',
-                hintText: 'Τεχνική, ενέργεια, τι θέλεις να θυμάσαι…',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: context.l10n.text(
+                  'Σημειώσεις προπόνησης',
+                  'Workout notes',
+                ),
+                hintText: context.l10n.text(
+                  'Πώς ένιωσες και τι θέλεις να θυμάσαι…',
+                  'How you felt and what you want to remember…',
+                ),
+                border: const OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 18),
@@ -493,9 +799,14 @@ class _SessionReviewSheetState extends State<_SessionReviewSheet> {
               child: FilledButton.icon(
                 onPressed: _submit,
                 icon: const Icon(Icons.flag),
-                label: const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 14),
-                  child: Text('Αποθήκευση και ολοκλήρωση'),
+                label: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  child: Text(
+                    context.l10n.text(
+                      'Αποθήκευση και ολοκλήρωση',
+                      'Save and finish',
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -539,13 +850,13 @@ class _SessionHeader extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      workout.name.toUpperCase(),
+                      PhoenixCopy.workoutName(context.l10n, workout),
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.w900,
                       ),
                     ),
                     Text(
-                      '${workout.exercises.length} ασκήσεις  •  $setCount σετ',
+                      '${PhoenixCopy.exerciseCount(context.l10n, workout.exercises.length)}  •  ${PhoenixCopy.setCount(context.l10n, setCount)}',
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: .62),
                       ),
@@ -567,7 +878,7 @@ class _SessionHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  workout.prescription,
+                  PhoenixCopy.trainingText(context.l10n, workout.prescription),
                   style: const TextStyle(
                     color: Color(0xFFFF9E80),
                     fontWeight: FontWeight.w800,
@@ -575,7 +886,7 @@ class _SessionHeader extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  workout.coachingCue,
+                  PhoenixCopy.trainingText(context.l10n, workout.coachingCue),
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: .65),
                     fontSize: 12,
@@ -614,7 +925,9 @@ class _RestTimer extends StatelessWidget {
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                remainingSeconds == 0 ? 'REST TIMER' : '$minutes:$seconds',
+                remainingSeconds == 0
+                    ? context.l10n.text('ΧΡΟΝΟΣ ΔΙΑΛΕΙΜΜΑΤΟΣ', 'REST TIMER')
+                    : '$minutes:$seconds',
                 style: Theme.of(
                   context,
                 ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
@@ -646,7 +959,11 @@ class _ExerciseCard extends StatelessWidget {
     required this.sets,
     required this.suggestion,
     required this.videoUrl,
+    required this.atHome,
+    required this.stopped,
     required this.onAdd,
+    required this.onSpeak,
+    required this.onSupport,
     required this.onReplace,
     required this.onRemove,
   });
@@ -657,13 +974,18 @@ class _ExerciseCard extends StatelessWidget {
   final List<ExerciseSetLog> sets;
   final ProgressionSuggestion suggestion;
   final String videoUrl;
+  final bool atHome;
+  final bool stopped;
   final VoidCallback onAdd;
+  final VoidCallback onSpeak;
+  final ValueChanged<_ExerciseSupportMode> onSupport;
   final VoidCallback? onReplace;
   final ValueChanged<ExerciseSetLog> onRemove;
 
   @override
   Widget build(BuildContext context) {
-    final guide = ExerciseGuideCatalog.forExercise(exercise);
+    final guide = ExerciseGuideCatalog.forExercise(exercise, atHome: atHome);
+    final displayExercise = PhoenixCopy.exerciseName(context.l10n, exercise);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -679,7 +1001,10 @@ class _ExerciseCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  '${block!.label} • χωρίς πλήρες διάλειμμα ανάμεσα',
+                  context.l10n.text(
+                    '${block!.label} • χωρίς μεγάλο διάλειμμα ανάμεσα',
+                    '${block!.label} • without a full rest between exercises',
+                  ),
                   style: const TextStyle(
                     color: Color(0xFFA5D6A7),
                     fontSize: 10,
@@ -692,20 +1017,26 @@ class _ExerciseCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    exercise,
+                    displayExercise,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w800,
                     ),
                   ),
                 ),
                 IconButton(
-                  tooltip: 'Ασφαλής εναλλακτική',
+                  tooltip: context.l10n.text(
+                    'Ασφαλέστερη εναλλακτική',
+                    'Safer alternative',
+                  ),
                   onPressed: onReplace,
                   icon: const Icon(Icons.swap_horiz),
                 ),
                 if (videoUrl.isNotEmpty)
                   IconButton(
-                    tooltip: 'Video τεχνικής',
+                    tooltip: context.l10n.text(
+                      'Βίντεο τεχνικής',
+                      'Technique video',
+                    ),
                     onPressed: () => launchUrl(
                       Uri.parse(videoUrl),
                       mode: LaunchMode.externalApplication,
@@ -713,11 +1044,92 @@ class _ExerciseCard extends StatelessWidget {
                     icon: const Icon(Icons.play_circle_outline),
                   ),
                 IconButton.filledTonal(
-                  tooltip: 'Καταγραφή σετ',
-                  onPressed: onAdd,
-                  icon: const Icon(Icons.add),
+                  tooltip: context.l10n.text(
+                    stopped ? 'Σταμάτησε για σήμερα' : 'Καταγραφή σετ',
+                    stopped ? 'Stopped for today' : 'Log a set',
+                  ),
+                  onPressed: stopped ? null : onAdd,
+                  icon: Icon(stopped ? Icons.block_rounded : Icons.add),
                 ),
               ],
+            ),
+            if (guide != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: Semantics(
+                  button: true,
+                  label: context.l10n.text(
+                    'Δες πώς γίνεται η άσκηση $displayExercise',
+                    'See how to perform $displayExercise',
+                  ),
+                  child: InkWell(
+                    key: ValueKey('active-exercise-guide-$exercise'),
+                    borderRadius: BorderRadius.circular(14),
+                    onTap: () => showExerciseGuide(context, exercise, guide),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        ExerciseGuidePreview(
+                          guide: guide,
+                          semanticLabel: context.l10n.text(
+                            'Αρχική και τελική θέση για την άσκηση $displayExercise',
+                            'Start and finish position for $displayExercise',
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(2, 8, 2, 0),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.touch_app_outlined,
+                                size: 17,
+                                color: Color(0xFFFF9E80),
+                              ),
+                              const SizedBox(width: 7),
+                              Expanded(
+                                child: Text(
+                                  context.l10n.text(
+                                    'Δες τα βήματα της άσκησης',
+                                    'See the exercise steps',
+                                  ),
+                                  style: const TextStyle(
+                                    color: Color(0xFFFF9E80),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            if (guide != null) ...[
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: OutlinedButton.icon(
+                  key: ValueKey('speak-exercise-$exercise'),
+                  onPressed: onSpeak,
+                  icon: const Icon(Icons.volume_up_outlined),
+                  label: Text(
+                    context.l10n.text(
+                      'Άκουσε τις οδηγίες',
+                      'Hear instructions',
+                    ),
+                  ),
+                ),
+              ),
+            ],
+            const SizedBox(height: 10),
+            _ExerciseSupportActions(
+              exercise: exercise,
+              stopped: stopped,
+              onSelected: onSupport,
             ),
             Container(
               width: double.infinity,
@@ -743,7 +1155,10 @@ class _ExerciseCard extends StatelessWidget {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          prescription.summary,
+                          PhoenixCopy.exercisePrescription(
+                            context.l10n,
+                            prescription,
+                          ),
                           style: const TextStyle(
                             color: Color(0xFFFFAB91),
                             fontWeight: FontWeight.w900,
@@ -758,7 +1173,7 @@ class _ExerciseCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 5),
                   Text(
-                    'Tempo ${prescription.tempo}'
+                    '${context.l10n.text('Ρυθμός', 'Tempo')} ${prescription.tempo}'
                     '${prescription.note.isEmpty ? '' : '  •  ${prescription.note}'}',
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: .55),
@@ -768,15 +1183,6 @@ class _ExerciseCard extends StatelessWidget {
                 ],
               ),
             ),
-            if (guide != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: TextButton.icon(
-                  onPressed: () => showExerciseGuide(context, exercise, guide),
-                  icon: const Icon(Icons.photo_library_outlined, size: 18),
-                  label: const Text('Οδηγός άσκησης'),
-                ),
-              ),
             Container(
               margin: const EdgeInsets.only(top: 10),
               padding: const EdgeInsets.all(10),
@@ -817,8 +1223,13 @@ class _ExerciseCard extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(top: 8),
                 child: Text(
-                  'Δεν έχει καταγραφεί σετ.',
-                  style: TextStyle(color: Colors.white.withValues(alpha: .45)),
+                  context.l10n.text(
+                    'Δεν έχεις καταγράψει ακόμη κάποιο σετ.',
+                    'You have not logged a set yet.',
+                  ),
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
               )
             else
@@ -829,6 +1240,325 @@ class _ExerciseCard extends StatelessWidget {
                   prescription: prescription,
                   onRemove: () => onRemove(sets[index]),
                 ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ExerciseSupportActions extends StatelessWidget {
+  const _ExerciseSupportActions({
+    required this.exercise,
+    required this.stopped,
+    required this.onSelected,
+  });
+
+  final String exercise;
+  final bool stopped;
+  final ValueChanged<_ExerciseSupportMode> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    if (stopped) {
+      return Container(
+        key: ValueKey('exercise-stopped-$exercise'),
+        width: double.infinity,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: colors.secondary.withValues(alpha: .1),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.favorite_rounded, color: colors.secondary),
+            const SizedBox(width: 9),
+            Expanded(
+              child: Text(
+                context.l10n.text(
+                  'Σταμάτησε για σήμερα. Αυτό είναι φροντίδα, όχι αποτυχία.',
+                  'Stopped for today. That is care, not failure.',
+                ),
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+            ),
+            TextButton(
+              onPressed: () => onSelected(_ExerciseSupportMode.easier),
+              child: Text(context.l10n.text('Αλλαγή', 'Change')),
+            ),
+          ],
+        ),
+      );
+    }
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerHighest.withValues(alpha: .55),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            context.l10n.text(
+              'Τι χρειάζεσαι τώρα;',
+              'What do you need right now?',
+            ),
+            style: const TextStyle(fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 9),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              ActionChip(
+                key: ValueKey('exercise-discomfort-$exercise'),
+                avatar: Icon(
+                  Icons.healing_outlined,
+                  size: 18,
+                  color: colors.error,
+                ),
+                label: Text(context.l10n.text('Πονάω', 'I feel pain')),
+                onPressed: () => onSelected(_ExerciseSupportMode.discomfort),
+              ),
+              ActionChip(
+                key: ValueKey('exercise-tired-$exercise'),
+                avatar: const Icon(Icons.battery_2_bar_rounded, size: 18),
+                label: Text(context.l10n.text('Κουράστηκα', 'I am tired')),
+                onPressed: () => onSelected(_ExerciseSupportMode.tired),
+              ),
+              ActionChip(
+                key: ValueKey('exercise-easier-$exercise'),
+                avatar: const Icon(Icons.south_rounded, size: 18),
+                label: Text(context.l10n.text('Πιο εύκολη', 'Make it easier')),
+                onPressed: () => onSelected(_ExerciseSupportMode.easier),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ExerciseSupportSheet extends StatefulWidget {
+  const _ExerciseSupportSheet({
+    required this.exercise,
+    required this.initialMode,
+    required this.profile,
+    required this.excludedExercises,
+    required this.recentPainAreas,
+  });
+
+  final String exercise;
+  final _ExerciseSupportMode initialMode;
+  final UserProfile? profile;
+  final List<String> excludedExercises;
+  final Set<String> recentPainAreas;
+
+  @override
+  State<_ExerciseSupportSheet> createState() => _ExerciseSupportSheetState();
+}
+
+class _ExerciseSupportSheetState extends State<_ExerciseSupportSheet> {
+  late _ExerciseSupportMode _mode = widget.initialMode;
+  String _painArea = 'Δεν είμαι σίγουρος';
+
+  List<ExerciseAlternative> get _alternatives =>
+      ExerciseSubstitutionEngine.alternativesFor(
+        exercise: widget.exercise,
+        profile: widget.profile,
+        excludedExercises: widget.excludedExercises,
+        painAreas: {
+          ...widget.recentPainAreas,
+          if (_mode == _ExerciseSupportMode.discomfort &&
+              _painArea != 'Δεν είμαι σίγουρος')
+            _painArea,
+        },
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final colors = Theme.of(context).colorScheme;
+    final alternatives = _alternatives;
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(18, 4, 18, 26),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              l.text('Προσαρμογή χωρίς πίεση', 'Adjust without pressure'),
+              style: Theme.of(
+                context,
+              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              PhoenixCopy.exerciseName(l, widget.exercise),
+              style: TextStyle(
+                color: colors.primary,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 14),
+            SegmentedButton<_ExerciseSupportMode>(
+              segments: [
+                ButtonSegment(
+                  value: _ExerciseSupportMode.discomfort,
+                  icon: const Icon(Icons.healing_outlined),
+                  label: Text(l.text('Πόνος', 'Pain')),
+                ),
+                ButtonSegment(
+                  value: _ExerciseSupportMode.tired,
+                  icon: const Icon(Icons.battery_2_bar_rounded),
+                  label: Text(l.text('Κούραση', 'Tired')),
+                ),
+                ButtonSegment(
+                  value: _ExerciseSupportMode.easier,
+                  icon: const Icon(Icons.south_rounded),
+                  label: Text(l.text('Ευκολότερα', 'Easier')),
+                ),
+              ],
+              selected: {_mode},
+              onSelectionChanged: (value) =>
+                  setState(() => _mode = value.first),
+            ),
+            const SizedBox(height: 14),
+            if (_mode == _ExerciseSupportMode.discomfort) ...[
+              Container(
+                padding: const EdgeInsets.all(13),
+                decoration: BoxDecoration(
+                  color: colors.errorContainer.withValues(alpha: .45),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Text(
+                  l.text(
+                    'Σταμάτα αν ο πόνος είναι οξύς, ξαφνικός ή αυξάνεται. Το Phoenix δεν αντικαθιστά επαγγελματία υγείας.',
+                    'Stop if pain is sharp, sudden or increasing. Phoenix does not replace a health professional.',
+                  ),
+                  style: TextStyle(
+                    color: colors.onErrorContainer,
+                    fontWeight: FontWeight.w700,
+                    height: 1.35,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                initialValue: _painArea,
+                decoration: InputDecoration(
+                  labelText: l.text(
+                    'Πού νιώθεις την ενόχληση;',
+                    'Where do you feel discomfort?',
+                  ),
+                  border: const OutlineInputBorder(),
+                ),
+                items: [
+                  for (final area in const [
+                    'Δεν είμαι σίγουρος',
+                    'Ώμος',
+                    'Αγκώνας',
+                    'Καρπός',
+                    'Μέση',
+                    'Ισχίο',
+                    'Γόνατο',
+                    'Αστράγαλος',
+                  ])
+                    DropdownMenuItem(
+                      value: area,
+                      child: Text(_painAreaLabel(context, area)),
+                    ),
+                ],
+                onChanged: (value) =>
+                    setState(() => _painArea = value ?? _painArea),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 52,
+                child: FilledButton.icon(
+                  key: const ValueKey('stop-exercise-for-today'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: colors.errorContainer,
+                    foregroundColor: colors.onErrorContainer,
+                  ),
+                  onPressed: () => Navigator.of(
+                    context,
+                  ).pop(const _ExerciseSupportResult.stop()),
+                  icon: const Icon(Icons.stop_circle_outlined),
+                  label: Text(
+                    l.text(
+                      'Σταμάτα αυτή την άσκηση για σήμερα',
+                      'Stop this exercise for today',
+                    ),
+                  ),
+                ),
+              ),
+            ] else ...[
+              Text(
+                _mode == _ExerciseSupportMode.tired
+                    ? l.text(
+                        'Θα αφαιρέσουμε ένα σετ και θα σου δώσουμε περισσότερο διάλειμμα.',
+                        'We will remove one set and give you more rest.',
+                      )
+                    : l.text(
+                        'Θα μειώσουμε τον σημερινό στόχο χωρίς να χαλάσουμε το πρόγραμμά σου.',
+                        'We will lower today’s target without changing your program.',
+                      ),
+                style: TextStyle(color: colors.onSurfaceVariant, height: 1.4),
+              ),
+            ],
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 52,
+              child: FilledButton.tonalIcon(
+                key: const ValueKey('adapt-exercise-for-today'),
+                onPressed: () => Navigator.of(context).pop(
+                  _ExerciseSupportResult.adapt(
+                    tired: _mode == _ExerciseSupportMode.tired,
+                  ),
+                ),
+                icon: const Icon(Icons.tune_rounded),
+                label: Text(
+                  l.text(
+                    'Κάνε τον σημερινό στόχο πιο εύκολο',
+                    'Make today’s target easier',
+                  ),
+                ),
+              ),
+            ),
+            if (alternatives.isNotEmpty) ...[
+              const SizedBox(height: 20),
+              Text(
+                l.text('Ή άλλαξε άσκηση', 'Or change the exercise'),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(height: 8),
+              for (final alternative in alternatives) ...[
+                Card(
+                  child: ListTile(
+                    key: ValueKey('support-alternative-${alternative.name}'),
+                    minTileHeight: 68,
+                    leading: const Icon(Icons.swap_horiz_rounded),
+                    title: Text(
+                      PhoenixCopy.exerciseName(l, alternative.name),
+                      style: const TextStyle(fontWeight: FontWeight.w900),
+                    ),
+                    subtitle: Text(alternative.reason),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: () => Navigator.of(
+                      context,
+                    ).pop(_ExerciseSupportResult.replace(alternative.name)),
+                  ),
+                ),
+                const SizedBox(height: 6),
+              ],
+            ],
           ],
         ),
       ),
@@ -855,14 +1585,14 @@ class _ExerciseSubstitutionSheet extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Αλλαγή άσκησης',
+              context.l10n.text('Αλλαγή άσκησης', 'Change exercise'),
               style: Theme.of(
                 context,
               ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
             ),
             const SizedBox(height: 5),
             Text(
-              exercise,
+              PhoenixCopy.exerciseName(context.l10n, exercise),
               style: const TextStyle(
                 color: Color(0xFFFF9E80),
                 fontWeight: FontWeight.w800,
@@ -870,8 +1600,10 @@ class _ExerciseSubstitutionSheet extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Οι επιλογές κρατούν παρόμοιο κινητικό μοτίβο και '
-              'φιλτράρονται με βάση τον διαθέσιμο εξοπλισμό.',
+              context.l10n.text(
+                'Οι επιλογές έχουν παρόμοια κίνηση και χρησιμοποιούν μόνο τον εξοπλισμό που έχεις δηλώσει.',
+                'These options use a similar movement and only the equipment you selected.',
+              ),
               style: TextStyle(
                 color: Colors.white.withValues(alpha: .52),
                 fontSize: 12,
@@ -908,7 +1640,10 @@ class _ExerciseSubstitutionSheet extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              alternative.name,
+                              PhoenixCopy.exerciseName(
+                                context.l10n,
+                                alternative.name,
+                              ),
                               style: const TextStyle(
                                 fontWeight: FontWeight.w900,
                               ),
@@ -974,10 +1709,10 @@ class _SetRow extends StatelessWidget {
       if (set.reps > 0) '${set.reps} επαν.',
       if (set.weightKilograms > 0) '$weight kg',
       if (set.holdSeconds > 0) '${set.holdSeconds}s hold',
-      'RIR ${set.rir}',
-      if (set.setRpe > 0) 'RPE ${set.setRpe}',
+      '${set.rir} ακόμη σωστές επαναλήψεις',
+      if (set.setRpe > 0) 'δυσκολία ${set.setRpe}/10',
       if (set.velocityNote.isNotEmpty) set.velocityNote.toUpperCase(),
-      if (set.isAmrap) 'AMRAP',
+      if (set.isAmrap) 'μέχρι το τεχνικό όριο',
     ].join('  •  ');
     return Container(
       margin: const EdgeInsets.only(top: 10),
@@ -1151,7 +1886,7 @@ class _SetEntrySheetState extends State<_SetEntrySheet> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                widget.exercise,
+                PhoenixCopy.exerciseName(context.l10n, widget.exercise),
                 style: Theme.of(
                   context,
                 ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
@@ -1170,8 +1905,8 @@ class _SetEntrySheetState extends State<_SetEntrySheet> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  '${widget.prescription.summary}\n'
-                  'Tempo ${widget.prescription.tempo}'
+                  '${PhoenixCopy.exercisePrescription(context.l10n, widget.prescription)}\n'
+                  '${context.l10n.text('Ρυθμός', 'Tempo')} ${widget.prescription.tempo}'
                   '${widget.prescription.note.isEmpty ? '' : ' • ${widget.prescription.note}'}',
                   style: const TextStyle(
                     color: Color(0xFFFFAB91),
@@ -1226,7 +1961,7 @@ class _SetEntrySheetState extends State<_SetEntrySheet> {
                 ],
               ),
               const SizedBox(height: 18),
-              Text('RIR — επαναλήψεις σε απόθεμα: $_rir'),
+              Text('Πόσες σωστές επαναλήψεις μπορούσες ακόμη: $_rir'),
               Slider(
                 value: _rir.toDouble(),
                 min: 0,
@@ -1235,7 +1970,12 @@ class _SetEntrySheetState extends State<_SetEntrySheet> {
                 label: '$_rir',
                 onChanged: (value) => setState(() => _rir = value.round()),
               ),
-              Text('SET RPE: $_setRpe'),
+              Text(
+                context.l10n.text(
+                  'Δυσκολία του σετ: $_setRpe/10',
+                  'SET RPE: $_setRpe',
+                ),
+              ),
               Slider(
                 value: _setRpe.toDouble(),
                 min: 1,
@@ -1246,25 +1986,37 @@ class _SetEntrySheetState extends State<_SetEntrySheet> {
               ),
               DropdownButtonFormField<String>(
                 initialValue: _velocity,
-                decoration: const InputDecoration(
-                  labelText: 'Manual rep velocity',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: context.l10n.text(
+                    'Ταχύτητα επαναλήψεων',
+                    'Manual rep velocity',
+                  ),
+                  border: const OutlineInputBorder(),
                 ),
-                items: const [
+                items: [
                   DropdownMenuItem(
                     value: 'explosive',
-                    child: Text('Explosive'),
+                    child: Text(context.l10n.text('Εκρηκτική', 'Explosive')),
                   ),
-                  DropdownMenuItem(value: 'steady', child: Text('Steady')),
-                  DropdownMenuItem(value: 'slow', child: Text('Slow')),
-                  DropdownMenuItem(value: 'grinding', child: Text('Grinding')),
+                  DropdownMenuItem(
+                    value: 'steady',
+                    child: Text(context.l10n.text('Σταθερή', 'Steady')),
+                  ),
+                  DropdownMenuItem(
+                    value: 'slow',
+                    child: Text(context.l10n.text('Αργή', 'Slow')),
+                  ),
+                  DropdownMenuItem(
+                    value: 'grinding',
+                    child: Text(context.l10n.text('Πολύ δύσκολη', 'Grinding')),
+                  ),
                 ],
                 onChanged: (value) => setState(() => _velocity = value!),
               ),
               const SizedBox(height: 12),
-              const Text(
-                'TECHNIQUE GATE',
-                style: TextStyle(
+              Text(
+                context.l10n.text('ΕΛΕΓΧΟΣ ΤΕΧΝΙΚΗΣ', 'TECHNIQUE CHECK'),
+                style: const TextStyle(
                   fontWeight: FontWeight.w900,
                   letterSpacing: .8,
                 ),
@@ -1295,9 +2047,14 @@ class _SetEntrySheetState extends State<_SetEntrySheet> {
               SwitchListTile(
                 value: _isAmrap,
                 contentPadding: EdgeInsets.zero,
-                title: const Text('AMRAP test set'),
+                title: Text(
+                  context.l10n.text(
+                    'Σετ με όσες σωστές επαναλήψεις μπορώ',
+                    'AMRAP test set',
+                  ),
+                ),
                 subtitle: const Text(
-                  'Τεχνικό stop — όχι αποτυχία, όχι forced reps.',
+                  'Σταμάτα όταν χαλάσει η τεχνική σου — όχι όταν αποτύχεις.',
                 ),
                 onChanged: (value) => setState(() {
                   _isAmrap = value;

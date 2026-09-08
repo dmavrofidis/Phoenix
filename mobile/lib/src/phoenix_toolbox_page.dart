@@ -26,6 +26,7 @@ import 'mobility_intelligence_page.dart';
 import 'mobility_page.dart';
 import 'nutrition_page.dart';
 import 'nutrition_planner_page.dart';
+import 'recommended_nutrition_page.dart';
 import 'operations_studio_page.dart';
 import 'phoenix_l10n.dart';
 import 'photo_meal_scan_page.dart';
@@ -80,6 +81,7 @@ class _PhoenixToolboxPageState extends State<PhoenixToolboxPage> {
     'mobility' => MobilityPage(store: widget.store),
     'mobility-intelligence' => MobilityIntelligencePage(store: widget.store),
     'nutrition' => NutritionPage(store: widget.store),
+    'recommended-nutrition' => RecommendedNutritionPage(store: widget.store),
     'photo-meal' => PhotoMealScanPage(store: widget.store),
     'nutrition-planner' => NutritionPlannerPage(store: widget.store),
     'meal-intelligence' => MealIntelligencePage(store: widget.store),
@@ -509,6 +511,17 @@ const _tools = <_ToolEntry>[
     greekDescription: 'Γεύματα, macros, νερό και grocery list.',
     englishDescription: 'Meals, macros, water and grocery list.',
     keywords: 'meal calories protein macros νερό γεύμα',
+  ),
+  _ToolEntry(
+    route: 'recommended-nutrition',
+    category: _ToolCategory.health,
+    icon: Icons.restaurant_menu,
+    greekTitle: 'Το διατροφικό μου πλάνο',
+    englishTitle: 'Recommended Meal Plan',
+    greekDescription:
+        'Απλό εβδομαδιαίο πρόγραμμα με επιλογές και λίστα αγορών.',
+    englishDescription: 'Simple weekly meals with choices and a grocery list.',
+    keywords: 'weekly food plan diet meals grocery vegan vegetarian πρόγραμμα',
   ),
   _ToolEntry(
     route: 'photo-meal',

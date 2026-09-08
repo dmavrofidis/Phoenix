@@ -3,15 +3,15 @@
 <plist version="1.0">
 <dict>
     <key>NSCameraUsageDescription</key>
-    <string>Phoenix uses the camera only to capture a meal photo for a local nutrition estimate.</string>
+    <string>Phoenix uses the camera only when you choose to capture a meal, progress, or exercise-form photo. Photos stay on this device and are never uploaded by Phoenix.</string>
     <key>NSPhotoLibraryUsageDescription</key>
-    <string>Phoenix lets you choose a meal photo for a local nutrition estimate.</string>
+    <string>Phoenix lets you choose a meal or progress photo for on-device guidance. The selected photo stays on this device and is never uploaded by Phoenix.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Mobile</string>
+	<string>Phoenix</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -19,7 +19,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>mobile</string>
+	<string>phoenix</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>

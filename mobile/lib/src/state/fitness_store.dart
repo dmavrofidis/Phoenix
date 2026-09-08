@@ -7,14 +7,18 @@ import 'package:flutter/services.dart';
 import '../data/local_fitness_repository.dart';
 import '../data/drift_fitness_repository.dart';
 import '../data_validation_engine.dart';
+import '../daily_companion_engine.dart';
 import '../exercise_substitution_engine.dart';
+import '../equipment_availability.dart';
 import '../models/fitness_models.dart';
+import '../music_link.dart';
 import '../nutrition_goal_engine.dart';
 import '../operational_readiness_engine.dart';
 import '../nutrition_analytics_engine.dart';
 import '../periodization_engine.dart';
 import '../recovery_engine.dart';
 import '../recovery_lab_engine.dart';
+import '../restart14_engine.dart';
 import '../structured_import_export_engine.dart';
 import '../training_analytics_engine.dart';
 import '../training_insights.dart';
@@ -23,6 +27,18 @@ import '../training_schedule.dart';
 
 class FitnessStore extends ChangeNotifier {
   FitnessStore(this._repository);
+
+  static const _coreTemplateIds = {
+    'full-body-a',
+    'full-body-b',
+    'iron-upper',
+    'iron-lower',
+    'iron-hybrid',
+    'calisthenics-strength',
+    'calisthenics-skills',
+    'iron-engine',
+    'weighted-calisthenics',
+  };
 
   final FitnessRepository _repository;
   FitnessData _data = FitnessData.initial();
@@ -54,12 +70,56 @@ class FitnessStore extends ChangeNotifier {
   List<ExerciseSetLog> get activeSets => List.unmodifiable(_activeSets);
   String get spotifyUrl => _data.spotifyUrl;
   bool get hasSpotifyLink => _data.spotifyUrl.isNotEmpty;
+  String get musicUrl => _data.spotifyUrl;
+  bool get hasMusicLink => _data.spotifyUrl.isNotEmpty;
   SpotifyAuthConfig get spotifyAuth => _data.spotifyAuth;
   List<ProgressPhoto> get progressPhotos =>
       List.unmodifiable(_data.progressPhotos);
   List<WearableDailySummary> get wearableSummaries =>
       List.unmodifiable(_data.wearableSummaries);
+  WearableDailySummary? get todayWearableSummary {
+    final now = DateTime.now();
+    for (final summary in _data.wearableSummaries) {
+      if (summary.day.year == now.year &&
+          summary.day.month == now.month &&
+          summary.day.day == now.day) {
+        return summary;
+      }
+    }
+    return null;
+  }
+
   AppPreferences get preferences => _data.preferences;
+  DailyCompanionCheckIn? get dailyCompanionCheckIn =>
+      DailyCompanionEngine.checkInFrom(preferences);
+  bool get hasTodayCompanionCheckIn =>
+      dailyCompanionCheckIn?.isFor(DateTime.now()) ?? false;
+  DailyCompanionPlan get dailyCompanionPlan => DailyCompanionEngine.buildPlan(
+    checkIn:
+        dailyCompanionCheckIn ??
+        DailyCompanionCheckIn(
+          date: DateTime.now(),
+          minutes: 10,
+          energy: 3,
+          location: EquipmentAvailability.isHome(profile) ? 'home' : 'gym',
+          painArea: '',
+        ),
+    preferences: preferences,
+    recommended: recommendedWorkout,
+    recovery: createRestDayDraft(),
+    profile: profile,
+    restartDay: restart14CurrentDay,
+  );
+  int get restart14CompletedDays => Restart14Engine.completedDays(_data.logs);
+  int get restart14CurrentDay => Restart14Engine.currentDay(_data.logs);
+  bool get restart14IsComplete => Restart14Engine.isComplete(_data.logs);
+  bool get weeklyReviewDue {
+    final saved = DateTime.tryParse(preferences.weeklyReviewDate);
+    if (saved == null) return true;
+    return DateTime.now().difference(saved).inDays >= 7;
+  }
+
+  int get returnMoments => DailyCompanionEngine.returnMoments(_data.logs);
   bool get isEnglish => preferences.languageCode != 'el';
   bool get hasVaultPin => preferences.hasVaultPin;
   bool get vaultUnlocked => !hasVaultPin || _vaultUnlocked;
@@ -251,11 +311,26 @@ class FitnessStore extends ChangeNotifier {
   double get weeklyWorkoutProgress =>
       (workoutsInCurrentWeek / weeklyWorkoutTarget).clamp(0, 1).toDouble();
 
+  List<WorkoutTemplate> get equipmentCompatibleTemplates {
+    if (!EquipmentAvailability.isHome(profile)) {
+      return List.unmodifiable(_data.templates);
+    }
+    return List.unmodifiable(
+      _data.templates.where(
+        (template) => template.exercises.every(
+          (exercise) =>
+              EquipmentAvailability.supportsExercise(exercise, profile),
+        ),
+      ),
+    );
+  }
+
   List<WorkoutTemplate> get workoutRotation {
-    if (profile == null) return List.unmodifiable(_data.templates);
+    final compatible = equipmentCompatibleTemplates;
+    if (profile == null) return compatible;
 
     WorkoutTemplate? byId(String id) {
-      for (final template in _data.templates) {
+      for (final template in compatible) {
         if (template.id == id) return template;
       }
       return null;
@@ -280,7 +355,7 @@ class FitnessStore extends ChangeNotifier {
       final template = byId(id);
       if (template != null) rotation.add(template);
     }
-    return rotation.isEmpty ? List.unmodifiable(_data.templates) : rotation;
+    return rotation.isEmpty ? compatible : rotation;
   }
 
   TrainingSchedule get weeklySchedule => TrainingScheduleEngine.build(
@@ -290,7 +365,8 @@ class FitnessStore extends ChangeNotifier {
     logs: _data.logs,
     assignments: _data.weeklyAssignments,
     dateAssignments: _data.dateAssignments,
-    catalog: _data.templates,
+    skippedDates: preferences.skippedWorkoutDates.toSet(),
+    catalog: equipmentCompatibleTemplates,
   );
 
   WorkoutTemplate get recommendedWorkout {
@@ -499,10 +575,35 @@ class FitnessStore extends ChangeNotifier {
 
     var templates = enrichedTemplates;
     if (currentProfile != null) {
+      final recommended = _recommendedTemplates(currentProfile);
+      final coreTemplates = templates
+          .where((template) => _coreTemplateIds.contains(template.id))
+          .toList();
+      final hasLegacyHomeCore =
+          EquipmentAvailability.isHome(currentProfile) &&
+          coreTemplates.any(
+            (template) =>
+                template.name.startsWith('IRON') ||
+                template.name.startsWith('CALISTHENICS') ||
+                template.name.startsWith('WEIGHTED CALISTHENICS'),
+          );
+      final hasUnavailableEquipment = coreTemplates.any(
+        (template) => _templateUsesUnavailableEquipment(
+          template,
+          profile: currentProfile,
+        ),
+      );
+      if (hasLegacyHomeCore || hasUnavailableEquipment) {
+        final personalTemplates = templates
+            .where((template) => !_coreTemplateIds.contains(template.id))
+            .toList();
+        templates = [...recommended, ...personalTemplates];
+        changed = true;
+      }
       final existingIds = templates.map((item) => item.id).toSet();
-      final missingTemplates = _recommendedTemplates(
-        currentProfile,
-      ).where((item) => !existingIds.contains(item.id)).toList();
+      final missingTemplates = recommended
+          .where((item) => !existingIds.contains(item.id))
+          .toList();
       if (missingTemplates.isNotEmpty) {
         templates = [...templates, ...missingTemplates];
         changed = true;
@@ -541,14 +642,24 @@ class FitnessStore extends ChangeNotifier {
   }) async {
     final language = languageCode == null
         ? preferences.languageCode
-        : const {'el', 'en'}.contains(languageCode)
+        : const {'el', 'en', 'de', 'es'}.contains(languageCode)
         ? languageCode
         : 'el';
     final theme = themePreset == null
         ? preferences.themePreset
-        : const {'iron', 'ocean', 'forest'}.contains(themePreset)
+        : const {
+            'iron',
+            'ocean',
+            'forest',
+            'violet',
+            'rose',
+            'gold',
+            'sage',
+            'sky',
+            'sand',
+          }.contains(themePreset)
         ? themePreset
-        : 'iron';
+        : 'sage';
     final cueStyle = audioCueStyle == null
         ? preferences.audioCueStyle
         : const {'minimal', 'coach', 'silent'}.contains(audioCueStyle)
@@ -590,6 +701,195 @@ class FitnessStore extends ChangeNotifier {
     );
     await _repository.save(_data);
     await feedback();
+    notifyListeners();
+  }
+
+  Future<void> saveDailyCompanionCheckIn({
+    required int minutes,
+    required int energy,
+    required String location,
+    String painArea = '',
+    bool confirmWithFeedback = true,
+  }) async {
+    if (!const {5, 7, 10, 15, 20, 30, 40}.contains(minutes)) {
+      throw const FormatException(
+        'Διάλεξε έναν από τους διαθέσιμους χρόνους προπόνησης.',
+      );
+    }
+    if (energy < 1 || energy > 5) {
+      throw const FormatException('Η ενέργεια πρέπει να είναι από 1 έως 5.');
+    }
+    if (!const {'home', 'gym', 'outside'}.contains(location)) {
+      throw const FormatException('Διάλεξε έναν έγκυρο χώρο.');
+    }
+    final now = DateTime.now();
+    _data = _data.copyWith(
+      preferences: preferences.copyWith(
+        dailyCheckInDate: _localDateKey(now),
+        dailyMinutes: minutes,
+        dailyEnergy: energy,
+        dailyLocation: location,
+        dailyPainArea: painArea.trim(),
+      ),
+    );
+    await _repository.save(_data);
+    notifyListeners();
+    if (confirmWithFeedback) await feedback(success: true);
+  }
+
+  Future<void> activateHardDay() async {
+    final current = dailyCompanionCheckIn;
+    await saveDailyCompanionCheckIn(
+      minutes: 5,
+      energy: 1,
+      location: current?.location ?? 'home',
+      painArea: current?.painArea ?? '',
+    );
+  }
+
+  Future<void> saveGentleWeeklyReview({
+    required String win,
+    required String barrier,
+    required int easierMinutes,
+  }) async {
+    if (!const {5, 10, 20}.contains(easierMinutes)) {
+      throw const FormatException('Διάλεξε 5, 10 ή 20 λεπτά.');
+    }
+    final cleanWin = win.trim();
+    final cleanBarrier = barrier.trim();
+    if (cleanWin.isEmpty || cleanBarrier.isEmpty) {
+      throw const FormatException('Συμπλήρωσε και τις δύο μικρές απαντήσεις.');
+    }
+    if (cleanWin.length > 240 || cleanBarrier.length > 240) {
+      throw const FormatException('Κράτησε κάθε απάντηση έως 240 χαρακτήρες.');
+    }
+    _data = _data.copyWith(
+      preferences: preferences.copyWith(
+        weeklyReviewDate: DateTime.now().toIso8601String(),
+        weeklyReviewWin: cleanWin,
+        weeklyReviewBarrier: cleanBarrier,
+        weeklyReviewMinutes: easierMinutes,
+        dailyMinutes: easierMinutes,
+      ),
+    );
+    await _repository.save(_data);
+    notifyListeners();
+    await feedback(success: true);
+  }
+
+  Future<void> selectStarterPath(String pathId) async {
+    if (!DailyCompanionEngine.paths.any((path) => path.id == pathId)) {
+      throw const FormatException('Η διαδρομή εκκίνησης δεν είναι έγκυρη.');
+    }
+    _data = _data.copyWith(
+      preferences: preferences.copyWith(starterPath: pathId),
+    );
+    await _repository.save(_data);
+    notifyListeners();
+    await feedback(success: true);
+  }
+
+  Future<void> updatePrivateHealthOptions({
+    bool? healthConnectionEnabled,
+    bool? formCoachEnabled,
+  }) async {
+    _data = _data.copyWith(
+      preferences: preferences.copyWith(
+        healthConnectionEnabled: healthConnectionEnabled,
+        formCoachEnabled: formCoachEnabled,
+      ),
+    );
+    await _repository.save(_data);
+    notifyListeners();
+  }
+
+  Future<int> autoRescheduleMissedWorkouts() async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final overdue = weeklySchedule.entries
+        .where((entry) => entry.isOverdue(today))
+        .toList();
+    if (overdue.isEmpty) return 0;
+
+    final dateAssignments = Map<String, String>.from(_data.dateAssignments);
+    final skipped = preferences.skippedWorkoutDates.toSet();
+    final occupied = <String>{
+      for (final entry in weeklySchedule.entries)
+        if (!entry.date.isBefore(today) && !entry.isCompleted)
+          _localDateKey(entry.date),
+      for (final key in dateAssignments.keys)
+        if ((DateTime.tryParse(key) ?? today).isAfter(today) ||
+            key == _localDateKey(today))
+          key,
+    };
+    var cursor = today;
+    for (final entry in overdue) {
+      while (occupied.contains(_localDateKey(cursor)) &&
+          cursor.isBefore(today.add(const Duration(days: 14)))) {
+        cursor = cursor.add(const Duration(days: 1));
+      }
+      if (cursor.isAfter(today.add(const Duration(days: 14)))) break;
+      final targetKey = _localDateKey(cursor);
+      dateAssignments[targetKey] = entry.template.id;
+      occupied.add(targetKey);
+      skipped.add(_localDateKey(entry.date));
+      cursor = cursor.add(const Duration(days: 1));
+    }
+    final moved = skipped
+        .difference(preferences.skippedWorkoutDates.toSet())
+        .length;
+    if (moved == 0) return 0;
+    _captureUndo('Ήρεμη αναπροσαρμογή εβδομάδας');
+    final sortedSkipped = skipped.toList()..sort();
+    _data = _data.copyWith(
+      dateAssignments: dateAssignments,
+      preferences: preferences.copyWith(
+        skippedWorkoutDates: sortedSkipped.length <= 200
+            ? sortedSkipped
+            : sortedSkipped.sublist(sortedSkipped.length - 200),
+      ),
+    );
+    await _repository.save(_data);
+    await feedback(success: true);
+    notifyListeners();
+    return moved;
+  }
+
+  Future<void> updateNutritionPlanPreferences({
+    String? dietStyle,
+    int? mealsPerDay,
+    String? budgetMode,
+    bool? quickPrep,
+    bool? noCooking,
+  }) async {
+    const supportedStyles = {
+      'balanced',
+      'mediterranean',
+      'vegetarian',
+      'vegan',
+    };
+    const supportedBudgets = {'standard', 'economy'};
+    final style = dietStyle == null
+        ? preferences.nutritionDietStyle
+        : supportedStyles.contains(dietStyle)
+        ? dietStyle
+        : 'balanced';
+    final budget = budgetMode == null
+        ? preferences.nutritionBudgetMode
+        : supportedBudgets.contains(budgetMode)
+        ? budgetMode
+        : 'standard';
+    _data = _data.copyWith(
+      preferences: preferences.copyWith(
+        nutritionDietStyle: style,
+        nutritionMealsPerDay: mealsPerDay?.clamp(3, 5),
+        nutritionBudgetMode: budget,
+        nutritionQuickPrep: quickPrep,
+        nutritionNoCooking: noCooking,
+      ),
+    );
+    await _repository.save(_data);
+    await feedback(success: true);
     notifyListeners();
   }
 
@@ -750,14 +1050,17 @@ class FitnessStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  List<ExerciseAlternative> alternativesForActiveExercise(String exercise) {
+  List<ExerciseAlternative> alternativesForActiveExercise(
+    String exercise, {
+    Iterable<String> additionalPainAreas = const [],
+  }) {
     final workout = _activeWorkout;
     if (workout == null) return const [];
     return ExerciseSubstitutionEngine.alternativesFor(
       exercise: exercise,
       profile: profile,
       excludedExercises: workout.exercises,
-      painAreas: recentPainAreas,
+      painAreas: {...recentPainAreas, ...additionalPainAreas},
     );
   }
 
@@ -836,6 +1139,58 @@ class FitnessStore extends ChangeNotifier {
             ],
           ),
       ],
+    );
+    notifyListeners();
+  }
+
+  void makeActiveExerciseEasier({
+    required String exercise,
+    bool tired = false,
+  }) {
+    final workout = _activeWorkout;
+    if (workout == null || !workout.exercises.contains(exercise)) {
+      throw StateError('Δεν υπάρχει ενεργή άσκηση για προσαρμογή.');
+    }
+    final current = workout.prescriptionFor(exercise);
+    final completedSets = _activeSets
+        .where((set) => set.exerciseName == exercise)
+        .length;
+    var workingSets = current.workingSets > 1 ? current.workingSets - 1 : 1;
+    if (workingSets < completedSets) workingSets = completedSets;
+    final restIncrease = tired ? 45 : 30;
+    final minReps = current.isTimed
+        ? current.minReps
+        : (current.minReps - 2).clamp(1, current.minReps);
+    final maxReps = current.isTimed
+        ? current.maxReps
+        : (current.maxReps - 2).clamp(minReps, current.maxReps);
+    final minHold = current.isTimed
+        ? (current.minHoldSeconds - 10).clamp(5, current.minHoldSeconds)
+        : current.minHoldSeconds;
+    final maxHold = current.isTimed
+        ? (current.maxHoldSeconds - 10).clamp(minHold, current.maxHoldSeconds)
+        : current.maxHoldSeconds;
+    final note = [
+      if (current.note.trim().isNotEmpty) current.note.trim(),
+      tired
+          ? 'Σήμερα: ένα σετ λιγότερο και περισσότερο διάλειμμα.'
+          : 'Σήμερα: μικρότερος στόχος και άνετη τεχνική.',
+    ].join(' ');
+    final adjusted = ExercisePrescription(
+      workingSets: workingSets,
+      minReps: minReps,
+      maxReps: maxReps,
+      targetRir: (current.targetRir + 1).clamp(0, 5),
+      restSeconds: (current.restSeconds + restIncrease).clamp(30, 600),
+      tempo: current.tempo,
+      minHoldSeconds: minHold,
+      maxHoldSeconds: maxHold,
+      note: note,
+    );
+    _activeWorkout = workout.copyWith(
+      exercisePrescriptions: Map<String, ExercisePrescription>.from(
+        workout.exercisePrescriptions,
+      )..[exercise] = adjusted,
     );
     notifyListeners();
   }
@@ -1131,6 +1486,13 @@ class FitnessStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> setMusicUrl(String input) async {
+    final normalized = MusicLink.normalize(input);
+    _data = _data.copyWith(spotifyUrl: normalized);
+    await _repository.save(_data);
+    notifyListeners();
+  }
+
   Future<void> clearSpotifyUrl() async {
     _data = _data.copyWith(spotifyUrl: '');
     await _repository.save(_data);
@@ -1138,13 +1500,13 @@ class FitnessStore extends ChangeNotifier {
   }
 
   String workoutPlaylistFor(String templateId) =>
-      _data.workoutPlaylists[templateId] ?? spotifyUrl;
+      _data.workoutPlaylists[templateId] ?? musicUrl;
 
   Future<void> setWorkoutPlaylist(String templateId, String input) async {
     if (!_data.templates.any((item) => item.id == templateId)) {
       throw const FormatException('Το πρόγραμμα δεν υπάρχει.');
     }
-    final normalized = _normalizeSpotifyUrl(input);
+    final normalized = MusicLink.normalize(input);
     final updated = Map<String, String>.from(_data.workoutPlaylists)
       ..[templateId] = normalized;
     _data = _data.copyWith(workoutPlaylists: updated);
@@ -1940,6 +2302,17 @@ class FitnessStore extends ChangeNotifier {
         !_data.templates.any((template) => template.id == templateId)) {
       throw const FormatException('Το πρόγραμμα δεν υπάρχει.');
     }
+    if (templateId != null) {
+      final template = _data.templates.firstWhere(
+        (item) => item.id == templateId,
+      );
+      if (profile != null &&
+          _templateUsesUnavailableEquipment(template, profile: profile!)) {
+        throw const FormatException(
+          'Αυτό το πρόγραμμα χρειάζεται εξοπλισμό που δεν έχεις δηλώσει.',
+        );
+      }
+    }
     final assignments = Map<String, String>.from(_data.weeklyAssignments);
     if (templateId == null) {
       assignments.remove('$weekday');
@@ -1966,6 +2339,12 @@ class FitnessStore extends ChangeNotifier {
     }
     if (!_data.templates.any((item) => item.id == template.id)) {
       throw const FormatException('Το πρόγραμμα δεν υπάρχει.');
+    }
+    if (profile != null &&
+        _templateUsesUnavailableEquipment(template, profile: profile!)) {
+      throw const FormatException(
+        'Αυτό το πρόγραμμα χρειάζεται εξοπλισμό που δεν έχεις δηλώσει.',
+      );
     }
     final key =
         '${date.year.toString().padLeft(4, '0')}-'
@@ -3397,11 +3776,21 @@ class FitnessStore extends ChangeNotifier {
   }) async {
     _validateProfile(profile);
     var templates = _data.templates;
-    if (refreshCorePrograms) {
-      final customTemplates = templates
-          .where((template) => template.id.startsWith('custom-'))
+    final previousProfile = _data.profile;
+    final programContextChanged =
+        previousProfile == null ||
+        previousProfile.goal != profile.goal ||
+        previousProfile.trainingPlace != profile.trainingPlace ||
+        previousProfile.equipment.trim().toLowerCase() !=
+            profile.equipment.trim().toLowerCase() ||
+        previousProfile.daysPerWeek != profile.daysPerWeek ||
+        previousProfile.experienceLevel != profile.experienceLevel ||
+        previousProfile.sessionMinutes != profile.sessionMinutes;
+    if (refreshCorePrograms || programContextChanged) {
+      final personalTemplates = templates
+          .where((template) => !_coreTemplateIds.contains(template.id))
           .toList();
-      templates = [..._recommendedTemplates(profile), ...customTemplates];
+      templates = [..._recommendedTemplates(profile), ...personalTemplates];
     }
     _data = _data.copyWith(profile: profile, templates: templates);
     await _repository.save(_data);
@@ -3422,28 +3811,39 @@ class FitnessStore extends ChangeNotifier {
     if (profile.age != null && (profile.age! < 13 || profile.age! > 100)) {
       throw const FormatException('Η ηλικία πρέπει να είναι 13–100.');
     }
-    if (profile.sessionMinutes < 20 || profile.sessionMinutes > 120) {
+    if (profile.sessionMinutes < 10 || profile.sessionMinutes > 120) {
       throw const FormatException(
-        'Η διάρκεια προπόνησης πρέπει να είναι 20–120 λεπτά.',
+        'Η διάρκεια προπόνησης πρέπει να είναι 10–120 λεπτά.',
       );
     }
   }
 
+  bool _templateUsesUnavailableEquipment(
+    WorkoutTemplate template, {
+    required UserProfile profile,
+  }) => template.exercises.any(
+    (exercise) => !EquipmentAvailability.supportsExercise(exercise, profile),
+  );
+
   List<WorkoutTemplate> _recommendedTemplates(UserProfile profile) {
-    final isHome = profile.trainingPlace == 'Σπίτι';
+    final isHome = EquipmentAvailability.isHome(profile);
     final isBeginner = profile.experienceLevel == 'Αρχάριος';
     final isStrengthGoal = profile.goal == 'Δύναμη';
     final equipment = profile.equipment.toLowerCase();
+    final hasBands = equipment.contains('λάστιχ') || equipment.contains('band');
+    final hasDumbbells =
+        equipment.contains('αλτήρ') ||
+        equipment.contains('βαράκ') ||
+        equipment.contains('dumbbell') ||
+        equipment.contains('kettlebell');
+    final hasTreadmill =
+        equipment.contains('διάδρομ') || equipment.contains('treadmill');
     final hasPullUpBar =
         !isHome ||
         equipment.contains('μονόζυγ') ||
         equipment.contains('pull-up') ||
         equipment.contains('μπάρα');
-    final hasExternalLoad =
-        !isHome ||
-        equipment.contains('αλτήρ') ||
-        equipment.contains('βάρη') ||
-        equipment.contains('kettlebell');
+    final hasExternalLoad = !isHome || hasDumbbells;
     final workPrescription = isStrengthGoal
         ? '3 σετ × 5–8 • RIR 1–2 • 2′–3′ διάλειμμα'
         : '3–4 σετ × 6–12 • RIR 1–2 • 90″–2′ διάλειμμα';
@@ -3452,7 +3852,9 @@ class FitnessStore extends ChangeNotifier {
         'Τεχνικό stop: σταμάτα μόλις χαθεί η σταθερότητα ή το πλήρες εύρος.';
 
     List<String> fitToDuration(List<String> exercises) {
-      final count = profile.sessionMinutes <= 30
+      final count = profile.sessionMinutes <= 15
+          ? 2
+          : profile.sessionMinutes <= 30
           ? 4
           : profile.sessionMinutes < 60
           ? 5
@@ -3491,16 +3893,28 @@ class FitnessStore extends ChangeNotifier {
                 ? 'Κάμψεις σε υπερυψωμένη επιφάνεια'
                 : 'Κάμψεις με παύση 1″',
             hasPullUpBar
-                ? (isBeginner ? 'Υποβοηθούμενες έλξεις' : 'Αυστηρές έλξεις')
-                : 'Κωπηλατική με λάστιχο — αργό tempo',
-            isBeginner ? 'Πιέσεις ώμων με λάστιχο' : 'Pike push-ups',
-            hasExternalLoad
+                ? (isBeginner
+                      ? 'Αρνητικές έλξεις με στήριξη ποδιών'
+                      : 'Αυστηρές έλξεις')
+                : hasBands
+                ? 'Κωπηλατική με λάστιχο — αργό tempo'
+                : 'Bird dog',
+            hasBands
+                ? (isBeginner ? 'Πιέσεις ώμων με λάστιχο' : 'Pike push-ups')
+                : hasDumbbells
+                ? 'Πιέσεις ώμων με αλτήρες'
+                : 'Κάμψεις στον τοίχο',
+            hasDumbbells
                 ? 'Μονόχειρη κωπηλατική με αλτήρα'
-                : 'Μονόχειρη κωπηλατική με σακίδιο',
-            'Band face pulls',
-            hasExternalLoad
+                : hasBands
+                ? 'Bird dog'
+                : 'Hip hinge χωρίς βάρος',
+            hasBands ? 'Band face pulls' : 'Γέφυρα γλουτών στο πάτωμα',
+            isHome
+                ? 'Dead bug'
+                : hasExternalLoad
                 ? 'Suitcase carry με αλτήρα'
-                : 'Suitcase carry με σακίδιο',
+                : 'Dead bug',
           ]
         : [
             'Πιέσεις στήθους με αλτήρες',
@@ -3513,16 +3927,18 @@ class FitnessStore extends ChangeNotifier {
     final lowerExercises = isHome
         ? [
             isBeginner
-                ? 'Καθίσματα σε πάγκο με σακίδιο'
-                : 'Goblet squat με tempo 3″',
+                ? 'Κάθισμα και σήκωμα από καρέκλα'
+                : hasDumbbells
+                ? 'Goblet squat με αλτήρα και tempo 3″'
+                : 'Καθίσματα σε καρέκλα με tempo 3″',
             hasExternalLoad
                 ? 'Ρουμανικές άρσεις με αλτήρες'
-                : 'Ρουμανικές άρσεις με σακίδιο',
+                : 'Hip hinge χωρίς βάρος',
             isBeginner
-                ? 'Ανάστροφες προβολές με στήριξη'
+                ? 'Ανάστροφες προβολές με στήριξη σε καρέκλα'
                 : 'Bulgarian split squat',
-            'Hip thrust με παύση',
-            'Μονόποδες άρσεις γάμπας',
+            'Γέφυρα γλουτών στο πάτωμα',
+            'Bird dog',
             'Dead bug',
           ]
         : [
@@ -3554,10 +3970,27 @@ class FitnessStore extends ChangeNotifier {
             'Farmer carry',
             'Hollow body hold',
           ];
-    final calisthenicsExercises = isBeginner
+    final calisthenicsExercises = isHome
+        ? [
+            isBeginner
+                ? 'Κάμψεις σε υπερυψωμένη επιφάνεια'
+                : 'Κάμψεις με παύση 1″',
+            hasPullUpBar
+                ? (isBeginner
+                      ? 'Αρνητικές έλξεις με στήριξη ποδιών'
+                      : 'Αυστηρές έλξεις')
+                : hasBands
+                ? 'Κωπηλατική με λάστιχο — αργό tempo'
+                : 'Bird dog',
+            'Κάμψεις στον τοίχο',
+            'Ανάστροφες προβολές με στήριξη σε καρέκλα',
+            'Dead bug',
+            'Γέφυρα γλουτών στο πάτωμα',
+          ]
+        : isBeginner
         ? [
             'Κάμψεις σε υπερυψωμένη επιφάνεια',
-            hasPullUpBar ? 'Υποβοηθούμενες έλξεις' : 'Κωπηλατική με λάστιχο',
+            'Υποβοηθούμενες έλξεις',
             'Κάμψεις κλειστής λαβής',
             'Bulgarian split squat με στήριξη',
             'Dead bug',
@@ -3565,9 +3998,7 @@ class FitnessStore extends ChangeNotifier {
           ]
         : [
             'Κάμψεις με παύση 1″',
-            hasPullUpBar
-                ? 'Αυστηρές έλξεις'
-                : 'Κωπηλατική με λάστιχο — tempo 3″',
+            'Αυστηρές έλξεις',
             'Pike push-ups',
             'Pistol squat σε κουτί',
             'Hanging knee raises',
@@ -3575,13 +4006,11 @@ class FitnessStore extends ChangeNotifier {
           ];
     final engineExercises = isHome
         ? [
-            'Step-ups σε σταθερό πάγκο',
-            hasExternalLoad
-                ? 'Farmer carry με αλτήρες'
-                : 'March με φορτωμένο σακίδιο',
+            if (hasTreadmill) 'Περπάτημα σε απλό διάδρομο',
+            'Ανέβασμα σε χαμηλό σταθερό σκαλοπάτι',
             'Bear crawl αργού ρυθμού',
             'Mountain climbers ελεγχόμενα',
-            'Pallof press με λάστιχο',
+            'Dead bug',
           ]
         : [
             'Sled push',
@@ -3593,22 +4022,24 @@ class FitnessStore extends ChangeNotifier {
 
     final upper = program(
       id: 'iron-upper',
-      name: 'IRON UPPER — Strength',
+      name: isHome ? 'ΣΠΙΤΙ — Άνω σώμα' : 'IRON UPPER — Strength',
       exercises: upperExercises,
     );
     final lower = program(
       id: 'iron-lower',
-      name: 'IRON LOWER — Strength',
+      name: isHome ? 'ΣΠΙΤΙ — Πόδια και ισορροπία' : 'IRON LOWER — Strength',
       exercises: lowerExercises,
     );
     final hybrid = program(
       id: 'iron-hybrid',
-      name: 'IRON HYBRID — Full Body',
+      name: isHome ? 'ΣΠΙΤΙ — Όλο το σώμα' : 'IRON HYBRID — Full Body',
       exercises: hybridExercises,
     );
     final calisthenicsStrength = program(
       id: 'calisthenics-strength',
-      name: 'CALISTHENICS — Strict Strength',
+      name: isHome
+          ? 'ΣΠΙΤΙ — Δύναμη με το σώμα μου'
+          : 'CALISTHENICS — Strict Strength',
       exercises: calisthenicsExercises,
       prescription: isBeginner
           ? '3 σετ × 6–10 • RIR 2 • 90″ διάλειμμα'
@@ -3618,23 +4049,40 @@ class FitnessStore extends ChangeNotifier {
     );
     final calisthenicsSkill = program(
       id: 'calisthenics-skills',
-      name: 'CALISTHENICS — Skill Lab',
-      exercises: [
-        'Handstand στον τοίχο',
-        'Scapular pull-ups',
-        'Tuck L-sit',
-        'Arch body hold',
-      ],
-      prescription: '4–6 ποιοτικές προσπάθειες • ποτέ μέχρι αποτυχία',
-      coachingCue: 'Σταμάτα πριν τρέμει η τεχνική· ποιότητα πάνω από χρόνο.',
+      name: isHome
+          ? 'ΣΠΙΤΙ — Σταθερότητα και κορμός'
+          : 'CALISTHENICS — Skill Lab',
+      exercises: isHome
+          ? [
+              'Κάμψεις στον τοίχο',
+              'Bird dog',
+              'Dead bug',
+              'Γέφυρα γλουτών στο πάτωμα',
+            ]
+          : [
+              'Handstand στον τοίχο',
+              'Scapular pull-ups',
+              'Tuck L-sit',
+              'Arch body hold',
+            ],
+      prescription: isHome
+          ? '2–3 ήρεμα σετ • άνετος ρυθμός • ποτέ μέχρι εξάντληση'
+          : '4–6 ποιοτικές προσπάθειες • ποτέ μέχρι αποτυχία',
+      coachingCue: isHome
+          ? 'Κινήσου αργά και σταμάτα πριν χαλάσει η άνετη τεχνική.'
+          : 'Σταμάτα πριν τρέμει η τεχνική· ποιότητα πάνω από χρόνο.',
       restSeconds: 90,
     );
     final ironEngine = program(
       id: 'iron-engine',
-      name: 'IRON ENGINE — Conditioning',
+      name: isHome ? 'ΣΠΙΤΙ — Ήπια αντοχή' : 'IRON ENGINE — Conditioning',
       exercises: engineExercises,
-      prescription: '4 γύροι • 40″ δουλειά / 20″ αλλαγή • RPE 7–8',
-      coachingCue: 'Σταθερός ρυθμός και καθαρές κινήσεις· κανένα άλμα.',
+      prescription: isHome
+          ? '3 ήρεμοι γύροι • 30″ δουλειά / 30″ ανάσα • RPE 5–6'
+          : '4 γύροι • 40″ δουλειά / 20″ αλλαγή • RPE 7–8',
+      coachingCue: isHome
+          ? 'Άφησε χώρο γύρω σου και κράτησε ρυθμό που σου επιτρέπει να μιλάς.'
+          : 'Σταθερός ρυθμός και καθαρές κινήσεις· κανένα άλμα.',
       restSeconds: 60,
     );
     final weightedCalisthenics = program(
@@ -3654,6 +4102,53 @@ class FitnessStore extends ChangeNotifier {
     );
 
     if (profile.daysPerWeek <= 2) {
+      if (isHome) {
+        final homeA = hasDumbbells
+            ? [
+                'Goblet squat με αλτήρα',
+                'Ρουμανικές άρσεις με αλτήρες',
+                'Μονόχειρη κωπηλατική με αλτήρα',
+                'Πιέσεις ώμων με αλτήρες',
+              ]
+            : [
+                'Κάθισμα και σήκωμα από καρέκλα',
+                'Κάμψεις στον τοίχο',
+                hasBands ? 'Κωπηλατική με λάστιχο' : 'Bird dog',
+                'Γέφυρα γλουτών στο πάτωμα',
+              ];
+        final homeB = [
+          'Hip hinge χωρίς βάρος',
+          'Κάμψεις σε σταθερό τραπέζι',
+          if (hasPullUpBar)
+            isBeginner
+                ? 'Αρνητικές έλξεις με στήριξη ποδιών'
+                : 'Αυστηρές έλξεις'
+          else if (hasBands)
+            'Band face pulls'
+          else
+            'Bird dog',
+          'Dead bug',
+        ];
+        return [
+          program(
+            id: 'full-body-a',
+            name: 'ΗΠΙΑ ΑΡΧΗ ΣΤΟ ΣΠΙΤΙ — A',
+            exercises: homeA,
+            coachingCue:
+                'Άνετη κίνηση, σταθερή αναπνοή και καμία πίεση για τελειότητα.',
+            restSeconds: 75,
+          ),
+          program(
+            id: 'full-body-b',
+            name: 'ΗΠΙΑ ΑΡΧΗ ΣΤΟ ΣΠΙΤΙ — B',
+            exercises: homeB,
+            coachingCue:
+                'Χρησιμοποίησε μόνο σταθερά έπιπλα και σταμάτα αν εμφανιστεί πόνος.',
+            restSeconds: 75,
+          ),
+          if (hasTreadmill) ironEngine else calisthenicsSkill,
+        ];
+      }
       return [
         program(
           id: 'full-body-a',
@@ -3689,38 +4184,16 @@ class FitnessStore extends ChangeNotifier {
       calisthenicsStrength,
       calisthenicsSkill,
       ironEngine,
-      if (!isBeginner && hasPullUpBar) weightedCalisthenics,
+      if (!isHome && !isBeginner && hasPullUpBar) weightedCalisthenics,
     ];
   }
 
   String _normalizeSpotifyUrl(String input) {
-    final value = input.trim();
-    if (value.startsWith('spotify:')) {
-      final parts = value.split(':');
-      if (parts.length == 3 &&
-          const {'playlist', 'album', 'track'}.contains(parts[1]) &&
-          parts[2].isNotEmpty) {
-        return 'https://open.spotify.com/${parts[1]}/${parts[2]}';
-      }
-    }
-    final uri = Uri.tryParse(value);
-    if (uri == null ||
-        uri.scheme != 'https' ||
-        uri.host != 'open.spotify.com' ||
-        uri.pathSegments.length < 2 ||
-        !const {
-          'playlist',
-          'album',
-          'track',
-        }.contains(uri.pathSegments.first)) {
-      throw const FormatException(
-        'Χρησιμοποίησε σύνδεσμο Spotify playlist, album ή track.',
-      );
-    }
-    return Uri(
-      scheme: 'https',
-      host: 'open.spotify.com',
-      pathSegments: uri.pathSegments.take(2),
-    ).toString();
+    return MusicLink.normalize(input, expectedService: MusicService.spotify);
   }
 }
+
+String _localDateKey(DateTime value) =>
+    '${value.year.toString().padLeft(4, '0')}-'
+    '${value.month.toString().padLeft(2, '0')}-'
+    '${value.day.toString().padLeft(2, '0')}';

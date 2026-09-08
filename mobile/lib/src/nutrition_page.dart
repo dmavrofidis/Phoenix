@@ -7,7 +7,10 @@ import 'models/fitness_models.dart';
 import 'nutrition_pro_widgets.dart';
 import 'nutrition_planner_page.dart';
 import 'photo_meal_scan_page.dart';
+import 'phoenix_copy.dart';
 import 'phoenix_l10n.dart';
+import 'recommended_nutrition_page.dart';
+import 'recommended_nutrition_engine.dart';
 import 'state/fitness_store.dart';
 
 class NutritionPage extends StatelessWidget {
@@ -73,7 +76,7 @@ class NutritionPage extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     context.l10n.text(
-                      'Στόχοι, macros και καθοδήγηση — όλα τοπικά.',
+                      'Στόχοι, θρεπτικά στοιχεία και καθοδήγηση — όλα στη συσκευή σου.',
                       'Targets, macros and guidance — all local.',
                     ),
                     style: TextStyle(
@@ -84,7 +87,10 @@ class NutritionPage extends StatelessWidget {
               ),
             ),
             IconButton.filled(
-              tooltip: 'Photo meal scan',
+              tooltip: context.l10n.text(
+                'Καταγραφή γεύματος με φωτογραφία',
+                'Photo meal scan',
+              ),
               onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute<void>(
                   builder: (_) => PhotoMealScanPage(store: store),
@@ -94,7 +100,10 @@ class NutritionPage extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             IconButton.filled(
-              tooltip: 'Nutrition Planner',
+              tooltip: context.l10n.text(
+                'Προγραμματισμός διατροφής',
+                'Nutrition planner',
+              ),
               onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute<void>(
                   builder: (_) => NutritionPlannerPage(store: store),
@@ -111,7 +120,11 @@ class NutritionPage extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 22),
+        _NextMealDecisionCard(store: store),
+        const SizedBox(height: 12),
         _DailyNutritionCard(store: store),
+        const SizedBox(height: 12),
+        _RecommendedPlanCard(store: store),
         const SizedBox(height: 12),
         HydrationCard(store: store),
         const SizedBox(height: 12),
@@ -132,7 +145,7 @@ class NutritionPage extends StatelessWidget {
             Expanded(
               child: Text(
                 context.l10n.text(
-                  'Σημερινό meal timeline',
+                  'Τα σημερινά γεύματα',
                   'Today’s meal timeline',
                 ),
                 style: Theme.of(
@@ -188,7 +201,7 @@ class NutritionPage extends StatelessWidget {
                       ),
                     ),
                     action: SnackBarAction(
-                      label: 'UNDO',
+                      label: context.l10n.text('ΑΝΑΙΡΕΣΗ', 'UNDO'),
                       onPressed: store.undoLastMutation,
                     ),
                   ),
@@ -210,6 +223,283 @@ class NutritionPage extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _NextMealDecisionCard extends StatelessWidget {
+  const _NextMealDecisionCard({required this.store});
+
+  final FitnessStore store;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final preferences = store.preferences;
+    final week = RecommendedNutritionEngine.buildWeek(
+      startDate: DateTime.now(),
+      targetsForDate: store.nutritionTargetsForDate,
+      dietStyle: preferences.nutritionDietStyle,
+      mealsPerDay: preferences.nutritionMealsPerDay,
+      budgetMode: preferences.nutritionBudgetMode,
+      quickPrep: preferences.nutritionQuickPrep,
+      noCooking: preferences.nutritionNoCooking,
+    );
+    final meals = week.days.first.meals;
+    final index = store.todaysMeals.length.clamp(0, meals.length - 1);
+    final meal = meals[index];
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Color.alphaBlend(
+              colors.primary.withValues(alpha: .12),
+              colors.surfaceContainer,
+            ),
+            colors.surfaceContainerLow,
+          ],
+        ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: colors.primary.withValues(alpha: .3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.lightbulb_outline_rounded, color: colors.primary),
+              const SizedBox(width: 8),
+              Text(
+                l.text('ΜΙΑ ΑΠΛΗ ΙΔΕΑ ΤΩΡΑ', 'ONE SIMPLE IDEA NOW'),
+                style: TextStyle(
+                  color: colors.primary,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: .7,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            l.text(meal.titleGreek, meal.titleEnglish),
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            l.text(
+              'Δεν χρειάζεται να σχεδιάσεις όλη την εβδομάδα. Αν σε βολεύει, αυτό μπορεί να είναι το επόμενο γεύμα σου.',
+              'You do not need to plan the whole week. If it suits you, this can be your next meal.',
+            ),
+            style: TextStyle(color: colors.onSurfaceVariant, height: 1.4),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              Chip(
+                avatar: const Icon(Icons.schedule_outlined, size: 17),
+                label: Text('${meal.prepMinutes}′'),
+              ),
+              Chip(
+                avatar: const Icon(
+                  Icons.local_fire_department_outlined,
+                  size: 17,
+                ),
+                label: Text('${meal.calories} kcal'),
+              ),
+              Chip(
+                avatar: const Icon(Icons.fitness_center_outlined, size: 17),
+                label: Text(
+                  '${meal.proteinGrams.toStringAsFixed(0)} g protein',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            meal.ingredients
+                .take(4)
+                .map(
+                  (item) =>
+                      '${l.text(item.greekName, item.englishName)} ${item.grams} g',
+                )
+                .join(' • '),
+            style: TextStyle(
+              color: colors.onSurfaceVariant,
+              fontSize: 12,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              key: const ValueKey('greek-budget-meals'),
+              onPressed: () async {
+                await store.updateNutritionPlanPreferences(
+                  dietStyle: 'mediterranean',
+                  budgetMode: 'economy',
+                  quickPrep: true,
+                );
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      l.text(
+                        'Επιλέχθηκαν απλά, ελληνικά και οικονομικά γεύματα.',
+                        'Simple, Mediterranean budget meals selected.',
+                      ),
+                    ),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.savings_outlined),
+              label: Text(
+                l.text(
+                  'Ελληνικά, απλά και οικονομικά',
+                  'Simple Mediterranean budget meals',
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton.tonalIcon(
+                  key: const ValueKey('open-simple-meal-plan'),
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => RecommendedNutritionPage(store: store),
+                    ),
+                  ),
+                  icon: const Icon(Icons.restaurant_menu_outlined),
+                  label: Text(l.text('Δες ποσότητες', 'See portions')),
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton.filledTonal(
+                tooltip: l.text('Φωτογράφισε το γεύμα', 'Photograph the meal'),
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => PhotoMealScanPage(store: store),
+                  ),
+                ),
+                icon: const Icon(Icons.camera_alt_outlined),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RecommendedPlanCard extends StatelessWidget {
+  const _RecommendedPlanCard({required this.store});
+
+  final FitnessStore store;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final preferences = store.preferences;
+    final style = switch (preferences.nutritionDietStyle) {
+      'mediterranean' => l.text('Μεσογειακή', 'Mediterranean'),
+      'vegetarian' => l.text('Χορτοφαγική', 'Vegetarian'),
+      'vegan' => l.text('Αυστηρά χορτοφαγική', 'Vegan'),
+      _ => l.text('Ισορροπημένη', 'Balanced'),
+    };
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => RecommendedNutritionPage(store: store),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.primary.withValues(alpha: .12),
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: Icon(
+                  Icons.restaurant_menu,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l.text(
+                        'Το δικό σου πρόγραμμα διατροφής',
+                        'Your recommended meal plan',
+                      ),
+                      style: const TextStyle(fontWeight: FontWeight.w900),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      l.text(
+                        '$style • ${preferences.nutritionMealsPerDay} γεύματα • λίστα αγορών',
+                        '$style • ${preferences.nutritionMealsPerDay} meals • grocery list',
+                      ),
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 7,
+                      runSpacing: 7,
+                      children: [
+                        ActionChip(
+                          avatar: const Icon(Icons.savings_outlined, size: 16),
+                          label: Text(l.text('Οικονομικό', 'Economy')),
+                          onPressed: () => store.updateNutritionPlanPreferences(
+                            budgetMode: 'economy',
+                          ),
+                        ),
+                        ActionChip(
+                          avatar: const Icon(Icons.timer_outlined, size: 16),
+                          label: Text(l.text('Γρήγορο', 'Quick')),
+                          onPressed: () => store.updateNutritionPlanPreferences(
+                            quickPrep: true,
+                            noCooking: false,
+                          ),
+                        ),
+                        ActionChip(
+                          avatar: const Icon(Icons.no_food_outlined, size: 16),
+                          label: Text(l.text('Χωρίς μαγείρεμα', 'No cooking')),
+                          onPressed: () => store.updateNutritionPlanPreferences(
+                            quickPrep: true,
+                            noCooking: true,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -236,7 +526,7 @@ class _DailyNutritionCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    context.l10n.text('ΣΗΜΕΡΙΝΟΣ ΣΤΟΧΟΣ', 'TODAY’S TARGET'),
+                    context.l10n.text('Σημερινός στόχος', 'Today’s target'),
                     style: const TextStyle(
                       color: Color(0xFFFF3D00),
                       fontWeight: FontWeight.w900,
@@ -438,8 +728,8 @@ class _MacroChart extends StatelessWidget {
           children: [
             Semantics(
               label: totalEnergy == 0
-                  ? 'Δεν υπάρχουν macros σήμερα.'
-                  : 'Κατανομή macros: ${protein.toStringAsFixed(1)} γραμμάρια '
+                  ? 'Δεν υπάρχουν θρεπτικά στοιχεία σήμερα.'
+                  : 'Κατανομή θρεπτικών στοιχείων: ${protein.toStringAsFixed(1)} γραμμάρια '
                         'πρωτεΐνη, ${carbohydrates.toStringAsFixed(1)} γραμμάρια '
                         'υδατάνθρακες και ${fat.toStringAsFixed(1)} γραμμάρια '
                         'λιπαρά.',
@@ -455,24 +745,27 @@ class _MacroChart extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 22),
-            const Expanded(
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'ΚΑΤΑΝΟΜΗ MACROS',
-                    style: TextStyle(fontWeight: FontWeight.w900),
+                    context.l10n.text(
+                      'Κατανομή θρεπτικών στοιχείων',
+                      'Macro distribution',
+                    ),
+                    style: const TextStyle(fontWeight: FontWeight.w900),
                   ),
-                  SizedBox(height: 12),
-                  _LegendDot(
+                  const SizedBox(height: 12),
+                  const _LegendDot(
                     color: Color(0xFFFF3D00),
                     label: 'Πρωτεΐνη · 4 kcal/g',
                   ),
-                  _LegendDot(
+                  const _LegendDot(
                     color: Color(0xFFFFA000),
                     label: 'Υδατάνθρακες · 4 kcal/g',
                   ),
-                  _LegendDot(
+                  const _LegendDot(
                     color: Color(0xFFB0BEC5),
                     label: 'Λιπαρά · 9 kcal/g',
                   ),
@@ -587,7 +880,7 @@ class _MealTile extends StatelessWidget {
                   ),
                 ),
         ),
-        title: Text(meal.name),
+        title: Text(PhoenixCopy.mealName(context.l10n, meal)),
         subtitle: Text(
           'Π ${meal.proteinGrams.toStringAsFixed(1)}  •  '
           'Υ ${meal.carbohydrateGrams.toStringAsFixed(1)}  •  '
@@ -768,7 +1061,7 @@ class _MealEntrySheetState extends State<_MealEntrySheet> {
               contentPadding: EdgeInsets.zero,
               value: _saveAsPreset,
               onChanged: (value) => setState(() => _saveAsPreset = value),
-              title: const Text('Αποθήκευση ως meal preset'),
+              title: const Text('Αποθήκευση ως έτοιμο γεύμα'),
               subtitle: const Text(
                 'Θα μπορείς να το καταγράφεις ξανά με ένα άγγιγμα.',
               ),

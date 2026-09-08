@@ -81,7 +81,7 @@ class ReleaseAuditEngine {
         id: 'migrations',
         title: 'Versioned storage migrations',
         detail:
-            'Storage v19 with deterministic v1→v2→v3→v4→v5→v6→v7→v8→v9→v10→v11→v12→v13→v14→v15→v16→v17→v18→v19 coverage.',
+            'Storage v20 with deterministic v1→v2→v3→v4→v5→v6→v7→v8→v9→v10→v11→v12→v13→v14→v15→v16→v17→v18→v19→v20 coverage.',
         status: ReleaseAuditStatus.pass,
       ),
       ReleaseAuditCheck(
@@ -127,7 +127,8 @@ class ReleaseAuditEngine {
       ReleaseAuditCheck(
         id: 'urls',
         title: 'External media transport',
-        detail: 'Stored media links are HTTPS-only and Spotify is PKCE-ready.',
+        detail:
+            'Stored media links are HTTPS-only; Spotify is PKCE-ready and Apple Music links stay local.',
         status: safeUrls ? ReleaseAuditStatus.pass : ReleaseAuditStatus.fail,
       ),
       ReleaseAuditCheck(

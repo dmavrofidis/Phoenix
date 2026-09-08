@@ -177,15 +177,15 @@ class ControlCenterPage extends StatelessWidget {
                   ),
                   title: Text(
                     context.l10n.text(
-                      'Εμπειρία & προσβασιμότητα',
-                      'Experience & accessibility',
+                      'Χρώματα, θέμα & προσβασιμότητα',
+                      'Colors, theme & accessibility',
                     ),
                     style: const TextStyle(fontWeight: FontWeight.w900),
                   ),
                   subtitle: Text(
                     context.l10n.text(
-                      'Γλώσσα, θέμα, feedback, αναζήτηση και ασφάλεια',
-                      'Language, theme, feedback, search and security',
+                      'Άλλαξε εύκολα την εμφάνιση και τις ρυθμίσεις χρήσης',
+                      'Quickly change appearance and experience settings',
                     ),
                   ),
                   trailing: const Icon(Icons.chevron_right),
@@ -234,7 +234,7 @@ class ControlCenterPage extends StatelessWidget {
                         Text(
                           'Δεν υπάρχει λογαριασμός ή cloud. Το backup περιέχει '
                           'προφίλ, προγράμματα, προπονήσεις, βάρος, διατροφή, '
-                          'Spotify και recovery check-ins.',
+                          'Spotify και τις καθημερινές καταγραφές ευεξίας.',
                           style: TextStyle(
                             color: Colors.white.withValues(alpha: .55),
                             fontSize: 12,
@@ -396,7 +396,7 @@ class _DataVaultCard extends StatelessWidget {
               '${store.data.logs.length} προπονήσεις • '
               '${store.data.weights.length} βάρη • '
               '${store.data.meals.length} γεύματα • '
-              '${store.data.recoveryChecks.length} check-ins',
+              '${store.data.recoveryChecks.length} καταγραφές ευεξίας',
               style: TextStyle(
                 color: Colors.white.withValues(alpha: .55),
                 fontSize: 12,

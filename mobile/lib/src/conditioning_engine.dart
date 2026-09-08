@@ -252,7 +252,13 @@ class ConditioningEngine {
     final limitations = _normalize(profile?.limitations ?? '');
     final options = <String>[];
     if (!limitations.contains('knee') && !limitations.contains('γονατ')) {
-      options.addAll(['Brisk walk', 'Incline treadmill']);
+      options.add('Brisk walk');
+      if (equipment.contains('treadmill') ||
+          equipment.contains('διαδρομ') ||
+          equipment.contains('full gym') ||
+          equipment.contains('πληρες γυμναστηριο')) {
+        options.add('Incline treadmill');
+      }
     }
     if (equipment.contains('bike') ||
         equipment.contains('ποδηλα') ||

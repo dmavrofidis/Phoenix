@@ -103,12 +103,12 @@ class NutritionGoalEngine {
       return NutritionCoachMessage(
         headline: 'Πέρασες τον στόχο θερμίδων',
         detail:
-            'Δεν χρειάζεται τιμωρία. Επίλεξε απλό επόμενο γεύμα και συνέχισε κανονικά αύριο.',
+            'Δεν χρειάζεται να τιμωρήσεις τον εαυτό σου. Διάλεξε ένα απλό γεύμα στη συνέχεια και αύριο συνέχισε κανονικά.',
       );
     }
     if (proteinLeft > 25 && caloriesLeft < 350) {
       return NutritionCoachMessage(
-        headline: 'Χρειάζεσαι πυκνή πρωτεΐνη',
+        headline: 'Χρειάζεσαι ένα γεύμα πλούσιο σε πρωτεΐνη',
         detail:
             'Μένουν ${proteinLeft.round()} g πρωτεΐνης με λίγες θερμίδες διαθέσιμες.',
       );
@@ -121,7 +121,7 @@ class NutritionGoalEngine {
       );
     }
     return NutritionCoachMessage(
-      headline: 'Υπόλοιπο ημέρας',
+      headline: 'Για το υπόλοιπο της ημέρας',
       detail:
           '${caloriesLeft.clamp(0, 9999).round()} kcal και '
           '${proteinLeft.clamp(0, 999).round()} g πρωτεΐνης μέχρι τον στόχο.',

@@ -1,5 +1,6 @@
 import 'models/fitness_models.dart';
 import 'exercise_intelligence_engine.dart';
+import 'equipment_availability.dart';
 
 enum SearchResultType { workout, exercise, workoutLog, meal, tool }
 
@@ -38,18 +39,26 @@ class GlobalSearchEngine {
           template: template,
         ),
       for (final profile in ExerciseIntelligenceEngine.allProfiles(data))
-        PhoenixSearchResult(
-          type: SearchResultType.exercise,
-          title: profile.name,
-          subtitle:
-              '${profile.movementPattern} • ${profile.primaryMuscles.join(' • ')}',
-          keywords:
-              '${profile.name} ${profile.movementPattern} '
-              '${profile.primaryMuscles.join(' ')} '
-              '${profile.secondaryMuscles.join(' ')} '
-              '${profile.equipment.join(' ')} exercise άσκηση οδηγός guide',
-          route: 'exercise',
-        ),
+        if (EquipmentAvailability.supportsExercise(
+              profile.name,
+              data.profile,
+            ) &&
+            ExerciseIntelligenceEngine.isEquipmentCompatible(
+              profile,
+              data.profile,
+            ))
+          PhoenixSearchResult(
+            type: SearchResultType.exercise,
+            title: profile.name,
+            subtitle:
+                '${profile.movementPattern} • ${profile.primaryMuscles.join(' • ')}',
+            keywords:
+                '${profile.name} ${profile.movementPattern} '
+                '${profile.primaryMuscles.join(' ')} '
+                '${profile.secondaryMuscles.join(' ')} '
+                '${profile.equipment.join(' ')} exercise άσκηση οδηγός guide',
+            route: 'exercise',
+          ),
       for (final log in data.logs.take(100))
         PhoenixSearchResult(
           type: SearchResultType.workoutLog,
@@ -142,6 +151,14 @@ class GlobalSearchEngine {
         keywords:
             'recovery intelligence sleep debt soreness decay stress load resting heart rate rhr deviation active recovery sauna cold exposure intervention comparison baseline forecast',
         route: 'recovery-intelligence',
+      ),
+      const PhoenixSearchResult(
+        type: SearchResultType.tool,
+        title: 'Recommended Meal Plan',
+        subtitle: 'Simple weekly meals adapted to your goal and preferences',
+        keywords:
+            'recommended meal plan weekly food diet nutrition grocery simple personalized διατροφή πρόγραμμα φαγητό φαγητού εβδομάδα εβδομαδιαίο',
+        route: 'recommended-nutrition',
       ),
       const PhoenixSearchResult(
         type: SearchResultType.tool,

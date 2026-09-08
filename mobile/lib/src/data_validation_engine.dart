@@ -1,4 +1,5 @@
 import 'models/fitness_models.dart';
+import 'music_link.dart';
 
 enum ValidationSeverity { info, warning, critical }
 
@@ -219,17 +220,14 @@ class DataValidationEngine {
       }
     }
     for (final entry in data.workoutPlaylists.entries) {
-      final uri = Uri.tryParse(entry.value);
       if (!templateIds.contains(entry.key) ||
-          uri == null ||
-          uri.scheme != 'https' ||
-          uri.host != 'open.spotify.com') {
+          !MusicLink.isSupported(entry.value)) {
         issues.add(
           const ValidationIssue(
             code: 'invalid-workout-playlist',
             title: 'Ορφανή ή μη έγκυρη workout playlist',
             detail:
-                'Μία playlist δεν συνδέεται με έγκυρο πρόγραμμα ή Spotify URL.',
+                'Μία playlist δεν συνδέεται με έγκυρο πρόγραμμα, Spotify ή Apple Music.',
             severity: ValidationSeverity.warning,
             repairable: true,
           ),
@@ -1101,9 +1099,7 @@ class DataValidationEngine {
           .toList(),
       workoutPlaylists: {
         for (final entry in data.workoutPlaylists.entries)
-          if (safeIds.contains(entry.key) &&
-              Uri.tryParse(entry.value)?.scheme == 'https' &&
-              Uri.tryParse(entry.value)?.host == 'open.spotify.com')
+          if (safeIds.contains(entry.key) && MusicLink.isSupported(entry.value))
             entry.key: entry.value,
       },
       exerciseVideoUrls: {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'equipment_presets.dart';
+import 'equipment_availability.dart';
 import 'exercise_guide.dart';
 import 'models/fitness_models.dart';
 import 'state/fitness_store.dart';
@@ -354,7 +355,10 @@ class _ProgramEditorPageState extends State<ProgramEditorPage> {
               itemBuilder: (context, index) {
                 final exercise = _exercises[index];
                 final prescription = _prescriptions[exercise]!;
-                final guide = ExerciseGuideCatalog.forExercise(exercise);
+                final guide = ExerciseGuideCatalog.forExercise(
+                  exercise,
+                  atHome: EquipmentAvailability.isHome(widget.store.profile),
+                );
                 return Card(
                   key: ValueKey(exercise),
                   margin: const EdgeInsets.only(bottom: 10),
